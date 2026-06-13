@@ -67,7 +67,6 @@
   - Updated frontend uses `textContent`/DOM APIs for DB-rendered values instead of injecting user data as HTML.
 - Integrations:
   - `api/order.php` sends order emails and posts to the configured n8n webhook.
-  - n8n webhook requests include `X-Reseller-Secret` when `integrations.n8n_webhook_secret` is configured.
   - n8n receives `request_id`, `order_db_id`, `reseller_email`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email`, and timestamp.
   - `api/payment_notice.php` emails the configured payment notice recipient.
 
@@ -80,7 +79,6 @@
 - Installation steps:
   - Upload the project folder contents to cPanel public web root.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
-  - Set the same n8n shared secret in `api/config.local.php` and in n8n as `RESELLER_WEBHOOK_SECRET`.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -121,7 +119,7 @@
 - Removed production credentials, webhook URL, notification recipients, logs, and the initial admin hash from versioned source code.
 - Added `.htaccess` hardening for files that should not be publicly served from cPanel.
 - Added order confirmation, submit progress feedback, and light/dark mode.
-- Added n8n shared-secret header, richer delivery payload, and order delivery status tracking.
+- Added richer n8n delivery payload and order delivery status tracking.
 - Refined admin panel layout, spacing, table actions, product form width, and mobile responsiveness.
 
 ## Current Priorities

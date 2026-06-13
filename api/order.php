@@ -169,10 +169,8 @@ try {
   ];
 
   $webhookUrl = (string)config_value('integrations.n8n_webhook', '');
-  $webhookSecret = (string)config_value('integrations.n8n_webhook_secret', '');
-  $webhookHeaders = $webhookSecret !== '' ? ["X-Reseller-Secret: {$webhookSecret}"] : [];
   $n8n = $webhookUrl !== ''
-    ? post_json($webhookUrl, $payload, 12, $webhookHeaders)
+    ? post_json($webhookUrl, $payload)
     : ["ok" => false, "code" => 0, "err" => "Webhook not configured", "body" => null];
 
   update_order_delivery_state($pdo, $orderDbId, $n8n["ok"] ? 'delivered' : 'delivery_failed', [
