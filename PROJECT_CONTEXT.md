@@ -12,7 +12,7 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
-  - Reseller “Uplatio sam” button sends an email notification to `arsenijee19@gmail.com`.
+  - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
@@ -32,7 +32,10 @@
 ## File Structure
 - `index.html` - reseller UI for login, orders, prices, balance, history, and payment notice.
 - `admin.html` - admin UI for users, products, orders, and detected DB schema.
-- `api/db.php` - PDO database connection.
+- `api/db.php` - PDO database connection and configuration loader.
+- `api/config.example.php` - safe template for local/private configuration.
+- `api/config.local.php` - ignored private configuration file required on cPanel; never commit it.
+- `.htaccess` and `api/.htaccess` - deny directory listing and block public access to docs, SQL files, logs, dotfiles, and private config.
 - `api/bootstrap.php` - shared JSON responses, secure sessions, CSRF helpers, auth guards, DB schema helpers.
 - `api/login.php` - reseller token login.
 - `api/logout.php` - destroys reseller/admin session.
@@ -60,18 +63,18 @@
 - XSS safety:
   - Updated frontend uses `textContent`/DOM APIs for DB-rendered values instead of injecting user data as HTML.
 - Integrations:
-  - `api/order.php` sends order emails and posts to `https://automation.psigre.rs/webhook/reseller-delivery`.
-  - `api/payment_notice.php` emails `arsenijee19@gmail.com`.
+  - `api/order.php` sends order emails and posts to the configured n8n webhook.
+  - `api/payment_notice.php` emails the configured payment notice recipient.
 
 ## Setup & Execution
 - Dependencies:
   - PHP 8+ with PDO MySQL and cURL enabled.
   - MySQL/MariaDB database with existing tables: `resellers`, `product_prices`, `orders`, `wallet_transactions`.
 - Environment variables:
-  - None currently used.
+  - Optional fallback keys use uppercase config paths, for example `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `ADMIN_PASSWORD_HASH`.
 - Installation steps:
   - Upload the project folder contents to cPanel public web root.
-  - Ensure `api/db.php` matches the cPanel database connection.
+  - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -95,8 +98,8 @@
   - Migration adds `product_prices.status`; reseller-facing product and price APIs only show `status='active'` when this column exists.
   - Admin “Deaktiviraj” sets `status='inactive'` when available.
 - Admin password:
-  - Initial admin username is `admin`.
-  - Initial password is `ArsoArso2026`, stored only as a bcrypt hash in the SQL migration.
+  - Initial admin username and password hash are configured in ignored `api/config.local.php`.
+  - If `admin_users` is empty, `api/admin.php` seeds the first admin from the private config.
   - Change it later by updating `admin_users.password_hash` with a new `password_hash()` value or by adding an admin password-change flow.
 
 ## Recent Changes
@@ -107,18 +110,21 @@
 - Added reseller “Uplatio sam” flow.
 - Refreshed reseller UI for cleaner desktop/mobile layout and safer DOM rendering.
 - Replaced the old URL-key `topup.php` flow with admin-session/CSRF protection.
+- Removed production credentials, webhook URL, notification recipients, logs, and the initial admin hash from versioned source code.
+- Added `.htaccess` hardening for files that should not be publicly served from cPanel.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
 - Validate admin login and all admin edit flows on live/staging data.
 - Confirm `mail()` delivery for order and payment-notice emails.
 - Add an admin password-change screen.
-- Consider moving DB credentials out of `api/db.php` into cPanel environment/config outside web root.
+- Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
 - Local workspace has no access to the production database, so functional DB tests could not be completed locally.
 - `mail()` returns only a boolean and does not guarantee inbox delivery.
 - Hard deletes of products can affect historical order readability; prefer deactivation unless deletion is intentional.
+- Git history previously contained production DB credentials and webhook URL. The latest source removes them, but the live secrets should still be rotated.
 
 ## LLM Handoff Notes
 - Read first:
@@ -132,6 +138,8 @@
   - Existing reseller login is token-based even when user-facing text says password/token.
   - `product_prices.product_id` is the stable product identifier used by orders.
   - cPanel serves the project over HTTPS in production.
+- `api/config.local.php` must exist on cPanel or equivalent environment variables must be set.
+  - Upload `api/config.local.php` to cPanel, but never push it to GitHub.
 - Fragile areas:
   - Database schema may differ slightly from inferred columns; admin API reads `INFORMATION_SCHEMA` to reduce hardcoding.
   - n8n webhook and email side effects happen after DB commit in `api/order.php`.
@@ -140,6 +148,7 @@
   - Use PDO prepared statements.
   - Do not show password/token hashes in UI.
   - Do not store secrets, customer data, or credentials in documentation.
+  - Never commit `api/config.local.php` or runtime logs.
 - Common mistakes to avoid:
   - Do not bypass CSRF on mutating admin/reseller actions.
   - Do not hardcode product lists in frontend.

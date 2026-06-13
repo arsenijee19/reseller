@@ -26,8 +26,6 @@ if ($product_id === "" || $customer_email === "") {
 $reseller_id = (int)$reseller["id"];
 $reseller_email = (string)$reseller["email"];
 
-$N8N_WEBHOOK = "https://automation.psigre.rs/webhook/reseller-delivery";
-
 function post_json(string $url, array $payload, int $timeoutSeconds = 12): array {
   $ch = curl_init($url);
   curl_setopt_array($ch, [
@@ -97,7 +95,7 @@ try {
   // SLANJE EMAIL NOTIFIKACIJE
   // ===============================
 
-  $to = "arsenijee19@gmail.com, sold@psigre.rs";
+  $to = (string)config_value('mail.order_to', '');
   $subject = "Nova porudzbina - " . $p["product_name"];
 
   $message = "Nova porudzbina:\n\n";
@@ -113,10 +111,13 @@ try {
   $message .= "Kupac email: " . $customer_email . "\n";
   $message .= "Vreme: " . gmdate("Y-m-d H:i:s") . " UTC\n";
 
-  $headers = "From: no-reply@psigre.rs\r\n";
+  $from = (string)config_value('mail.from', 'no-reply@localhost');
+  $headers = "From: {$from}\r\n";
   $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
-  @mail($to, $subject, $message, $headers);
+  if ($to !== '') {
+    @mail($to, $subject, $message, $headers);
+  }
 
   // ===============================
   // POZIV N8N
@@ -130,7 +131,10 @@ try {
     "ts" => gmdate("c")
   ];
 
-  $n8n = post_json($N8N_WEBHOOK, $payload);
+  $webhookUrl = (string)config_value('integrations.n8n_webhook', '');
+  $n8n = $webhookUrl !== ''
+    ? post_json($webhookUrl, $payload)
+    : ["ok" => false, "code" => 0, "err" => "Webhook not configured", "body" => null];
 
   echo json_encode([
     "ok"=>true,

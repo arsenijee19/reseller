@@ -1,0 +1,4 @@
+api/config.local.php
+api/error_log
+*.log
+.DS_Store

@@ -64,6 +64,21 @@ function fetch_orders(PDO $pdo, array $filters): array {
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function seed_admin_if_needed(PDO $pdo): void {
+  $count = (int)$pdo->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
+  if ($count > 0) return;
+
+  $username = h_string(config_value('admin.username', 'admin'));
+  $hash = h_string(config_value('admin.password_hash', ''));
+
+  if ($username === '' || $hash === '') {
+    throw new RuntimeException('Initial admin configuration is missing.');
+  }
+
+  $stmt = $pdo->prepare('INSERT INTO admin_users (username, password_hash, status) VALUES (?, ?, ?)');
+  $stmt->execute([$username, $hash, 'active']);
+}
+
 function dashboard_payload(PDO $pdo, array $filters = []): array {
   $orderStatuses = [];
   if (has_column($pdo, 'orders', 'status')) {
@@ -105,8 +120,11 @@ try {
       json_response(['ok' => false, 'error' => 'Unesi admin šifru.'], 400);
     }
 
-    $stmt = $pdo->prepare("SELECT id, username, password_hash, status FROM admin_users WHERE username = 'admin' LIMIT 1");
-    $stmt->execute();
+    seed_admin_if_needed($pdo);
+
+    $username = h_string(config_value('admin.username', 'admin'));
+    $stmt = $pdo->prepare('SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1');
+    $stmt->execute([$username]);
     $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$admin || $admin['status'] !== 'active' || !password_verify($password, (string)$admin['password_hash'])) {

@@ -32,10 +32,12 @@ try {
   $message .= 'Vreme klika: ' . $clickedAt . "\n\n";
   $message .= "Potrebno je proveriti uplatu i po potrebi ažurirati balance u admin panelu.\n";
 
-  $headers = "From: no-reply@psigre.rs\r\n";
+  $from = (string)config_value('mail.from', 'no-reply@localhost');
+  $to = (string)config_value('mail.payment_notice_to', '');
+  $headers = "From: {$from}\r\n";
   $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
-  $sent = @mail('arsenijee19@gmail.com', $subject, $message, $headers);
+  $sent = $to !== '' ? @mail($to, $subject, $message, $headers) : false;
 
   json_response(['ok' => true, 'mail_sent' => $sent]);
 } catch (Throwable $e) {

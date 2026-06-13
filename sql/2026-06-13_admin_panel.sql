@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
   UNIQUE KEY uniq_admin_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO admin_users (username, password_hash, status)
-VALUES ('admin', '$2y$12$da/3HNwnk4XCvFe/LqWK1OmsxUvm5bAs56abWyIQFhNkYHccNNssy', 'active')
-ON DUPLICATE KEY UPDATE username = username;
+-- Create the first admin through api/config.local.php:
+-- set admin.username and admin.password_hash, then open /admin.html and log in.
+-- The app will seed the admin row if it does not already exist.
 
 ALTER TABLE product_prices
   ADD COLUMN IF NOT EXISTS status VARCHAR(40) NOT NULL DEFAULT 'active',
