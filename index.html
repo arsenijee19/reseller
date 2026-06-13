@@ -212,10 +212,28 @@
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
 
+    function storedTheme(){
+      try{
+        return localStorage.getItem("pw-theme");
+      }catch(e){
+        return "";
+      }
+    }
+
+    function saveTheme(theme){
+      try{
+        localStorage.setItem("pw-theme", theme);
+      }catch(e){}
+    }
+
+    function defaultTheme(){
+      return storedTheme() || "light";
+    }
+
     function setTheme(theme){
       const next = theme === "dark" ? "dark" : "light";
       document.documentElement.dataset.theme = next;
-      localStorage.setItem("pw-theme", next);
+      saveTheme(next);
       themeBtn.textContent = next === "dark" ? "Light" : "Dark";
     }
 
@@ -421,7 +439,7 @@
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation(); });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
-    setTheme(localStorage.getItem("pw-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+    setTheme(defaultTheme());
   </script>
 </body>
 </html>
