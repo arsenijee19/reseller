@@ -26,6 +26,7 @@ function app_config_status(): array {
 
 function public_error_detail(Throwable $e): string {
   $message = $e->getMessage();
+  $safeMessage = preg_replace('/[^\p{L}\p{N}\s_\-:.,#()[\]\/]/u', '', $message) ?: 'bez detalja';
 
   if ($e instanceof PDOException) {
     if (strpos($message, '[1045]') !== false) return 'MySQL odbija pristup. Proveri DB user/password i privilegije.';
@@ -33,6 +34,14 @@ function public_error_detail(Throwable $e): string {
     if (strpos($message, '[2002]') !== false) return 'MySQL host nije dostupan. Proveri DB host.';
     if (strpos($message, 'Base table or view not found') !== false) return 'Baza radi, ali jedna od potrebnih tabela ne postoji.';
     return 'PDO greška pri konekciji ili upitu. Proveri cPanel MySQL podešavanja.';
+  }
+
+  if ($e instanceof TypeError && strpos($message, 'password_verify') !== false) {
+    return 'Jedan aktivan reseller ima prazan ili neispravan token_hash u bazi.';
+  }
+
+  if ($e instanceof ParseError) {
+    return 'PHP ne može da pročita jedan config/code fajl. Detalj: ' . $safeMessage;
   }
 
   if (strpos($message, 'Database configuration is missing') !== false) {
@@ -44,7 +53,7 @@ function public_error_detail(Throwable $e): string {
     return 'DB konfiguracija nije kompletna: ' . implode(', ', $missing);
   }
 
-  return 'Neočekivana server greška u login toku.';
+  return 'Neočekivana server greška u login toku (' . get_class($e) . '): ' . $safeMessage;
 }
 
 function config_value(string $path, mixed $default = null): mixed {

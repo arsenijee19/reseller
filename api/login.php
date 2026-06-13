@@ -27,7 +27,8 @@ try {
 
   $found = null;
   foreach ($resellers as $r) {
-    if (password_verify($token, $r["token_hash"])) {
+    $hash = (string)($r["token_hash"] ?? "");
+    if ($hash !== "" && password_verify($token, $hash)) {
       $found = $r; break;
     }
   }
