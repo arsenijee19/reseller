@@ -12,6 +12,7 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
+  - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
   - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
@@ -123,6 +124,7 @@
 - Added richer n8n delivery payload and order delivery status tracking.
 - Refined admin panel layout, spacing, table actions, product form width, and mobile responsiveness.
 - Updated the n8n workflow export to send Telegram order/delivery notifications with account type and price.
+- Added client-side search to the admin products table.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.

@@ -85,6 +85,9 @@
     .form-actions .btn{min-width:180px}
     .table-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap;min-width:300px}
     .table-actions .btn{min-height:36px;padding:8px 10px;font-size:12px}
+    .table-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
+    .table-toolbar .search-field{width:min(100%,420px)}
+    .table-toolbar label{margin-top:0}
     .filter-actions{display:flex;align-items:flex-end;height:100%}
     .filter-actions .btn{width:100%}
     .msg{display:none;margin:0 0 14px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
@@ -105,6 +108,8 @@
       .form-grid .full{grid-column:span 1}
       .form-actions{justify-content:stretch}
       .form-actions .btn{width:100%}
+      .table-toolbar{align-items:stretch;flex-direction:column}
+      .table-toolbar .search-field{width:100%}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto}
       table{min-width:860px}
@@ -178,6 +183,13 @@
                   <p>Izmeni bilo koje polje postojeće strukture proizvoda.</p>
                 </div>
               </div>
+              <div class="table-toolbar">
+                <div class="search-field">
+                  <label for="productSearch">Pretraga proizvoda</label>
+                  <input id="productSearch" type="search" placeholder="Naziv, product_id, tip naloga, cena..." autocomplete="off" />
+                </div>
+                <p class="muted" id="productSearchCount"></p>
+              </div>
               <div class="table-wrap"><table id="productsTable"></table></div>
             </div>
           </div>
@@ -216,7 +228,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers" };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"" };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
@@ -237,6 +249,7 @@
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
     function money(v){ const n=Number(v); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : v; }
+    function normalizeSearch(value){ return String(value == null ? "" : value).toLowerCase().trim(); }
     function cleanDefault(value){
       const text = value == null ? "" : String(value);
       if (text.length >= 2 && text.startsWith("'") && text.endsWith("'")) return text.slice(1, -1);
@@ -374,12 +387,28 @@
       renderNewProduct();
       const columns = productColumns();
       const table = $("productsTable");
+      const products = state.data.products || [];
+      const search = normalizeSearch(state.productSearch);
+      const filteredProducts = search
+        ? products.filter((p) => columns.some((c) => normalizeSearch(p[c.COLUMN_NAME]).includes(search)))
+        : products;
+      const searchInput = $("productSearch");
+      if (searchInput && document.activeElement !== searchInput) searchInput.value = state.productSearch;
+      const count = $("productSearchCount");
+      if (count) count.textContent = search ? `${filteredProducts.length} od ${products.length} proizvoda` : `${products.length} proizvoda`;
       table.textContent = "";
       const thead = table.createTHead().insertRow();
       columns.forEach((c) => text(thead.insertCell(), "strong", c.COLUMN_NAME));
       text(thead.insertCell(), "strong", "Akcije");
       const body = table.createTBody();
-      (state.data.products || []).forEach((p) => {
+      if (!filteredProducts.length) {
+        const row = body.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = columns.length + 1;
+        text(cell, "span", search ? "Nema proizvoda za ovu pretragu." : "Nema proizvoda.", "muted");
+        return;
+      }
+      filteredProducts.forEach((p) => {
         const row = body.insertRow();
         const controls = {};
         columns.forEach((c) => {
@@ -551,6 +580,7 @@
     $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("adminPassword").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
+    $("productSearch").addEventListener("input", (event) => { state.productSearch = event.target.value; renderProducts(); });
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
