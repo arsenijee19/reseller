@@ -47,7 +47,7 @@
         var(--bg);
       transition:background .18s ease,color .18s ease
     }
-    button,input,select{font:inherit}
+    button,input,select,textarea{font:inherit}
     .shell{max-width:1120px;margin:0 auto;padding:22px 16px 42px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
     .brand{display:flex;align-items:center;gap:12px;min-width:0}
@@ -65,8 +65,9 @@
     .section{padding:18px}
     .section + .section{border-top:1px solid var(--line)}
     label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px}
-    input,select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
-    input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+    textarea{min-height:112px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
     .select-wrap{position:relative}
     .select-wrap select{appearance:none;padding-right:42px;background:linear-gradient(180deg,var(--panel),var(--soft))}
     .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(45deg);pointer-events:none}
@@ -113,7 +114,7 @@
       .status{justify-content:flex-start;width:100%}
       .status .theme-btn{flex:0 0 auto;min-width:58px;margin-left:auto}
       .layout{grid-template-columns:1fr}
-      input,select{font-size:16px}
+      input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
       .detail-row{grid-template-columns:1fr;gap:3px}
     }
@@ -166,6 +167,7 @@
             <div class="actions">
               <button class="btn primary" id="orderBtn">Poruči</button>
               <button class="btn good" id="paidBtn">Uplatio sam</button>
+              <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
               <button class="btn" id="logoutBtn">Logout</button>
             </div>
             <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
@@ -202,6 +204,20 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="requestGameModal" role="dialog" aria-modal="true" aria-labelledby="requestGameTitle">
+    <div class="modal">
+      <h2 id="requestGameTitle">Zatraži igru</h2>
+      <p>Upiši koju igru ili tip naloga želiš da dodamo za isporuku.</p>
+      <label for="gameRequestText">Predlog</label>
+      <textarea id="gameRequestText" maxlength="1000" placeholder="Npr. Marvel Spider-Man 2 PS5 Primary..."></textarea>
+      <div class="actions">
+        <button class="btn primary" id="sendGameRequestBtn" type="button">Pošalji predlog</button>
+        <button class="btn" id="cancelGameRequestBtn" type="button">Odustani</button>
+      </div>
+      <div class="msg" id="gameRequestMsg"></div>
+    </div>
+  </div>
+
   <script>
     const $ = (id) => document.getElementById(id);
     const state = { csrf: "", orderInProgress: false, products: [], prices: new Map(), productSearch: "", pendingOrder: null };
@@ -219,6 +235,7 @@
     const custEmail = $("custEmail");
     const orderBtn = $("orderBtn");
     const paidBtn = $("paidBtn");
+    const requestGameBtn = $("requestGameBtn");
     const logoutBtn = $("logoutBtn");
     const orderMsg = $("orderMsg");
     const paidMsg = $("paidMsg");
@@ -230,6 +247,11 @@
     const confirmDetails = $("confirmDetails");
     const confirmOrderBtn = $("confirmOrderBtn");
     const cancelOrderBtn = $("cancelOrderBtn");
+    const requestGameModal = $("requestGameModal");
+    const gameRequestText = $("gameRequestText");
+    const sendGameRequestBtn = $("sendGameRequestBtn");
+    const cancelGameRequestBtn = $("cancelGameRequestBtn");
+    const gameRequestMsg = $("gameRequestMsg");
 
     function setStatus(value){ statusText.textContent = value; }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
@@ -418,6 +440,18 @@
       state.pendingOrder = null;
     }
 
+    function openGameRequest(){
+      hide(gameRequestMsg);
+      gameRequestText.value = "";
+      requestGameModal.classList.add("open");
+      gameRequestText.focus();
+    }
+
+    function closeGameRequest(){
+      requestGameModal.classList.remove("open");
+      hide(gameRequestMsg);
+    }
+
     async function loadOrders(){
       const j = await api("/api/orders.php");
       historyList.textContent = "";
@@ -556,6 +590,27 @@
       }
     }
 
+    async function sendGameRequest(){
+      hide(gameRequestMsg);
+      const suggestion = gameRequestText.value.trim();
+      if (!suggestion) {
+        show(gameRequestMsg, "bad", "Unesi naziv igre ili predlog.");
+        return;
+      }
+      sendGameRequestBtn.disabled = true;
+      sendGameRequestBtn.textContent = "Šaljem...";
+      try{
+        await api("/api/game_request.php", { method:"POST", body:JSON.stringify({ suggestion }) });
+        show(gameRequestMsg, "ok", "Predlog je poslat. Hvala!");
+        window.setTimeout(closeGameRequest, 900);
+      }catch(e){
+        show(gameRequestMsg, "bad", e.message);
+      }finally{
+        sendGameRequestBtn.disabled = false;
+        sendGameRequestBtn.textContent = "Pošalji predlog";
+      }
+    }
+
     async function logout(){
       await fetch("/api/logout.php", { method:"POST", credentials:"same-origin" }).catch(() => {});
       state.csrf = "";
@@ -575,6 +630,7 @@
     loginBtn.addEventListener("click", login);
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
+    requestGameBtn.addEventListener("click", openGameRequest);
     logoutBtn.addEventListener("click", logout);
     productSearch.addEventListener("input", (event) => {
       state.productSearch = event.target.value;
@@ -585,7 +641,13 @@
     confirmOrderBtn.addEventListener("click", submitConfirmedOrder);
     cancelOrderBtn.addEventListener("click", closeConfirmation);
     confirmModal.addEventListener("click", (event) => { if (event.target === confirmModal) closeConfirmation(); });
-    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation(); });
+    sendGameRequestBtn.addEventListener("click", sendGameRequest);
+    cancelGameRequestBtn.addEventListener("click", closeGameRequest);
+    requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
+      if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
+    });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     setTheme(defaultTheme());

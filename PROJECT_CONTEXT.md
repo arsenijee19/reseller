@@ -15,6 +15,7 @@
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
+  - Reseller “Zatraži igru” button opens a popup and emails the requested game suggestion to the admin.
   - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
   - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
@@ -52,6 +53,7 @@
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
 - `api/orders.php` - reseller recent order history.
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
+- `api/game_request.php` - reseller requested-game suggestion email notification.
 - `api/admin.php` - admin login/dashboard/update API.
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
@@ -134,6 +136,7 @@
 - Set reseller/admin session lifetime to 60 minutes.
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.
 - Added reseller session restore on page load and refreshed the 60-minute session cookie on active requests.
+- Added reseller requested-game popup and email notification flow.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
