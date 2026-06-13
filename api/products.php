@@ -1,18 +1,20 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 try {
   $pdo = db();
 
+  $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $stmt = $pdo->query("
     SELECT
       product_id AS id,
       CONCAT(product_name, ' - ', account_type) AS name
     FROM product_prices
+    {$whereActive}
     ORDER BY product_name ASC, account_type ASC
   ");
 

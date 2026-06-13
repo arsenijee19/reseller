@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . "/db.php";
+require __DIR__ . "/bootstrap.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
-session_start();
+start_secure_session();
 
 if (!isset($_SESSION["reseller_id"])) {
   http_response_code(401);

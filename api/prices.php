@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . "/db.php";
+require __DIR__ . "/bootstrap.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
-session_start();
+start_secure_session();
 
 // mora biti ulogovan reseller
 if (!isset($_SESSION["reseller_id"])) {
@@ -17,9 +17,11 @@ if (!isset($_SESSION["reseller_id"])) {
 try {
   $pdo = db();
 
+  $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $stmt = $pdo->query("
     SELECT product_id, product_name, account_type, price, currency
     FROM product_prices
+    {$whereActive}
     ORDER BY product_name, account_type
   ");
 

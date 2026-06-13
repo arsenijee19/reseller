@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . "/db.php";
+require __DIR__ . "/bootstrap.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -36,15 +36,10 @@ if (!$found) {
   echo json_encode(["ok"=>false,"error"=>"Invalid token"]); exit;
 }
 
-session_set_cookie_params([
-  "httponly" => true,
-  "secure" => true,
-  "samesite" => "Lax",
-  "path" => "/"
-]);
-
-session_start();
+start_secure_session();
+session_regenerate_id(true);
 $_SESSION["reseller_id"] = (int)$found["id"];
 $_SESSION["reseller_email"] = $found["email"];
+$_SESSION["csrf_token"] = bin2hex(random_bytes(32));
 
-echo json_encode(["ok"=>true]);
+echo json_encode(["ok"=>true, "csrf_token"=>csrf_token()]);

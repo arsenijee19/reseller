@@ -1,19 +1,18 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . "/db.php";
+require __DIR__ . "/bootstrap.php";
 header("Content-Type: application/json; charset=utf-8");
-session_start();
+start_secure_session();
 
-if (!isset($_SESSION["reseller_id"], $_SESSION["reseller_email"])) {
-  http_response_code(401);
-  echo json_encode(["ok"=>false,"error"=>"Unauthorized"]); exit;
-}
+$reseller = require_reseller();
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
   http_response_code(405);
   echo json_encode(["ok"=>false,"error"=>"Method not allowed"]); exit;
 }
+
+require_csrf();
 
 $input = json_decode(file_get_contents("php://input"), true) ?: [];
 $product_id = trim((string)($input["product_id"] ?? ""));
@@ -24,8 +23,8 @@ if ($product_id === "" || $customer_email === "") {
   echo json_encode(["ok"=>false,"error"=>"Missing product_id or customer_email"]); exit;
 }
 
-$reseller_id = (int)$_SESSION["reseller_id"];
-$reseller_email = (string)$_SESSION["reseller_email"];
+$reseller_id = (int)$reseller["id"];
+$reseller_email = (string)$reseller["email"];
 
 $N8N_WEBHOOK = "https://automation.psigre.rs/webhook/reseller-delivery";
 
@@ -53,7 +52,8 @@ try {
   $pdo->beginTransaction();
 
   // 1) Cena proizvoda
-  $st = $pdo->prepare("SELECT price, currency, product_name, account_type FROM product_prices WHERE product_id=? LIMIT 1");
+  $whereActive = has_column($pdo, 'product_prices', 'status') ? " AND status='active'" : "";
+  $st = $pdo->prepare("SELECT price, currency, product_name, account_type FROM product_prices WHERE product_id=?{$whereActive} LIMIT 1");
   $st->execute([$product_id]);
   $p = $st->fetch(PDO::FETCH_ASSOC);
 
