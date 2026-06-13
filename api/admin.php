@@ -64,7 +64,24 @@ function fetch_orders(PDO $pdo, array $filters): array {
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function ensure_admin_table(PDO $pdo): void {
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      username VARCHAR(100) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_admin_username (username)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+}
+
 function seed_admin_if_needed(PDO $pdo): void {
+  ensure_admin_table($pdo);
+
   $count = (int)$pdo->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
   if ($count > 0) return;
 
@@ -102,6 +119,7 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
 
 try {
   $pdo = db();
+  ensure_admin_table($pdo);
 
   if ($action === 'session') {
     json_response([
