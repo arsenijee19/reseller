@@ -37,52 +37,77 @@
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font);transition:background .18s ease,color .18s ease}
     button,input,select,textarea{font:inherit}
-    .shell{max-width:1280px;margin:0 auto;padding:18px 14px 42px}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}
+    .shell{width:min(100%,1480px);margin:0 auto;padding:20px 18px 44px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:16px}
+    .topbar-title{min-width:0}
     h1,h2,h3,p{margin:0}
     h1{font-size:20px}
     h2{font-size:16px}
     h3{font-size:14px;margin-bottom:8px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .section{padding:16px}
-    .login{max-width:420px;margin:12vh auto 0}
+    .section{padding:18px}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+    .section-title{min-width:0}
+    .login{max-width:440px;margin:12vh auto 0}
     label{display:block;margin:12px 0 6px;color:var(--muted);font-size:12px;font-weight:700}
     input,select,textarea{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 10px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
     textarea{min-height:78px;resize:vertical}
     input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
-    .btn{min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 12px;font-weight:700;cursor:pointer;transition:transform .12s ease,background .12s ease}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 12px;font-weight:700;cursor:pointer;transition:transform .12s ease,background .12s ease;white-space:nowrap}
     .btn:hover{transform:translateY(-1px)}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
     .btn.primary:hover{background:var(--brand-dark)}
     .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
     .btn.good{background:var(--good);border-color:var(--good);color:#fff}
     .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .actions{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .topbar .actions{margin-top:0;justify-content:flex-end}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-    .tab{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700;color:var(--muted)}
+    .tab{display:inline-flex;align-items:center;justify-content:center;min-height:38px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:700;color:var(--muted)}
     .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
-    .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-12{grid-column:span 12}
+    .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+    .product-layout{grid-template-columns:minmax(320px,420px) minmax(0,1fr);align-items:start}
+    .product-layout > *{min-width:0}
+    .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
     .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-    table{width:100%;border-collapse:collapse;min-width:760px}
-    th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top;font-size:13px}
+    table{width:100%;border-collapse:collapse;min-width:860px}
+    th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:middle;font-size:13px}
     th{background:var(--soft);font-size:12px;color:var(--muted);position:sticky;top:0;z-index:1}
     td input,td select,td textarea{min-width:130px}
     .compact{max-width:120px}
     .wide{min-width:220px}
+    .form-panel{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:14px}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+    .form-grid label{margin:0 0 6px}
+    .form-grid .full{grid-column:1/-1}
+    .table-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:260px}
+    .table-actions .btn{min-height:36px;padding:8px 10px}
+    .filter-actions{display:flex;align-items:flex-end;height:100%}
+    .filter-actions .btn{width:100%}
     .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
     .msg.ok{display:block;border-color:rgba(20,128,74,.25);background:rgba(20,128,74,.08)}
     .msg.bad{display:block;border-color:rgba(189,43,43,.25);background:rgba(189,43,43,.08)}
     .muted{color:var(--muted);font-size:12px}
     .hidden{display:none!important}
     @media (max-width:860px){
-      .topbar{align-items:flex-start;flex-direction:column}
+      .shell{padding:16px 12px 34px}
+      .topbar{align-items:stretch;flex-direction:column}
+      .topbar .actions{justify-content:stretch}
+      .topbar .actions .btn{flex:1 1 110px}
+      .section-head{align-items:flex-start;flex-direction:column}
       .grid{grid-template-columns:1fr}
-      .span-3,.span-4,.span-6,.span-12{grid-column:span 1}
+      .product-layout{grid-template-columns:1fr}
+      .span-3,.span-4,.span-6,.span-8,.span-12{grid-column:span 1}
+      .form-grid{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto}
-      table{min-width:680px}
+      table{min-width:760px}
+      .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+      .tab{width:100%}
+    }
+    @media (min-width:861px){
+      .view{min-height:520px}
     }
   </style>
 </head>
@@ -104,7 +129,7 @@
 
     <section id="adminPanel" class="hidden">
       <header class="topbar">
-        <div>
+        <div class="topbar-title">
           <h1>PlayWorld.rs Admin</h1>
           <p>Kontrola korisnika, balance-a, proizvoda i porudžbina.</p>
         </div>
@@ -119,44 +144,64 @@
 
       <div class="panel">
         <div class="section view" id="view-resellers">
-          <h2>Reselleri i balance</h2>
-          <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login.</p>
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Reselleri i balance</h2>
+              <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login.</p>
+            </div>
+          </div>
           <div class="table-wrap"><table id="resellersTable"></table></div>
         </div>
 
         <div class="section view hidden" id="view-products">
-          <div class="grid">
-            <div class="span-4">
-              <h2>Novi proizvod</h2>
-              <p>Forma prati kolone iz `product_prices` tabele.</p>
+          <div class="grid product-layout">
+            <div class="form-panel">
+              <div class="section-head">
+                <div class="section-title">
+                  <h2>Novi proizvod</h2>
+                  <p>Forma prati kolone iz baze.</p>
+                </div>
+              </div>
               <div id="newProductForm"></div>
               <div class="actions"><button class="btn good" id="createProductBtn">Dodaj proizvod</button></div>
             </div>
-            <div class="span-8">
-              <h2>Proizvodi i cene</h2>
-              <p>Izmeni bilo koje polje postojeće strukture proizvoda.</p>
+            <div>
+              <div class="section-head">
+                <div class="section-title">
+                  <h2>Proizvodi i cene</h2>
+                  <p>Izmeni bilo koje polje postojeće strukture proizvoda.</p>
+                </div>
+              </div>
               <div class="table-wrap"><table id="productsTable"></table></div>
             </div>
           </div>
         </div>
 
         <div class="section view hidden" id="view-orders">
-          <h2>Porudžbine</h2>
-          <p>Pregled i izmena relevantnih polja porudžbine, uključujući status kada postoji u bazi.</p>
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Porudžbine</h2>
+              <p>Pregled i izmena relevantnih polja porudžbine, uključujući status kada postoji u bazi.</p>
+            </div>
+          </div>
           <div class="grid">
             <div class="span-3"><label>Reseller</label><select id="filterReseller"></select></div>
             <div class="span-3"><label>Status</label><select id="filterStatus"></select></div>
             <div class="span-3"><label>Proizvod</label><select id="filterProduct"></select></div>
             <div class="span-3"><label>Od datuma</label><input id="filterFrom" type="date" /></div>
             <div class="span-3"><label>Do datuma</label><input id="filterTo" type="date" /></div>
-            <div class="span-3"><label>&nbsp;</label><button class="btn primary" id="applyFiltersBtn">Primeni filtere</button></div>
+            <div class="span-3 filter-actions"><button class="btn primary" id="applyFiltersBtn">Primeni filtere</button></div>
           </div>
           <div class="table-wrap" style="margin-top:14px"><table id="ordersTable"></table></div>
         </div>
 
         <div class="section view hidden" id="view-database">
-          <h2>Struktura baze</h2>
-          <p>Kolone koje admin panel trenutno detektuje i koristi.</p>
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Struktura baze</h2>
+              <p>Kolone koje admin panel trenutno detektuje i koristi.</p>
+            </div>
+          </div>
           <div id="schemaBox" class="grid"></div>
         </div>
       </div>
@@ -264,7 +309,10 @@
           showMsg("ok", "Reseller je ažuriran.");
           await load();
         });
-        row.insertCell().appendChild(save);
+        const actionBox = document.createElement("div");
+        actionBox.className = "table-actions";
+        actionBox.appendChild(save);
+        row.insertCell().appendChild(actionBox);
       });
     }
 
@@ -283,14 +331,20 @@
     function renderNewProduct(){
       const box = $("newProductForm");
       box.textContent = "";
+      const grid = document.createElement("div");
+      grid.className = "form-grid";
       productColumns().forEach((c) => {
+        const field = document.createElement("div");
+        if ((c.DATA_TYPE || "").includes("text")) field.className = "full";
         const label = document.createElement("label");
         label.textContent = c.COLUMN_NAME;
         const el = editableForColumn(c, c.COLUMN_DEFAULT || "");
         el.dataset.column = c.COLUMN_NAME;
-        box.appendChild(label);
-        box.appendChild(el);
+        field.appendChild(label);
+        field.appendChild(el);
+        grid.appendChild(field);
       });
+      box.appendChild(grid);
     }
 
     function renderProducts(){
@@ -311,7 +365,8 @@
           controls[c.COLUMN_NAME] = control;
           row.insertCell().appendChild(control);
         });
-        const actions = row.insertCell();
+        const actions = document.createElement("div");
+        actions.className = "table-actions";
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
           const fields = {};
@@ -334,6 +389,7 @@
           await load();
         });
         actions.append(save, off, del);
+        row.insertCell().appendChild(actions);
       });
     }
 
@@ -375,7 +431,10 @@
           showMsg("ok", "Porudžbina je ažurirana.");
           await load(currentFilters());
         });
-        row.insertCell().appendChild(save);
+        const actionBox = document.createElement("div");
+        actionBox.className = "table-actions";
+        actionBox.appendChild(save);
+        row.insertCell().appendChild(actionBox);
       });
     }
 

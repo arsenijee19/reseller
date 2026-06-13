@@ -122,6 +122,7 @@
 - Added `.htaccess` hardening for files that should not be publicly served from cPanel.
 - Added order confirmation, submit progress feedback, and light/dark mode.
 - Added n8n shared-secret header, richer delivery payload, and order delivery status tracking.
+- Refined admin panel layout, spacing, table actions, product form width, and mobile responsiveness.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
