@@ -20,5 +20,6 @@ return [
   ],
   'integrations' => [
     'n8n_webhook' => '',
+    'n8n_webhook_secret' => 'shared_secret_used_by_php_and_n8n',
   ],
 ];

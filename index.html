@@ -67,6 +67,7 @@
     .btn.good{background:var(--good);border-color:var(--good);color:#fff}
     .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
+    .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
     .msg.bad{display:block;border-color:rgba(195,41,41,.25);background:rgba(195,41,41,.08)}
     .prices{display:grid;gap:8px;margin-top:12px}
     .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
@@ -394,8 +395,12 @@
       setProgress(true);
       hide(orderMsg);
       try{
-        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
-        show(orderMsg, "ok", "Porudžbina je uspešno kreirana.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
+        const result = await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
+        if (result.n8n_ok === false) {
+          show(orderMsg, "warn", "Porudžbina je kreirana, ali automatska isporuka nije potvrđena.\nAdmin je zabeležen kroz status porudžbine i potrebno je proveriti delivery.");
+        } else {
+          show(orderMsg, "ok", "Porudžbina je uspešno kreirana i poslata na automatsku isporuku.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
+        }
         custEmail.value = "";
         await Promise.all([loadMe(), loadOrders()]);
       }catch(e){

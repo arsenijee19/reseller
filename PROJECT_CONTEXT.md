@@ -67,6 +67,8 @@
   - Updated frontend uses `textContent`/DOM APIs for DB-rendered values instead of injecting user data as HTML.
 - Integrations:
   - `api/order.php` sends order emails and posts to the configured n8n webhook.
+  - n8n webhook requests include `X-Reseller-Secret` when `integrations.n8n_webhook_secret` is configured.
+  - n8n receives `request_id`, `order_db_id`, `reseller_email`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email`, and timestamp.
   - `api/payment_notice.php` emails the configured payment notice recipient.
 
 ## Setup & Execution
@@ -78,6 +80,7 @@
 - Installation steps:
   - Upload the project folder contents to cPanel public web root.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
+  - Set the same n8n shared secret in `api/config.local.php` and in n8n as `RESELLER_WEBHOOK_SECRET`.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -94,6 +97,8 @@
   - New order creates a random `request_id`.
   - Wallet transaction type `ORDER` is inserted with negative amount.
   - Reseller balance is decreased by product price.
+  - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
+  - n8n delivery can use product fields from the PHP payload, so newly added admin products do not require a hardcoded n8n map when sheet names match the product/account type.
 - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
@@ -116,6 +121,7 @@
 - Removed production credentials, webhook URL, notification recipients, logs, and the initial admin hash from versioned source code.
 - Added `.htaccess` hardening for files that should not be publicly served from cPanel.
 - Added order confirmation, submit progress feedback, and light/dark mode.
+- Added n8n shared-secret header, richer delivery payload, and order delivery status tracking.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.

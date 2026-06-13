@@ -26,12 +26,13 @@ if ($product_id === "" || $customer_email === "") {
 $reseller_id = (int)$reseller["id"];
 $reseller_email = (string)$reseller["email"];
 
-function post_json(string $url, array $payload, int $timeoutSeconds = 12): array {
+function post_json(string $url, array $payload, int $timeoutSeconds = 12, array $extraHeaders = []): array {
   $ch = curl_init($url);
+  $headers = array_merge(["Content-Type: application/json"], $extraHeaders);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => ["Content-Type: application/json"],
+    CURLOPT_HTTPHEADER => $headers,
     CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
     CURLOPT_CONNECTTIMEOUT => $timeoutSeconds,
     CURLOPT_TIMEOUT => $timeoutSeconds,
@@ -42,6 +43,32 @@ function post_json(string $url, array $payload, int $timeoutSeconds = 12): array
   curl_close($ch);
 
   return ["ok" => ($err === "" && $code >= 200 && $code < 300), "code"=>$code, "err"=>$err, "body"=>$body];
+}
+
+function update_order_delivery_state(PDO $pdo, int $orderId, string $status, array $payload = [], string $notes = ''): void {
+  $sets = [];
+  $params = [];
+
+  if (has_column($pdo, 'orders', 'status')) {
+    $sets[] = 'status = ?';
+    $params[] = $status;
+  }
+  if (has_column($pdo, 'orders', 'delivery_payload')) {
+    $sets[] = 'delivery_payload = ?';
+    $params[] = json_encode($payload, JSON_UNESCAPED_UNICODE);
+  }
+  if ($notes !== '' && has_column($pdo, 'orders', 'admin_notes')) {
+    $sets[] = 'admin_notes = ?';
+    $params[] = $notes;
+  }
+  if (has_column($pdo, 'orders', 'updated_at')) {
+    $sets[] = 'updated_at = NOW()';
+  }
+  if (!$sets) return;
+
+  $params[] = $orderId;
+  $stmt = $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = ?');
+  $stmt->execute($params);
 }
 
 $pdo = db();
@@ -74,6 +101,11 @@ try {
   $ins->execute([$request_id, $reseller_id, $reseller_email, $product_id, $customer_email, $price]);
 
   $orderDbId = (int)$pdo->lastInsertId();
+
+  update_order_delivery_state($pdo, $orderDbId, 'pending_delivery', [
+    'request_id' => $request_id,
+    'created_at' => gmdate('c'),
+  ]);
 
   // 4) Wallet transakcija
   $wt = $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description, related_order_id)
@@ -125,16 +157,32 @@ try {
 
   $payload = [
     "request_id" => $request_id,
+    "order_db_id" => $orderDbId,
     "reseller_email" => $reseller_email,
     "product_id" => $product_id,
+    "product_name" => (string)$p["product_name"],
+    "account_type" => (string)$p["account_type"],
+    "price_rsd" => $price,
+    "currency" => (string)$p["currency"],
     "customer_email" => $customer_email,
     "ts" => gmdate("c")
   ];
 
   $webhookUrl = (string)config_value('integrations.n8n_webhook', '');
+  $webhookSecret = (string)config_value('integrations.n8n_webhook_secret', '');
+  $webhookHeaders = $webhookSecret !== '' ? ["X-Reseller-Secret: {$webhookSecret}"] : [];
   $n8n = $webhookUrl !== ''
-    ? post_json($webhookUrl, $payload)
+    ? post_json($webhookUrl, $payload, 12, $webhookHeaders)
     : ["ok" => false, "code" => 0, "err" => "Webhook not configured", "body" => null];
+
+  update_order_delivery_state($pdo, $orderDbId, $n8n["ok"] ? 'delivered' : 'delivery_failed', [
+    'request_id' => $request_id,
+    'n8n_ok' => $n8n["ok"],
+    'n8n_code' => $n8n["code"],
+    'n8n_error' => $n8n["err"],
+    'n8n_body' => is_string($n8n["body"]) ? substr($n8n["body"], 0, 2000) : null,
+    'updated_at' => gmdate('c'),
+  ], $n8n["ok"] ? '' : 'Automatska isporuka nije potvrđena. Proveriti n8n execution i stock.');
 
   echo json_encode([
     "ok"=>true,
@@ -142,7 +190,8 @@ try {
     "charged_rsd"=>$price,
     "balance_rsd"=>$newBal,
     "n8n_ok"=>$n8n["ok"],
-    "n8n_code"=>$n8n["code"]
+    "n8n_code"=>$n8n["code"],
+    "delivery_status"=>$n8n["ok"] ? "delivered" : "delivery_failed"
   ]);
 
 } catch (Throwable $e) {
