@@ -395,12 +395,8 @@
       setProgress(true);
       hide(orderMsg);
       try{
-        const result = await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
-        if (result.n8n_ok === false) {
-          show(orderMsg, "warn", "Porudžbina je kreirana, ali automatska isporuka nije potvrđena.\nAdmin je zabeležen kroz status porudžbine i potrebno je proveriti delivery.");
-        } else {
-          show(orderMsg, "ok", "Porudžbina je uspešno kreirana i poslata na automatsku isporuku.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
-        }
+        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
+        show(orderMsg, "ok", "Porudžbina je uspešno kreirana.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
         custEmail.value = "";
         await Promise.all([loadMe(), loadOrders()]);
       }catch(e){
