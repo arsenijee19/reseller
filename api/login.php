@@ -48,6 +48,6 @@ try {
   http_response_code(500);
   echo json_encode([
     "ok" => false,
-    "error" => "Server trenutno ne može da proveri login. Proveri da li je api/config.local.php uploadovan i da li su DB podaci tačni."
+    "error" => "Server trenutno ne može da proveri login. " . public_error_detail($e)
   ], JSON_UNESCAPED_UNICODE);
 }
