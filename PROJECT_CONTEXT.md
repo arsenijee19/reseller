@@ -62,6 +62,7 @@
   - Resellers authenticate with token/password verified against `resellers.token_hash`.
   - Admin authenticates with `admin_users.password_hash`.
   - Sessions use HTTP-only cookies and `SameSite=Lax`; secure cookies are enabled when HTTPS is detected.
+  - Reseller/admin sessions expire after 60 minutes of inactivity.
 - CSRF:
   - Mutating reseller/admin POST requests use `X-CSRF-Token`.
 - SQL safety:
@@ -129,6 +130,7 @@
 - Added client-side search to the admin products table.
 - Added reseller-facing product search for order selection and price list filtering.
 - Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
+- Set reseller/admin session lifetime to 60 minutes.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
