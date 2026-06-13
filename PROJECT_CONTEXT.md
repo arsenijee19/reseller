@@ -17,6 +17,7 @@
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
   - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
+  - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
@@ -127,6 +128,7 @@
 - Updated the n8n workflow export to send Telegram order/delivery notifications with account type and price.
 - Added client-side search to the admin products table.
 - Added reseller-facing product search for order selection and price list filtering.
+- Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.

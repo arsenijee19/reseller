@@ -128,19 +128,20 @@ try {
   // ===============================
 
   $to = (string)config_value('mail.order_to', '');
-  $subject = "Nova porudzbina - " . $p["product_name"];
+  $subject = "Nova reseller porudzbina - " . $p["product_name"];
 
-  $message = "Nova porudzbina:\n\n";
-  $message .= "Request ID: " . $request_id . "\n";
+  $message = "Nova reseller porudzbina\n";
+  $message .= "========================\n\n";
   $message .= "Proizvod: " . $p["product_name"] . "\n";
   $message .= "Tip naloga: " . $p["account_type"] . "\n";
-  $message .= "Cena (RSD): " . $price . "\n\n";
+  $message .= "Cena: " . $price . " RSD\n\n";
 
-  $message .= "Podaci o reselleru:\n";
-  $message .= "Reseller ID: " . $reseller_id . "\n";
-  $message .= "Reseller Email: " . $reseller_email . "\n\n";
+  $message .= "Reseller\n";
+  $message .= "Email: " . $reseller_email . "\n";
+  $message .= "ID: " . $reseller_id . "\n\n";
 
-  $message .= "Kupac email: " . $customer_email . "\n";
+  $message .= "Kupac\n";
+  $message .= "Email: " . $customer_email . "\n\n";
   $message .= "Vreme: " . gmdate("Y-m-d H:i:s") . " UTC\n";
 
   $from = (string)config_value('mail.from', 'no-reply@localhost');
