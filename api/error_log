@@ -1,0 +1,12 @@
+[03-Feb-2026 23:09:16 Europe/Belgrade] PHP Fatal error:  Uncaught Error: Call to a member function query() on null in /home/psigrersrs/reseller.psigre.rs/api/prices.php:13
+Stack trace:
+#0 {main}
+  thrown in /home/psigrersrs/reseller.psigre.rs/api/prices.php on line 13
+[03-Feb-2026 23:09:26 Europe/Belgrade] PHP Fatal error:  Uncaught Error: Call to a member function query() on null in /home/psigrersrs/reseller.psigre.rs/api/prices.php:13
+Stack trace:
+#0 {main}
+  thrown in /home/psigrersrs/reseller.psigre.rs/api/prices.php on line 13
+[03-Feb-2026 23:09:49 Europe/Belgrade] PHP Fatal error:  Uncaught Error: Call to a member function query() on null in /home/psigrersrs/reseller.psigre.rs/api/prices.php:13
+Stack trace:
+#0 {main}
+  thrown in /home/psigrersrs/reseller.psigre.rs/api/prices.php on line 13

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>PlayWorld.rs • Reseller Portal</title>
+
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --brand:#2563eb;
+      --brand2:#1d4ed8;
+      --radius:16px;
+      --shadow: 0 10px 30px rgba(17,24,39,.08);
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background: linear-gradient(180deg, #ffffff, var(--bg));
+      min-height:100vh;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 44px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 18px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand), #60a5fa);
+      box-shadow: 0 10px 20px rgba(37,99,235,.20);
+    }
+
+    .title h1{
+      margin:0;
+      font-size:18px;
+    }
+
+    .title p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .badge{
+      font-size:12px;
+      color: var(--muted);
+      border:1px solid var(--line);
+      padding:8px 12px;
+      border-radius:999px;
+      background:#fff;
+      white-space:nowrap;
+    }
+
+    .mono{
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-weight:600;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      align-items:start;
+    }
+
+    @media (max-width: 860px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .inner{
+      padding: 18px;
+    }
+
+    h2{
+      margin:0 0 6px;
+      font-size:16px;
+    }
+
+    p{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:10px 0 6px;
+    }
+
+    input, select{
+      width:100%;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      font-size:14px;
+      outline:none;
+    }
+
+    @media (max-width: 860px){
+      input, select{
+        font-size:16px;
+      }
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      border:1px solid var(--line);
+      background:#fff;
+      color: var(--text);
+      padding:11px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:600;
+      font-size:14px;
+    }
+
+    .btn.primary{
+      background: var(--brand);
+      color:#fff;
+      border:none;
+    }
+
+    .btn.primary:hover{
+      background: var(--brand2);
+    }
+
+    .btn.loading{
+      opacity:.9;
+      cursor:wait;
+    }
+
+    .btn.loading::before{
+      content:"";
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,.45);
+      border-top-color:#fff;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin{
+      to{ transform:rotate(360deg); }
+    }
+
+    .msg{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fafafa;
+      font-size:13px;
+      white-space:pre-wrap;
+      display:none;
+    }
+
+    .msg.ok{
+      display:block;
+      border-color: rgba(22,163,74,.25);
+      background: rgba(22,163,74,.08);
+    }
+
+    .msg.bad{
+      display:block;
+      border-color: rgba(220,38,38,.25);
+      background: rgba(220,38,38,.08);
+    }
+
+    .prices{
+      margin-top:18px;
+      padding-top:12px;
+      border-top:1px solid var(--line);
+    }
+
+    .price-item{
+      padding:8px 0;
+      border-bottom:1px solid #f1f1f1;
+      font-size:13px;
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items:center;
+      gap:10px;
+    }
+
+    .price-name{
+      min-width:0;
+    }
+
+    .price-value{
+      white-space:nowrap;
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .order-history{
+      margin-top:18px;
+    }
+
+    .history-list{
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .history-item{
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+    }
+
+    .history-item strong{
+      display:block;
+      font-size:14px;
+      margin-bottom:4px;
+    }
+
+    .history-meta{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
+      <div class="title">
+        <h1>PlayWorld.rs • Reseller Portal</h1>
+        <p>Uloguj se, izaberi proizvod i poruči.</p>
+      </div>
+    </div>
+
+    <!-- ✅ Status + Balance -->
+    <div class="badge">
+      Status: <span class="mono" id="statusText">offline</span>
+      |
+      Balance: <span class="mono" id="balanceText">0 RSD</span>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- Main -->
+    <div class="card">
+      <div class="inner">
+
+        <!-- Login -->
+        <div id="loginBox">
+          <h2>Prijava</h2>
+          <p>Unesi token koji si dobio od PlayWorld tima.</p>
+
+          <label>Token</label>
+          <input id="token" type="password" placeholder="Unesi token" />
+
+          <div class="row">
+            <button class="btn primary" id="loginBtn">Uloguj se</button>
+          </div>
+
+          <div class="msg" id="loginMsg"></div>
+        </div>
+
+        <!-- App -->
+        <div id="appBox" style="display:none;">
+          <h2>Porudžbina</h2>
+          <p>Izaberi proizvod i upiši email kupca.</p>
+
+          <label>Proizvod</label>
+          <select id="product"></select>
+
+          <label>Email kupca</label>
+          <input id="custEmail" type="email" placeholder="kupac@email.com" />
+
+          <div class="row">
+            <button class="btn primary" id="orderBtn">Poruči</button>
+            <button class="btn" id="logoutBtn">Logout</button>
+          </div>
+
+          <div class="msg" id="orderMsg"></div>
+
+          <!-- Cenovnik -->
+          <div class="prices">
+            <h3>Cenovnik</h3>
+            <div id="pricesList">Učitavanje...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Help -->
+    <div class="card">
+      <div class="inner">
+        <h2>Kako radi</h2>
+        <p>1. Uloguješ se tokenom<br>
+           2. Izabereš proizvod<br>
+           3. Delivery stiže odmah ✅</p>
+
+        <div class="order-history" id="historyBox" style="display:none;">
+          <h2>Prethodne porudžbine</h2>
+          <p>Pregled poslednjih poručenih igara na ovom nalogu.</p>
+          <div id="historyList" class="history-list">Učitavanje...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const statusText  = $("statusText");
+  const balanceText = $("balanceText");
+
+  const loginBox = $("loginBox");
+  const appBox   = $("appBox");
+
+  const tokenInput = $("token");
+  const loginBtn   = $("loginBtn");
+  const loginMsg   = $("loginMsg");
+
+  const productSelect = $("product");
+  const custEmail     = $("custEmail");
+
+  const orderBtn  = $("orderBtn");
+  const logoutBtn = $("logoutBtn");
+  const orderMsg  = $("orderMsg");
+
+  const pricesList = $("pricesList");
+  const historyBox = $("historyBox");
+  const historyList = $("historyList");
+  let orderInProgress = false;
+
+  function setStatus(s){ statusText.textContent = s; }
+
+  function formatPrice(value){
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    return Number.isInteger(num) ? String(num) : String(num);
+  }
+
+  function formatDateTime(value){
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleString("sr-RS");
+  }
+
+  function show(el, type, text){
+    el.className = "msg " + type;
+    el.textContent = text;
+    el.style.display = "block";
+  }
+
+  function hide(el){ el.style.display = "none"; }
+
+  async function loadMe(){
+    const r = await fetch("/api/me.php", { credentials:"same-origin" });
+    const j = await r.json().catch(()=> ({}));
+    if (!j.ok) return;
+
+    balanceText.textContent = j.balance_rsd + " RSD";
+  }
+
+  async function loadProducts(){
+    const r = await fetch("/api/products.php", { credentials:"same-origin" });
+    const j = await r.json();
+
+    productSelect.innerHTML = "";
+    j.products.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      productSelect.appendChild(opt);
+    });
+  }
+
+  async function loadPrices(){
+    const r = await fetch("/api/prices.php", { credentials:"same-origin" });
+    const j = await r.json();
+
+    if (!j.ok){
+      pricesList.textContent = "Cene nisu dostupne.";
+      return;
+    }
+
+    pricesList.innerHTML = "";
+    j.prices.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "price-item";
+      div.innerHTML = `
+        <span class="price-name">${p.product_name} (${p.account_type})</span>
+        <b class="price-value">${formatPrice(p.price)} ${p.currency}</b>
+      `;
+      pricesList.appendChild(div);
+    });
+  }
+
+  async function loadOrders(){
+    const r = await fetch("/api/orders.php", { credentials:"same-origin" });
+    const j = await r.json().catch(()=> ({}));
+
+    historyBox.style.display = "block";
+
+    if (!j.ok){
+      historyList.textContent = "Prethodne porudžbine nisu dostupne.";
+      return;
+    }
+
+    if (!j.orders || j.orders.length === 0){
+      historyList.textContent = "Još nema prethodnih porudžbina.";
+      return;
+    }
+
+    historyList.innerHTML = "";
+    j.orders.forEach(order => {
+      const div = document.createElement("div");
+      div.className = "history-item";
+
+      const productName = order.product_name || order.product_id;
+      const accountType = order.account_type ? ` (${order.account_type})` : "";
+      const priceText = order.price_rsd ? `${formatPrice(order.price_rsd)} RSD` : "Cena nije dostupna";
+
+      div.innerHTML = `
+        <strong>${productName}${accountType}</strong>
+        <div class="history-meta">Cena: ${priceText}</div>
+        <div class="history-meta">Poručeno: ${formatDateTime(order.created_at)}</div>
+      `;
+      historyList.appendChild(div);
+    });
+  }
+
+  async function login(){
+    hide(loginMsg);
+    loginBtn.disabled = true;
+    loginBtn.classList.add("loading");
+    loginBtn.textContent = "Učitavanje panela...";
+
+    try{
+      const token = tokenInput.value.trim();
+      if (!token) throw new Error("Unesi token.");
+
+      const r = await fetch("/api/login.php", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        credentials:"same-origin",
+        body: JSON.stringify({ token })
+      });
+
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error);
+
+      setStatus("online");
+
+      await loadMe();
+      await loadProducts();
+      await loadPrices();
+      await loadOrders();
+
+      loginBox.style.display = "none";
+      appBox.style.display = "block";
+
+    }catch(e){
+      show(loginMsg, "bad", e.message);
+    }
+
+    loginBtn.disabled = false;
+    loginBtn.classList.remove("loading");
+    loginBtn.textContent = "Uloguj se";
+  }
+
+  async function order(){
+    if (orderInProgress) return;
+
+    hide(orderMsg);
+    orderInProgress = true;
+    orderBtn.disabled = true;
+    orderBtn.textContent = "Obrada...";
+
+    try{
+      const product_id = productSelect.value;
+      const customer_email = custEmail.value.trim();
+      if (!customer_email) throw new Error("Unesi email kupca.");
+
+      const r = await fetch("/api/order.php", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        credentials:"same-origin",
+        body: JSON.stringify({ product_id, customer_email })
+      });
+
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error);
+
+      show(orderMsg, "ok", "Porudžbina je uspešno kreirana. ✅\nUkoliko Vam porudžbina ne stigne u roku od 2 minute, kontaktirajte nas direktno radi provere.");
+
+      custEmail.value = "";
+      custEmail.focus();
+
+      await loadMe(); // ✅ refresh balance
+      await loadOrders();
+
+    }catch(e){
+      show(orderMsg, "bad", e.message);
+    }
+
+    orderInProgress = false;
+    orderBtn.disabled = false;
+    orderBtn.textContent = "Poruči";
+  }
+
+  async function logout(){
+    await fetch("/api/logout.php", {
+      method:"POST",
+      credentials:"same-origin"
+    }).catch(()=>{});
+
+    setStatus("offline");
+    balanceText.textContent = "0 RSD";
+    historyBox.style.display = "none";
+    historyList.textContent = "Učitavanje...";
+
+    loginBox.style.display = "block";
+    appBox.style.display = "none";
+  }
+
+  loginBtn.onclick = login;
+  orderBtn.onclick = order;
+  logoutBtn.onclick = logout;
+
+  setStatus("offline");
+</script>
+</body>
+</html>
