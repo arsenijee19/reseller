@@ -18,6 +18,7 @@
   - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
   - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
+  - Reseller UI restores an existing server session on page load, so refresh does not force a new login while the session is valid.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
@@ -132,6 +133,7 @@
 - Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
 - Set reseller/admin session lifetime to 60 minutes.
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.
+- Added reseller session restore on page load and refreshed the 60-minute session cookie on active requests.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.

@@ -71,6 +71,7 @@
     .select-wrap select{appearance:none;padding-right:42px;background:linear-gradient(180deg,var(--panel),var(--soft))}
     .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(45deg);pointer-events:none}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .login-actions{justify-content:center}
     .btn{min-height:42px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;transition:transform .12s ease,background .12s ease,border-color .12s ease}
     a.btn{text-decoration:none}
     .btn:hover{transform:translateY(-1px);border-color:var(--muted)}
@@ -141,7 +142,7 @@
           <p>Unesi reseller token koji si dobio od PlayWorld tima.</p>
           <label for="token">Token</label>
           <input id="token" type="password" autocomplete="current-password" placeholder="Unesi token" />
-          <div class="actions">
+          <div class="actions login-actions">
             <button class="btn primary" id="loginBtn">Uloguj se</button>
             <a class="btn" href="/admin.html">Admin panel</a>
           </div>
@@ -471,6 +472,31 @@
       }
     }
 
+    async function restoreSession(){
+      try{
+        const me = await api("/api/me.php");
+        setStatus("online");
+        balanceText.textContent = price(me.balance_rsd) + " RSD";
+        showAppShell();
+
+        loadCatalog()
+          .then(() => {
+            productSelect.disabled = false;
+            orderBtn.disabled = false;
+          })
+          .catch((e) => {
+            pricesList.textContent = "Cenovnik trenutno nije dostupan.";
+            show(orderMsg, "bad", e.message);
+          });
+
+        loadOrders().catch(() => {
+          historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
+        });
+      }catch(e){
+        setStatus("offline");
+      }
+    }
+
     async function order(){
       if (state.orderInProgress) return;
       hide(orderMsg);
@@ -561,6 +587,7 @@
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     setTheme(defaultTheme());
+    restoreSession();
   </script>
 </body>
 </html>

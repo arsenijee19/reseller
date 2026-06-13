@@ -32,6 +32,16 @@ function start_secure_session(): void {
   ]);
   session_start();
 
+  if (ini_get('session.use_cookies') && session_id() !== '') {
+    setcookie(session_name(), session_id(), [
+      'expires' => time() + SESSION_LIFETIME_SECONDS,
+      'path' => '/',
+      'secure' => $secure,
+      'httponly' => true,
+      'samesite' => 'Lax',
+    ]);
+  }
+
   $now = time();
   $lastActivity = (int)($_SESSION['last_activity'] ?? 0);
   if ($lastActivity > 0 && ($now - $lastActivity) > SESSION_LIFETIME_SECONDS) {
