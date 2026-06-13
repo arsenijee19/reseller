@@ -46,7 +46,7 @@
     h3{font-size:14px;margin-bottom:8px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .section{padding:18px}
+    .section{padding:20px}
     .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
     .section-title{min-width:0}
     .login{max-width:440px;margin:12vh auto 0}
@@ -67,25 +67,27 @@
     .tab{display:inline-flex;align-items:center;justify-content:center;min-height:38px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:700;color:var(--muted)}
     .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
     .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
-    .product-layout{grid-template-columns:minmax(320px,420px) minmax(0,1fr);align-items:start}
+    .product-layout{display:grid;gap:18px}
     .product-layout > *{min-width:0}
     .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
     .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-    table{width:100%;border-collapse:collapse;min-width:860px}
+    table{width:100%;border-collapse:collapse;min-width:980px}
     th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:middle;font-size:13px}
     th{background:var(--soft);font-size:12px;color:var(--muted);position:sticky;top:0;z-index:1}
     td input,td select,td textarea{min-width:130px}
     .compact{max-width:120px}
     .wide{min-width:220px}
-    .form-panel{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:14px}
-    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+    .form-panel{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:16px}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}
     .form-grid label{margin:0 0 6px}
-    .form-grid .full{grid-column:1/-1}
-    .table-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:260px}
-    .table-actions .btn{min-height:36px;padding:8px 10px}
+    .form-grid .full{grid-column:span 2}
+    .form-actions{display:flex;justify-content:flex-end;margin-top:14px}
+    .form-actions .btn{min-width:180px}
+    .table-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap;min-width:300px}
+    .table-actions .btn{min-height:36px;padding:8px 10px;font-size:12px}
     .filter-actions{display:flex;align-items:flex-end;height:100%}
     .filter-actions .btn{width:100%}
-    .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
+    .msg{display:none;margin:0 0 14px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
     .msg.ok{display:block;border-color:rgba(20,128,74,.25);background:rgba(20,128,74,.08)}
     .msg.bad{display:block;border-color:rgba(189,43,43,.25);background:rgba(189,43,43,.08)}
     .muted{color:var(--muted);font-size:12px}
@@ -100,9 +102,12 @@
       .product-layout{grid-template-columns:1fr}
       .span-3,.span-4,.span-6,.span-8,.span-12{grid-column:span 1}
       .form-grid{grid-template-columns:1fr}
+      .form-grid .full{grid-column:span 1}
+      .form-actions{justify-content:stretch}
+      .form-actions .btn{width:100%}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto}
-      table{min-width:760px}
+      table{min-width:860px}
       .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
       .tab{width:100%}
     }
@@ -141,6 +146,7 @@
       </header>
 
       <nav class="tabs" id="tabs"></nav>
+      <div class="msg" id="adminMsg"></div>
 
       <div class="panel">
         <div class="section view" id="view-resellers">
@@ -154,7 +160,7 @@
         </div>
 
         <div class="section view hidden" id="view-products">
-          <div class="grid product-layout">
+          <div class="product-layout">
             <div class="form-panel">
               <div class="section-head">
                 <div class="section-title">
@@ -163,7 +169,7 @@
                 </div>
               </div>
               <div id="newProductForm"></div>
-              <div class="actions"><button class="btn good" id="createProductBtn">Dodaj proizvod</button></div>
+              <div class="form-actions"><button class="btn good" id="createProductBtn">Dodaj proizvod</button></div>
             </div>
             <div>
               <div class="section-head">
@@ -205,7 +211,6 @@
           <div id="schemaBox" class="grid"></div>
         </div>
       </div>
-      <div class="msg" id="adminMsg"></div>
     </section>
   </main>
 
@@ -219,13 +224,24 @@
       ["database","Baza"]
     ];
 
-    function showMsg(type,text){ const el=$("adminMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
+    function showMsg(type,text){
+      const el=$("adminMsg");
+      el.className="msg "+type;
+      el.textContent=text;
+      el.style.display="block";
+      el.scrollIntoView({ block:"nearest", behavior:"smooth" });
+    }
     function showLoginMsg(type,text){ const el=$("loginMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
     function clearMsg(){ $("adminMsg").style.display="none"; $("loginMsg").style.display="none"; }
     function text(parent, tag, value, className){ const el=document.createElement(tag); if(className) el.className=className; el.textContent=value == null ? "" : String(value); parent.appendChild(el); return el; }
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
     function money(v){ const n=Number(v); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : v; }
+    function cleanDefault(value){
+      const text = value == null ? "" : String(value);
+      if (text.length >= 2 && text.startsWith("'") && text.endsWith("'")) return text.slice(1, -1);
+      return text;
+    }
     function storedTheme(){
       try{
         return localStorage.getItem("pw-theme");
@@ -305,9 +321,16 @@
         const token = input("", "wide"); token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
-          await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, email:email.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
-          showMsg("ok", "Reseller je ažuriran.");
-          await load();
+          try{
+            save.disabled = true;
+            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, email:email.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
+            showMsg("ok", "Reseller je ažuriran.");
+            await load();
+          }catch(e){
+            showMsg("bad", e.message);
+          }finally{
+            save.disabled = false;
+          }
         });
         const actionBox = document.createElement("div");
         actionBox.className = "table-actions";
@@ -338,7 +361,7 @@
         if ((c.DATA_TYPE || "").includes("text")) field.className = "full";
         const label = document.createElement("label");
         label.textContent = c.COLUMN_NAME;
-        const el = editableForColumn(c, c.COLUMN_DEFAULT || "");
+        const el = editableForColumn(c, cleanDefault(c.COLUMN_DEFAULT));
         el.dataset.column = c.COLUMN_NAME;
         field.appendChild(label);
         field.appendChild(el);
@@ -369,24 +392,45 @@
         actions.className = "table-actions";
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
-          const fields = {};
-          Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
-          await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:p.product_id, fields }) });
-          showMsg("ok", "Proizvod je sačuvan.");
-          await load();
+          try{
+            save.disabled = true;
+            const fields = {};
+            Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
+            await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:p.product_id, fields }) });
+            showMsg("ok", "Proizvod je sačuvan.");
+            await load();
+          }catch(e){
+            showMsg("bad", e.message);
+          }finally{
+            save.disabled = false;
+          }
         });
         const off = document.createElement("button"); off.className = "btn"; off.textContent = "Deaktiviraj";
         off.addEventListener("click", async () => {
-          await api("deactivate_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-          showMsg("ok", "Proizvod je deaktiviran.");
-          await load();
+          try{
+            off.disabled = true;
+            await api("deactivate_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
+            showMsg("ok", "Proizvod je deaktiviran.");
+            await load();
+          }catch(e){
+            showMsg("bad", e.message);
+          }finally{
+            off.disabled = false;
+          }
         });
         const del = document.createElement("button"); del.className = "btn danger"; del.textContent = "Obriši";
         del.addEventListener("click", async () => {
           if (!confirm("Obrisati proizvod? Deaktivacija je bezbednija ako postoje stare porudžbine.")) return;
-          await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-          showMsg("ok", "Proizvod je obrisan.");
-          await load();
+          try{
+            del.disabled = true;
+            await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
+            showMsg("ok", "Proizvod je obrisan.");
+            await load();
+          }catch(e){
+            showMsg("bad", e.message);
+          }finally{
+            del.disabled = false;
+          }
         });
         actions.append(save, off, del);
         row.insertCell().appendChild(actions);
@@ -425,11 +469,18 @@
         });
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
-          const fields = {};
-          Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
-          await api("update_order", { method:"POST", body:JSON.stringify({ id:o.id, fields, filters:currentFilters() }) });
-          showMsg("ok", "Porudžbina je ažurirana.");
-          await load(currentFilters());
+          try{
+            save.disabled = true;
+            const fields = {};
+            Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
+            await api("update_order", { method:"POST", body:JSON.stringify({ id:o.id, fields, filters:currentFilters() }) });
+            showMsg("ok", "Porudžbina je ažurirana.");
+            await load(currentFilters());
+          }catch(e){
+            showMsg("bad", e.message);
+          }finally{
+            save.disabled = false;
+          }
         });
         const actionBox = document.createElement("div");
         actionBox.className = "table-actions";
@@ -504,11 +555,21 @@
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("createProductBtn").addEventListener("click", async () => {
-      const fields = {};
-      document.querySelectorAll("#newProductForm [data-column]").forEach((el) => fields[el.dataset.column] = el.value);
-      await api("save_product", { method:"POST", body:JSON.stringify({ mode:"create", fields }) });
-      showMsg("ok", "Proizvod je dodat.");
-      await load();
+      const btn = $("createProductBtn");
+      try{
+        btn.disabled = true;
+        btn.textContent = "Dodajem...";
+        const fields = {};
+        document.querySelectorAll("#newProductForm [data-column]").forEach((el) => fields[el.dataset.column] = el.value.trim());
+        await api("save_product", { method:"POST", body:JSON.stringify({ mode:"create", fields }) });
+        showMsg("ok", "Proizvod je dodat.");
+        await load();
+      }catch(e){
+        showMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Dodaj proizvod";
+      }
     });
 
     api("session")

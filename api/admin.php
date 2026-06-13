@@ -64,6 +64,15 @@ function fetch_orders(PDO $pdo, array $filters): array {
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function clean_admin_value($value) {
+  if (!is_string($value)) return $value;
+  $value = trim($value);
+  if (strlen($value) >= 2 && $value[0] === "'" && substr($value, -1) === "'") {
+    return substr($value, 1, -1);
+  }
+  return $value;
+}
+
 function ensure_admin_table(PDO $pdo): void {
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS admin_users (
@@ -236,7 +245,7 @@ try {
     $clean = [];
     foreach ($fields as $key => $value) {
       if (in_array($key, $allowed, true) && !in_array($key, $auto, true)) {
-        $clean[$key] = is_string($value) ? trim($value) : $value;
+        $clean[$key] = clean_admin_value($value);
       }
     }
 
@@ -245,6 +254,12 @@ try {
     }
 
     if ($mode === 'create') {
+      $exists = $pdo->prepare('SELECT COUNT(*) FROM product_prices WHERE product_id = ?');
+      $exists->execute([$clean['product_id']]);
+      if ((int)$exists->fetchColumn() > 0) {
+        json_response(['ok' => false, 'error' => 'Proizvod sa tim Product ID već postoji. Izmeni postojeći proizvod ili koristi drugi ID.'], 409);
+      }
+
       foreach ($columns as $column) {
         $name = (string)$column['COLUMN_NAME'];
         if (($clean[$name] ?? '') === '' && ($column['IS_NULLABLE'] === 'YES' || $column['COLUMN_DEFAULT'] !== null || $name === 'updated_at')) {
