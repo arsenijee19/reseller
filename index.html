@@ -69,6 +69,8 @@
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
     .msg.bad{display:block;border-color:rgba(195,41,41,.25);background:rgba(195,41,41,.08)}
+    .product-search{margin-top:12px}
+    .search-count{margin-top:6px}
     .prices{display:grid;gap:8px;margin-top:12px}
     .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
     .price-value{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -136,6 +138,11 @@
           <div class="section">
             <h2>Nova porudžbina</h2>
             <p>Izaberi proizvod i upiši email kupca.</p>
+            <div class="product-search">
+              <label for="productSearch">Pretraga proizvoda</label>
+              <input id="productSearch" type="search" autocomplete="off" placeholder="Naziv igre, tip naloga, cena..." />
+              <p class="meta search-count" id="productSearchCount"></p>
+            </div>
             <label for="product">Proizvod</label>
             <select id="product"></select>
             <label for="custEmail">Email kupca</label>
@@ -181,7 +188,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf: "", orderInProgress: false, prices: new Map(), pendingOrder: null };
+    const state = { csrf: "", orderInProgress: false, products: [], prices: new Map(), productSearch: "", pendingOrder: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -190,6 +197,8 @@
     const tokenInput = $("token");
     const loginBtn = $("loginBtn");
     const loginMsg = $("loginMsg");
+    const productSearch = $("productSearch");
+    const productSearchCount = $("productSearchCount");
     const productSelect = $("product");
     const custEmail = $("custEmail");
     const orderBtn = $("orderBtn");
@@ -212,6 +221,7 @@
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
+    function normalizeSearch(value){ return String(value == null ? "" : value).toLowerCase().trim(); }
 
     function storedTheme(){
       try{
@@ -270,28 +280,70 @@
 
     async function loadProducts(){
       const j = await api("/api/products.php");
+      state.products = j.products || [];
+      renderProductOptions();
+    }
+
+    function productSearchText(product){
+      const priced = state.prices.get(String(product.id)) || {};
+      return [
+        product.id,
+        product.name,
+        priced.product_id,
+        priced.product_name,
+        priced.account_type,
+        priced.price,
+        priced.currency
+      ].map(normalizeSearch).join(" ");
+    }
+
+    function filteredProducts(){
+      const search = normalizeSearch(state.productSearch);
+      if (!search) return state.products;
+      return state.products.filter((p) => productSearchText(p).includes(search));
+    }
+
+    function renderProductOptions(){
+      const current = productSelect.value;
+      const products = filteredProducts();
       productSelect.textContent = "";
-      (j.products || []).forEach((p) => {
+      products.forEach((p) => {
         const opt = document.createElement("option");
         opt.value = p.id;
         opt.textContent = p.name;
         productSelect.appendChild(opt);
       });
+      if (current && products.some((p) => String(p.id) === String(current))) {
+        productSelect.value = current;
+      }
+      if (productSearchCount) {
+        productSearchCount.textContent = state.productSearch
+          ? `${products.length} od ${state.products.length} proizvoda`
+          : `${state.products.length} proizvoda`;
+      }
     }
 
     async function loadPrices(){
       const j = await api("/api/prices.php");
-      pricesList.textContent = "";
       state.prices = new Map();
       (j.prices || []).forEach((p) => {
         state.prices.set(String(p.product_id), p);
+      });
+      renderProductOptions();
+      renderPrices();
+    }
+
+    function renderPrices(){
+      pricesList.textContent = "";
+      const allowed = new Set(filteredProducts().map((p) => String(p.id)));
+      [...state.prices.values()].filter((p) => allowed.has(String(p.product_id))).forEach((p) => {
         const row = document.createElement("div");
         row.className = "price-item";
         appendText(row, "span", `${p.product_name} (${p.account_type})`);
         appendText(row, "b", `${price(p.price)} ${p.currency}`, "price-value");
         pricesList.appendChild(row);
       });
-      if (!pricesList.children.length) pricesList.textContent = "Cene nisu dostupne.";
+      if (!pricesList.children.length) pricesList.textContent = state.productSearch ? "Nema proizvoda za ovu pretragu." : "Cene nisu dostupne.";
     }
 
     function selectedProductDetails(){
@@ -439,6 +491,11 @@
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
     logoutBtn.addEventListener("click", logout);
+    productSearch.addEventListener("input", (event) => {
+      state.productSearch = event.target.value;
+      renderProductOptions();
+      renderPrices();
+    });
     themeBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     confirmOrderBtn.addEventListener("click", submitConfirmedOrder);
     cancelOrderBtn.addEventListener("click", closeConfirmation);

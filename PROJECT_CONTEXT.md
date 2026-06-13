@@ -9,6 +9,7 @@
 - Completed functionality:
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
+  - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
@@ -125,6 +126,7 @@
 - Refined admin panel layout, spacing, table actions, product form width, and mobile responsiveness.
 - Updated the n8n workflow export to send Telegram order/delivery notifications with account type and price.
 - Added client-side search to the admin products table.
+- Added reseller-facing product search for order selection and price list filtering.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
