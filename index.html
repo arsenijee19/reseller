@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
   <style>
     :root{
@@ -22,8 +22,22 @@
       --shadow:0 14px 34px rgba(15,23,42,.08);
       --font:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
     }
+    :root[data-theme="dark"]{
+      --bg:#0f141b;
+      --panel:#151b24;
+      --text:#eef2f7;
+      --muted:#a9b4c2;
+      --line:#2a3442;
+      --soft:#101720;
+      --brand:#4b8df7;
+      --brand-dark:#2f73df;
+      --good:#25a765;
+      --bad:#f05a5a;
+      --warn:#e4a23b;
+      --shadow:0 16px 34px rgba(0,0,0,.28);
+    }
     *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;font-family:var(--font);color:var(--text);background:var(--bg)}
+    body{margin:0;min-height:100vh;font-family:var(--font);color:var(--text);background:var(--bg);transition:background .18s ease,color .18s ease}
     button,input,select{font:inherit}
     .shell{max-width:1120px;margin:0 auto;padding:22px 16px 42px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
@@ -35,18 +49,18 @@
     h3{font-size:14px;margin-bottom:10px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 11px;font-size:12px;color:var(--muted);white-space:nowrap}
+    .pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 11px;font-size:12px;color:var(--muted);white-space:nowrap}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
     .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
     .section{padding:18px}
     .section + .section{border-top:1px solid var(--line)}
-    label{display:block;font-size:12px;font-weight:700;color:#475467;margin:14px 0 6px}
-    input,select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:10px 12px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+    label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px}
+    input,select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
     input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .btn{min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;transition:transform .12s ease,background .12s ease,border-color .12s ease}
-    .btn:hover{transform:translateY(-1px);border-color:#cbd5e1}
+    .btn{min-height:42px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;transition:transform .12s ease,background .12s ease,border-color .12s ease}
+    .btn:hover{transform:translateY(-1px);border-color:var(--muted)}
     .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
     .btn.primary:hover{background:var(--brand-dark)}
@@ -55,12 +69,27 @@
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.bad{display:block;border-color:rgba(195,41,41,.25);background:rgba(195,41,41,.08)}
     .prices{display:grid;gap:8px;margin-top:12px}
-    .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0f5;font-size:13px}
+    .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
     .price-value{font-variant-numeric:tabular-nums;white-space:nowrap}
     .history-list{display:grid;gap:10px;margin-top:12px}
-    .history-item{border:1px solid var(--line);background:#fff;border-radius:8px;padding:12px}
+    .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px}
     .history-item strong{display:block;font-size:14px;margin-bottom:5px}
     .meta{color:var(--muted);font-size:12px;line-height:1.45}
+    .theme-btn{min-width:104px}
+    .progress{display:none;margin-top:14px;border:1px solid var(--line);border-radius:999px;background:var(--soft);height:10px;overflow:hidden}
+    .progress.active{display:block}
+    .progress-bar{width:38%;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),#16a085);animation:progress-slide .9s cubic-bezier(.4,0,.2,1) infinite}
+    @keyframes progress-slide{
+      0%{transform:translateX(-115%)}
+      100%{transform:translateX(280%)}
+    }
+    .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,20,.58);padding:16px;z-index:10}
+    .modal-backdrop.open{display:flex}
+    .modal{width:min(460px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 22px 70px rgba(0,0,0,.28);padding:18px}
+    .details{display:grid;gap:10px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
+    .detail-row{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-size:13px}
+    .detail-row span{color:var(--muted)}
+    .detail-row b{overflow-wrap:anywhere}
     @media (max-width:860px){
       .shell{padding:16px 12px 32px}
       .topbar{align-items:flex-start;flex-direction:column}
@@ -68,6 +97,7 @@
       .layout{grid-template-columns:1fr}
       input,select{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
+      .detail-row{grid-template-columns:1fr;gap:3px}
     }
   </style>
 </head>
@@ -84,6 +114,7 @@
       <div class="status">
         <div class="pill">Status: <span class="mono" id="statusText">offline</span></div>
         <div class="pill">Balance: <span class="mono" id="balanceText">0 RSD</span></div>
+        <button class="btn theme-btn" id="themeBtn" type="button">Dark</button>
       </div>
     </header>
 
@@ -113,6 +144,7 @@
               <button class="btn good" id="paidBtn">Uplatio sam</button>
               <button class="btn" id="logoutBtn">Logout</button>
             </div>
+            <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
             <div class="msg" id="orderMsg"></div>
             <div class="msg" id="paidMsg"></div>
           </div>
@@ -134,9 +166,21 @@
     </div>
   </main>
 
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal">
+      <h2 id="confirmTitle">Potvrda porudžbine</h2>
+      <p>Proveri detalje pre slanja porudžbine.</p>
+      <div class="details" id="confirmDetails"></div>
+      <div class="actions">
+        <button class="btn primary" id="confirmOrderBtn" type="button">Potvrdi porudžbinu</button>
+        <button class="btn" id="cancelOrderBtn" type="button">Odustani</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf: "", orderInProgress: false };
+    const state = { csrf: "", orderInProgress: false, prices: new Map(), pendingOrder: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -154,12 +198,26 @@
     const paidMsg = $("paidMsg");
     const pricesList = $("pricesList");
     const historyList = $("historyList");
+    const themeBtn = $("themeBtn");
+    const orderProgress = $("orderProgress");
+    const confirmModal = $("confirmModal");
+    const confirmDetails = $("confirmDetails");
+    const confirmOrderBtn = $("confirmOrderBtn");
+    const cancelOrderBtn = $("cancelOrderBtn");
 
     function setStatus(value){ statusText.textContent = value; }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
+    function setProgress(active){ orderProgress.classList.toggle("active", active); }
+
+    function setTheme(theme){
+      const next = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("pw-theme", next);
+      themeBtn.textContent = next === "dark" ? "Light" : "Dark";
+    }
 
     function appendText(parent, tag, text, className){
       const el = document.createElement(tag);
@@ -199,7 +257,9 @@
     async function loadPrices(){
       const j = await api("/api/prices.php");
       pricesList.textContent = "";
+      state.prices = new Map();
       (j.prices || []).forEach((p) => {
+        state.prices.set(String(p.product_id), p);
         const row = document.createElement("div");
         row.className = "price-item";
         appendText(row, "span", `${p.product_name} (${p.account_type})`);
@@ -207,6 +267,44 @@
         pricesList.appendChild(row);
       });
       if (!pricesList.children.length) pricesList.textContent = "Cene nisu dostupne.";
+    }
+
+    function selectedProductDetails(){
+      const product_id = productSelect.value;
+      const product = state.prices.get(String(product_id));
+      if (!product) return null;
+      return {
+        product_id,
+        product_name: product.product_name,
+        account_type: product.account_type,
+        price: product.price,
+        currency: product.currency || "RSD",
+        customer_email: custEmail.value.trim()
+      };
+    }
+
+    function openConfirmation(details){
+      confirmDetails.textContent = "";
+      [
+        ["Proizvod", details.product_name],
+        ["Tip naloga", details.account_type],
+        ["Cena", `${price(details.price)} ${details.currency}`],
+        ["Kupac", details.customer_email]
+      ].forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "detail-row";
+        appendText(row, "span", label);
+        appendText(row, "b", value || "-");
+        confirmDetails.appendChild(row);
+      });
+      state.pendingOrder = details;
+      confirmModal.classList.add("open");
+      confirmOrderBtn.focus();
+    }
+
+    function closeConfirmation(){
+      confirmModal.classList.remove("open");
+      state.pendingOrder = null;
     }
 
     async function loadOrders(){
@@ -251,15 +349,28 @@
     async function order(){
       if (state.orderInProgress) return;
       hide(orderMsg);
+      try{
+        const details = selectedProductDetails();
+        if (!details || !details.product_id) throw new Error("Izaberi proizvod.");
+        if (!details.customer_email) throw new Error("Unesi email kupca.");
+        openConfirmation(details);
+      }catch(e){
+        show(orderMsg, "bad", e.message);
+      }
+    }
+
+    async function submitConfirmedOrder(){
+      if (state.orderInProgress || !state.pendingOrder) return;
+      const details = state.pendingOrder;
+      closeConfirmation();
       state.orderInProgress = true;
       orderBtn.disabled = true;
-      orderBtn.textContent = "Obrada...";
+      paidBtn.disabled = true;
+      orderBtn.textContent = "Poručujem...";
+      setProgress(true);
+      hide(orderMsg);
       try{
-        const product_id = productSelect.value;
-        const customer_email = custEmail.value.trim();
-        if (!product_id) throw new Error("Izaberi proizvod.");
-        if (!customer_email) throw new Error("Unesi email kupca.");
-        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id, customer_email }) });
+        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
         show(orderMsg, "ok", "Porudžbina je uspešno kreirana.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
         custEmail.value = "";
         await Promise.all([loadMe(), loadOrders()]);
@@ -268,7 +379,9 @@
       }finally{
         state.orderInProgress = false;
         orderBtn.disabled = false;
+        paidBtn.disabled = false;
         orderBtn.textContent = "Poruči";
+        setProgress(false);
       }
     }
 
@@ -301,8 +414,14 @@
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
     logoutBtn.addEventListener("click", logout);
+    themeBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+    confirmOrderBtn.addEventListener("click", submitConfirmedOrder);
+    cancelOrderBtn.addEventListener("click", closeConfirmation);
+    confirmModal.addEventListener("click", (event) => { if (event.target === confirmModal) closeConfirmation(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation(); });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
+    setTheme(localStorage.getItem("pw-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
   </script>
 </body>
 </html>

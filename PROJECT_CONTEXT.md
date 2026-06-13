@@ -13,6 +13,9 @@
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
+  - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
+  - Reseller order submission shows a lightweight progress bar while the backend creates the order.
+  - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
@@ -112,6 +115,7 @@
 - Replaced the old URL-key `topup.php` flow with admin-session/CSRF protection.
 - Removed production credentials, webhook URL, notification recipients, logs, and the initial admin hash from versioned source code.
 - Added `.htaccess` hardening for files that should not be publicly served from cPanel.
+- Added order confirmation, submit progress feedback, and light/dark mode.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.

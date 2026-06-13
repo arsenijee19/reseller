@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Admin</title>
   <style>
     :root{
@@ -21,8 +21,21 @@
       --shadow:0 12px 30px rgba(15,23,42,.07);
       --font:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
     }
+    :root[data-theme="dark"]{
+      --bg:#0f141b;
+      --panel:#151b24;
+      --text:#eef2f7;
+      --muted:#a9b4c2;
+      --line:#2a3442;
+      --soft:#101720;
+      --brand:#4b8df7;
+      --brand-dark:#2f73df;
+      --danger:#e05252;
+      --good:#25a765;
+      --shadow:0 16px 34px rgba(0,0,0,.28);
+    }
     *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font)}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font);transition:background .18s ease,color .18s ease}
     button,input,select,textarea{font:inherit}
     .shell{max-width:1280px;margin:0 auto;padding:18px 14px 42px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}
@@ -34,11 +47,11 @@
     .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
     .section{padding:16px}
     .login{max-width:420px;margin:12vh auto 0}
-    label{display:block;margin:12px 0 6px;color:#475467;font-size:12px;font-weight:700}
-    input,select,textarea{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:9px 10px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+    label{display:block;margin:12px 0 6px;color:var(--muted);font-size:12px;font-weight:700}
+    input,select,textarea{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 10px;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
     textarea{min-height:78px;resize:vertical}
     input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
-    .btn{min-height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:9px 12px;font-weight:700;cursor:pointer;transition:transform .12s ease,background .12s ease}
+    .btn{min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 12px;font-weight:700;cursor:pointer;transition:transform .12s ease,background .12s ease}
     .btn:hover{transform:translateY(-1px)}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
     .btn.primary:hover{background:var(--brand-dark)}
@@ -47,14 +60,14 @@
     .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
     .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-    .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700;color:#475467}
+    .tab{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700;color:var(--muted)}
     .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
     .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
     .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-12{grid-column:span 12}
-    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
     table{width:100%;border-collapse:collapse;min-width:760px}
     th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top;font-size:13px}
-    th{background:var(--soft);font-size:12px;color:#475467;position:sticky;top:0;z-index:1}
+    th{background:var(--soft);font-size:12px;color:var(--muted);position:sticky;top:0;z-index:1}
     td input,td select,td textarea{min-width:130px}
     .compact{max-width:120px}
     .wide{min-width:220px}
@@ -82,6 +95,7 @@
         <label for="adminPassword">Šifra</label>
         <input id="adminPassword" type="password" autocomplete="current-password" />
         <div class="actions">
+          <button class="btn" id="loginThemeBtn" type="button">Dark</button>
           <button class="btn primary" id="adminLoginBtn">Uloguj se</button>
         </div>
         <div class="msg" id="loginMsg"></div>
@@ -95,6 +109,7 @@
           <p>Kontrola korisnika, balance-a, proizvoda i porudžbina.</p>
         </div>
         <div class="actions">
+          <button class="btn" id="themeBtn" type="button">Dark</button>
           <button class="btn" id="refreshBtn">Osveži</button>
           <button class="btn" id="logoutBtn">Logout</button>
         </div>
@@ -166,6 +181,15 @@
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
     function money(v){ const n=Number(v); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : v; }
+    function setTheme(theme){
+      const next = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("pw-theme", next);
+      ["themeBtn","loginThemeBtn"].forEach((id) => {
+        const btn = $(id);
+        if (btn) btn.textContent = next === "dark" ? "Light" : "Dark";
+      });
+    }
 
     async function api(action, options = {}){
       const headers = Object.assign({}, options.headers || {});
@@ -390,6 +414,8 @@
     }
 
     $("adminLoginBtn").addEventListener("click", login);
+    $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+    $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("adminPassword").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
@@ -410,6 +436,7 @@
         }
       })
       .catch(() => setLoggedIn(false));
+    setTheme(localStorage.getItem("pw-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
   </script>
 </body>
 </html>
