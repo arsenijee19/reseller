@@ -292,12 +292,6 @@
       balanceText.textContent = price(j.balance_rsd) + " RSD";
     }
 
-    async function loadProducts(){
-      const j = await api("/api/products.php");
-      state.products = j.products || [];
-      renderProductOptions();
-    }
-
     function productSearchText(product){
       const priced = state.prices.get(String(product.id)) || {};
       return [
@@ -356,10 +350,14 @@
       historyList.textContent = "Učitavanje porudžbina...";
     }
 
-    async function loadPrices(){
-      const j = await api("/api/prices.php");
+    async function loadCatalog(){
+      const [productsRes, pricesRes] = await Promise.all([
+        api("/api/products.php"),
+        api("/api/prices.php")
+      ]);
+      state.products = productsRes.products || [];
       state.prices = new Map();
-      (j.prices || []).forEach((p) => {
+      (pricesRes.prices || []).forEach((p) => {
         state.prices.set(String(p.product_id), p);
       });
       renderProductOptions();
@@ -452,7 +450,7 @@
           show(orderMsg, "bad", e.message);
         });
 
-        Promise.all([loadProducts(), loadPrices()])
+        loadCatalog()
           .then(() => {
             productSelect.disabled = false;
             orderBtn.disabled = false;
