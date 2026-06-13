@@ -56,7 +56,7 @@ function public_error_detail(Throwable $e): string {
   return 'Neočekivana server greška u login toku (' . get_class($e) . '): ' . $safeMessage;
 }
 
-function config_value(string $path, mixed $default = null): mixed {
+function config_value(string $path, $default = null) {
   $value = app_config();
   foreach (explode('.', $path) as $part) {
     if (!is_array($value) || !array_key_exists($part, $value)) {

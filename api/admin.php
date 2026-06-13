@@ -210,7 +210,7 @@ try {
     $allowed = array_column($columns, 'COLUMN_NAME');
     $auto = [];
     foreach ($columns as $column) {
-      if (str_contains((string)$column['EXTRA'], 'auto_increment')) {
+      if (strpos((string)$column['EXTRA'], 'auto_increment') !== false) {
         $auto[] = $column['COLUMN_NAME'];
       }
     }

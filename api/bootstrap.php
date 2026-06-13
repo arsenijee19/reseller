@@ -67,7 +67,7 @@ function require_admin(): array {
   ];
 }
 
-function h_string(mixed $value): string {
+function h_string($value): string {
   return trim((string)$value);
 }
 
