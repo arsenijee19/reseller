@@ -68,6 +68,7 @@
 - Integrations:
   - `api/order.php` sends order emails and posts to the configured n8n webhook.
   - n8n receives `request_id`, `order_db_id`, `reseller_email`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email`, and timestamp.
+  - Updated local n8n workflow export `/Users/arsoplayworld/Downloads/reseller.json` includes Telegram notifications for received orders and completed deliveries, with product, account type, and price included in the message.
   - `api/payment_notice.php` emails the configured payment notice recipient.
 
 ## Setup & Execution
@@ -121,6 +122,7 @@
 - Added order confirmation, submit progress feedback, and light/dark mode.
 - Added richer n8n delivery payload and order delivery status tracking.
 - Refined admin panel layout, spacing, table actions, product form width, and mobile responsiveness.
+- Updated the n8n workflow export to send Telegram order/delivery notifications with account type and price.
 
 ## Current Priorities
 - Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
