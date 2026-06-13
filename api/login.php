@@ -17,29 +17,37 @@ if ($token === "") {
   echo json_encode(["ok"=>false,"error"=>"Missing token"]); exit;
 }
 
-$pdo = db();
+try {
+  $pdo = db();
 
-// Tražimo aktivne resellere (token se proverava preko password_verify)
-$stmt = $pdo->prepare("SELECT id, email, token_hash, status FROM resellers WHERE status='active'");
-$stmt->execute();
-$resellers = $stmt->fetchAll();
+  // Tražimo aktivne resellere (token se proverava preko password_verify)
+  $stmt = $pdo->prepare("SELECT id, email, token_hash, status FROM resellers WHERE status='active'");
+  $stmt->execute();
+  $resellers = $stmt->fetchAll();
 
-$found = null;
-foreach ($resellers as $r) {
-  if (password_verify($token, $r["token_hash"])) {
-    $found = $r; break;
+  $found = null;
+  foreach ($resellers as $r) {
+    if (password_verify($token, $r["token_hash"])) {
+      $found = $r; break;
+    }
   }
+
+  if (!$found) {
+    http_response_code(401);
+    echo json_encode(["ok"=>false,"error"=>"Pogrešan token."]); exit;
+  }
+
+  start_secure_session();
+  session_regenerate_id(true);
+  $_SESSION["reseller_id"] = (int)$found["id"];
+  $_SESSION["reseller_email"] = $found["email"];
+  $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+
+  echo json_encode(["ok"=>true, "csrf_token"=>csrf_token()]);
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode([
+    "ok" => false,
+    "error" => "Server trenutno ne može da proveri login. Proveri da li je api/config.local.php uploadovan i da li su DB podaci tačni."
+  ], JSON_UNESCAPED_UNICODE);
 }
-
-if (!$found) {
-  http_response_code(401);
-  echo json_encode(["ok"=>false,"error"=>"Invalid token"]); exit;
-}
-
-start_secure_session();
-session_regenerate_id(true);
-$_SESSION["reseller_id"] = (int)$found["id"];
-$_SESSION["reseller_email"] = $found["email"];
-$_SESSION["csrf_token"] = bin2hex(random_bytes(32));
-
-echo json_encode(["ok"=>true, "csrf_token"=>csrf_token()]);

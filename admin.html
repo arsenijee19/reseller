@@ -214,8 +214,14 @@
       if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
       if (state.csrf) headers["X-CSRF-Token"] = state.csrf;
       const res = await fetch("/api/admin.php?action=" + encodeURIComponent(action) + (options.query || ""), Object.assign({ credentials:"same-origin" }, options, { headers }));
-      const json = await res.json().catch(() => ({}));
-      if (!json.ok) throw new Error(json.error || "Zahtev nije uspeo.");
+      const text = await res.text();
+      let json = {};
+      try{
+        json = text ? JSON.parse(text) : {};
+      }catch(e){
+        throw new Error(`Server nije vratio validan JSON (${res.status}).`);
+      }
+      if (!json.ok) throw new Error(json.error || `Zahtev nije uspeo (${res.status}).`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }
