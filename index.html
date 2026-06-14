@@ -58,7 +58,6 @@
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
     .brand{display:flex;align-items:center;gap:12px;min-width:0}
     .brand-copy{min-width:0}
-    .brand-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     .logo{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 10px 22px rgba(23,105,224,.2);flex:0 0 auto;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
     .brand:hover .logo{transform:translateY(-1px) scale(1.03);box-shadow:var(--glow)}
     h1,h2,h3,p{margin:0}
@@ -97,6 +96,7 @@
     .btn.primary:hover{background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 12px 30px rgba(23,105,224,.26)}
     .btn.good{background:linear-gradient(135deg,var(--good),var(--accent));border-color:rgba(19,138,67,.62);color:#fff;box-shadow:0 8px 22px rgba(19,138,67,.16)}
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
+    .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
     .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
@@ -154,13 +154,13 @@
       .shell{padding:16px 12px 32px}
       .topbar{align-items:flex-start;flex-direction:column}
       .brand{align-items:flex-start}
-      .brand-title{gap:8px}
       .status{justify-content:flex-start;width:100%}
       .status .theme-btn{flex:0 0 auto;min-width:58px;margin-left:auto}
       .layout{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
       .mini-btn{flex:0 0 auto;min-width:0}
+      .whats-new-btn{flex:0 0 auto;min-width:0;order:3}
       .history-head{flex-direction:column}
       .history-head .btn{flex:0 0 auto;min-width:0}
       .payment-row{align-items:flex-start;flex-direction:column}
@@ -183,16 +183,14 @@
       <div class="brand">
         <div class="logo" aria-hidden="true"></div>
         <div class="brand-copy">
-          <div class="brand-title">
-            <h1>PlayWorld.rs - Reseller Portal</h1>
-            <button class="btn mini-btn" id="releaseBtn" type="button">Šta je novo?</button>
-          </div>
+          <h1>PlayWorld.rs - Reseller Portal</h1>
           <p>Porudžbine, balance i cenovnik na jednom mestu.</p>
         </div>
       </div>
       <div class="status">
         <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
         <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
+        <button class="btn whats-new-btn" id="releaseBtn" type="button">Šta je novo?</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
       </div>
     </header>

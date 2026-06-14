@@ -151,7 +151,7 @@
 - Added reseller-owned internal paid/unpaid markers per order with confirmation before changing state.
 - Added reseller bulk “Označi sve kao plaćeno” action with confirmation.
 - Refined reseller order cards with alternating backgrounds and paid/unpaid color states.
-- Replaced the automatic release notes popup with a manual responsive “Šta je novo?” header button.
+- Replaced the automatic release notes popup with a manual responsive “Šta je novo?” header control.
 - Added premium, performant UI micro-interactions across reseller/admin panels, including fluid modal transitions and reduced-motion fallbacks.
 
 ## Current Priorities
