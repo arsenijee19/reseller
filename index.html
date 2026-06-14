@@ -58,7 +58,7 @@
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
     .brand{display:flex;align-items:center;gap:12px;min-width:0}
     .brand-copy{min-width:0}
-    .logo{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 10px 22px rgba(23,105,224,.2);flex:0 0 auto;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+    .logo{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 10px 22px rgba(23,105,224,.2);flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:21px;line-height:1;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
     .brand:hover .logo{transform:translateY(-1px) scale(1.03);box-shadow:var(--glow)}
     h1,h2,h3,p{margin:0}
     h1{font-size:19px;line-height:1.2}
@@ -66,6 +66,10 @@
     h3{font-size:14px;margin-bottom:10px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .auth-only{display:none!important}
+    body.is-authenticated .status.auth-only{display:flex!important}
+    body.is-authenticated aside.auth-only{display:block!important}
+    body.is-authenticated .footer-actions.auth-only{display:block!important}
     .pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--soft));border-radius:999px;padding:8px 14px;font-size:12px;color:var(--muted);white-space:nowrap;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
     .pill:hover{border-color:rgba(23,105,224,.28);box-shadow:0 8px 22px rgba(15,23,42,.08);transform:translateY(-1px)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
@@ -123,7 +127,9 @@
     .note-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
     .note-actions .btn{min-height:34px;padding:7px 10px;font-size:12px}
     .meta{color:var(--muted);font-size:12px;line-height:1.45}
-    .signature{margin-top:18px;text-align:center;color:var(--muted);font-size:12px}
+    .footer-actions{display:none;margin-top:18px;text-align:center}
+    .footer-actions .btn{min-height:34px;padding:7px 12px;font-size:12px}
+    .signature{margin-top:10px;text-align:center;color:var(--muted);font-size:12px}
     .theme-btn{min-width:58px;height:42px;border-radius:999px!important;padding:8px 14px;font-size:16px;line-height:1}
     .progress{display:none;margin-top:14px;border:1px solid var(--line);border-radius:999px;background:var(--soft);height:10px;overflow:hidden}
     .progress.active{display:block}
@@ -160,7 +166,7 @@
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
       .mini-btn{flex:0 0 auto;min-width:0}
-      .whats-new-btn{flex:0 0 auto;min-width:0;order:3}
+      .footer-actions .btn{flex:0 0 auto;min-width:0}
       .history-head{flex-direction:column}
       .history-head .btn{flex:0 0 auto;min-width:0}
       .payment-row{align-items:flex-start;flex-direction:column}
@@ -181,16 +187,15 @@
   <main class="shell">
     <header class="topbar">
       <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
+        <div class="logo" aria-hidden="true">🎮</div>
         <div class="brand-copy">
           <h1>PlayWorld.rs - Reseller Portal</h1>
-          <p>Porudžbine, balance i cenovnik na jednom mestu.</p>
+          <p>Sve na jednom mestu - cenimo Vaše poverenje</p>
         </div>
       </div>
-      <div class="status">
+      <div class="status auth-only">
         <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
         <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
-        <button class="btn whats-new-btn" id="releaseBtn" type="button">Šta je novo?</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
       </div>
     </header>
@@ -240,7 +245,7 @@
         </div>
       </section>
 
-      <aside class="panel">
+      <aside class="panel auth-only">
         <div class="section">
           <div class="history-head">
             <div>
@@ -252,6 +257,9 @@
           <div class="history-list" id="historyList">Uloguj se za pregled.</div>
         </div>
       </aside>
+    </div>
+    <div class="footer-actions auth-only">
+      <button class="btn whats-new-btn" id="releaseBtn" type="button">Šta je novo?</button>
     </div>
     <div class="signature">www.playworld.rs</div>
   </main>
@@ -354,6 +362,7 @@
     const dismissReleaseBtn = $("dismissReleaseBtn");
 
     function setStatus(value){ statusText.textContent = value; }
+    function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
@@ -463,6 +472,7 @@
     }
 
     function showAppShell(){
+      setLoggedInUi(true);
       loginBox.style.display = "none";
       appBox.style.display = "block";
       productSelect.disabled = true;
@@ -819,6 +829,7 @@
       productSelect.disabled = false;
       orderBtn.disabled = false;
       setStatus("offline");
+      setLoggedInUi(false);
       balanceText.textContent = "0 RSD";
       historyList.textContent = "Uloguj se za pregled.";
       markAllPaidBtn.disabled = true;
@@ -855,6 +866,7 @@
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     setTheme(defaultTheme());
+    setLoggedInUi(false);
     restoreSession();
   </script>
 </body>
