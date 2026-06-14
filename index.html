@@ -91,8 +91,11 @@
     .price-value{font-variant-numeric:tabular-nums;white-space:nowrap}
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px}
+    .history-item:nth-child(even){background:var(--soft)}
     .history-item strong{display:block;font-size:14px;margin-bottom:5px}
     .payment-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
+    .payment-row.is-paid{border-color:rgba(19,138,67,.28);background:rgba(19,138,67,.11)}
+    .payment-row.is-unpaid{border-color:rgba(195,41,41,.18);background:rgba(195,41,41,.055)}
     .payment-row .btn{min-height:34px;padding:7px 10px;font-size:12px}
     .note-editor{display:grid;gap:8px;margin-top:10px}
     .note-editor textarea{min-height:74px}
@@ -141,8 +144,8 @@
         </div>
       </div>
       <div class="status">
-        <div class="pill">Status: <span class="mono" id="statusText">offline</span></div>
-        <div class="pill">Balance: <span class="mono" id="balanceText">0 RSD</span></div>
+        <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
+        <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
       </div>
     </header>
@@ -486,6 +489,8 @@
         paymentBtn.className = "btn";
         paymentBtn.type = "button";
         const renderPayment = (paid, paidAt) => {
+          paymentRow.classList.toggle("is-paid", paid);
+          paymentRow.classList.toggle("is-unpaid", !paid);
           paymentStatus.textContent = paid
             ? `Interno: plaćeno${paidAt ? " (" + dateTime(paidAt) + ")" : ""}`
             : "Interno: nije označeno kao plaćeno";

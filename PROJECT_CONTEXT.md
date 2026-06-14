@@ -14,6 +14,7 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
+  - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
   - Reseller “Zatraži igru” button opens a popup and emails the requested game suggestion to the admin.
@@ -145,6 +146,7 @@
 - Added reseller requested-game popup and email notification flow.
 - Added reseller-owned order notes with a backward-compatible SQL migration.
 - Added reseller-owned internal paid/unpaid markers per order with confirmation before changing state.
+- Refined reseller order cards with alternating backgrounds and paid/unpaid color states.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
