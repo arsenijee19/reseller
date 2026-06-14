@@ -9,6 +9,7 @@
 - Completed functionality:
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
+  - Resellers can save internal notes per order for phone numbers, account emails, or other private tracking details.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
@@ -52,11 +53,13 @@
 - `api/prices.php` - active price list for logged-in resellers.
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
 - `api/orders.php` - reseller recent order history.
+- `api/order_notes.php` - reseller-owned internal notes update endpoint for existing orders.
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
 - `api/game_request.php` - reseller requested-game suggestion email notification.
 - `api/admin.php` - admin login/dashboard/update API.
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
+- `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes.
 
 ## Architecture & Technical Decisions
 - Frameworks: no framework; plain PHP 8+, static HTML/CSS/JS.
@@ -88,6 +91,7 @@
   - Upload the project folder contents to cPanel public web root.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
+  - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
   - Local syntax check: `for f in api/*.php; do php -l "$f"; done`
@@ -105,6 +109,7 @@
   - Reseller balance is decreased by product price.
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
   - n8n delivery can use product fields from the PHP payload, so newly added admin products do not require a hardcoded n8n map when sheet names match the product/account type.
+  - Reseller order notes are stored in `orders.reseller_notes` and can only be updated by the reseller that owns the order.
 - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
@@ -137,9 +142,10 @@
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.
 - Added reseller session restore on page load and refreshed the 60-minute session cookie on active requests.
 - Added reseller requested-game popup and email notification flow.
+- Added reseller-owned order notes with a backward-compatible SQL migration.
 
 ## Current Priorities
-- Run `sql/2026-06-13_admin_panel.sql` on the live cPanel database.
+- Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
 - Validate admin login and all admin edit flows on live/staging data.
 - Confirm `mail()` delivery for order and payment-notice emails.
 - Add an admin password-change screen.

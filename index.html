@@ -92,6 +92,10 @@
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px}
     .history-item strong{display:block;font-size:14px;margin-bottom:5px}
+    .note-editor{display:grid;gap:8px;margin-top:10px}
+    .note-editor textarea{min-height:74px}
+    .note-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+    .note-actions .btn{min-height:34px;padding:7px 10px;font-size:12px}
     .meta{color:var(--muted);font-size:12px;line-height:1.45}
     .signature{margin-top:18px;text-align:center;color:var(--muted);font-size:12px}
     .theme-btn{min-width:58px;height:42px;border-radius:999px!important;padding:8px 14px;font-size:16px;line-height:1}
@@ -117,6 +121,7 @@
       .layout{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
+      .note-actions .btn{flex:0 0 auto;min-width:0}
       .detail-row{grid-template-columns:1fr;gap:3px}
     }
   </style>
@@ -469,6 +474,39 @@
         appendText(div, "strong", name + type);
         appendText(div, "div", `Cena: ${price(order.price_rsd)} RSD`, "meta");
         appendText(div, "div", `Poručeno: ${dateTime(order.created_at)}`, "meta");
+        const noteBox = document.createElement("div");
+        noteBox.className = "note-editor";
+        const noteLabel = document.createElement("label");
+        noteLabel.textContent = "Notes";
+        const noteInput = document.createElement("textarea");
+        noteInput.maxLength = 2000;
+        noteInput.placeholder = "Telefon kupca, email naloga, napomena...";
+        noteInput.value = order.reseller_notes || "";
+        const noteActions = document.createElement("div");
+        noteActions.className = "note-actions";
+        const noteStatus = document.createElement("span");
+        noteStatus.className = "meta";
+        const saveNote = document.createElement("button");
+        saveNote.className = "btn";
+        saveNote.type = "button";
+        saveNote.textContent = "Sačuvaj notes";
+        saveNote.addEventListener("click", async () => {
+          noteStatus.textContent = "";
+          saveNote.disabled = true;
+          saveNote.textContent = "Čuvam...";
+          try{
+            await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:noteInput.value.trim() }) });
+            noteStatus.textContent = "Sačuvano.";
+          }catch(e){
+            noteStatus.textContent = e.message;
+          }finally{
+            saveNote.disabled = false;
+            saveNote.textContent = "Sačuvaj notes";
+          }
+        });
+        noteActions.append(noteStatus, saveNote);
+        noteBox.append(noteLabel, noteInput, noteActions);
+        div.appendChild(noteBox);
         historyList.appendChild(div);
       });
     }
