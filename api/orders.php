@@ -17,6 +17,8 @@ try {
   $pdo = db();
   $resellerId = (int)$_SESSION["reseller_id"];
   $notesSelect = has_column($pdo, 'orders', 'reseller_notes') ? 'o.reseller_notes,' : "'' AS reseller_notes,";
+  $paidSelect = has_column($pdo, 'orders', 'reseller_paid') ? 'o.reseller_paid,' : '0 AS reseller_paid,';
+  $paidAtSelect = has_column($pdo, 'orders', 'reseller_paid_at') ? 'o.reseller_paid_at,' : 'NULL AS reseller_paid_at,';
 
   $stmt = $pdo->prepare("
     SELECT
@@ -25,6 +27,8 @@ try {
       o.price_rsd,
       o.created_at,
       {$notesSelect}
+      {$paidSelect}
+      {$paidAtSelect}
       pp.product_name,
       pp.account_type
     FROM orders o

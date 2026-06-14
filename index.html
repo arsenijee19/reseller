@@ -92,6 +92,8 @@
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px}
     .history-item strong{display:block;font-size:14px;margin-bottom:5px}
+    .payment-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
+    .payment-row .btn{min-height:34px;padding:7px 10px;font-size:12px}
     .note-editor{display:grid;gap:8px;margin-top:10px}
     .note-editor textarea{min-height:74px}
     .note-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
@@ -121,6 +123,8 @@
       .layout{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
+      .payment-row{align-items:flex-start;flex-direction:column}
+      .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
       .detail-row{grid-template-columns:1fr;gap:3px}
     }
@@ -474,6 +478,41 @@
         appendText(div, "strong", name + type);
         appendText(div, "div", `Cena: ${price(order.price_rsd)} RSD`, "meta");
         appendText(div, "div", `Poručeno: ${dateTime(order.created_at)}`, "meta");
+        const paymentRow = document.createElement("div");
+        paymentRow.className = "payment-row";
+        const paymentStatus = document.createElement("span");
+        paymentStatus.className = "meta";
+        const paymentBtn = document.createElement("button");
+        paymentBtn.className = "btn";
+        paymentBtn.type = "button";
+        const renderPayment = (paid, paidAt) => {
+          paymentStatus.textContent = paid
+            ? `Interno: plaćeno${paidAt ? " (" + dateTime(paidAt) + ")" : ""}`
+            : "Interno: nije označeno kao plaćeno";
+          paymentBtn.textContent = paid ? "Poništi plaćeno" : "Označi plaćeno";
+        };
+        renderPayment(Number(order.reseller_paid) === 1, order.reseller_paid_at || "");
+        paymentBtn.addEventListener("click", async () => {
+          const isPaid = Number(order.reseller_paid) === 1;
+          const nextPaid = !isPaid;
+          const message = nextPaid
+            ? "Označiti ovu porudžbinu kao plaćenu?"
+            : "Poništiti oznaku da je ova porudžbina plaćena?";
+          if (!confirm(message)) return;
+          paymentBtn.disabled = true;
+          try{
+            await api("/api/order_paid.php", { method:"POST", body:JSON.stringify({ order_id:order.id, paid:nextPaid }) });
+            order.reseller_paid = nextPaid ? 1 : 0;
+            order.reseller_paid_at = nextPaid ? new Date().toISOString() : "";
+            renderPayment(nextPaid, order.reseller_paid_at);
+          }catch(e){
+            alert(e.message);
+          }finally{
+            paymentBtn.disabled = false;
+          }
+        });
+        paymentRow.append(paymentStatus, paymentBtn);
+        div.appendChild(paymentRow);
         const noteBox = document.createElement("div");
         noteBox.className = "note-editor";
         const noteLabel = document.createElement("label");

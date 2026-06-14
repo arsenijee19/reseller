@@ -481,7 +481,7 @@
       renderFilters();
       const editable = (state.data.schema.orders || []).filter((c) => !["id"].includes(c.COLUMN_NAME));
       const display = ["id","reseller_email","product_id","buyer_email","price_rsd","created_at"].filter((name) => editable.some((c) => c.COLUMN_NAME === name) || name === "id");
-      const extra = editable.filter((c) => ["status","reseller_notes","admin_notes","delivery_payload"].includes(c.COLUMN_NAME));
+      const extra = editable.filter((c) => ["status","reseller_paid","reseller_paid_at","reseller_notes","admin_notes","delivery_payload"].includes(c.COLUMN_NAME));
       const table = $("ordersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
