@@ -9,7 +9,7 @@
 - Completed functionality:
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
-  - Resellers can save internal notes and mark each order as internally paid/unpaid for their own tracking.
+  - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
@@ -56,6 +56,7 @@
 - `api/orders.php` - reseller recent order history.
 - `api/order_notes.php` - reseller-owned internal notes update endpoint for existing orders.
 - `api/order_paid.php` - reseller-owned internal paid/unpaid marker endpoint for existing orders.
+- `api/order_paid_all.php` - reseller-owned bulk endpoint for marking all previous orders as internally paid.
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
 - `api/game_request.php` - reseller requested-game suggestion email notification.
 - `api/admin.php` - admin login/dashboard/update API.
@@ -146,6 +147,7 @@
 - Added reseller requested-game popup and email notification flow.
 - Added reseller-owned order notes with a backward-compatible SQL migration.
 - Added reseller-owned internal paid/unpaid markers per order with confirmation before changing state.
+- Added reseller bulk “Označi sve kao plaćeno” action with confirmation.
 - Refined reseller order cards with alternating backgrounds and paid/unpaid color states.
 
 ## Current Priorities

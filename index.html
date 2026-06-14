@@ -90,6 +90,8 @@
     .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
     .price-value{font-variant-numeric:tabular-nums;white-space:nowrap}
     .history-list{display:grid;gap:10px;margin-top:12px}
+    .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
     .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px}
     .history-item:nth-child(even){background:var(--soft)}
     .history-item strong{display:block;font-size:14px;margin-bottom:5px}
@@ -126,6 +128,8 @@
       .layout{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
+      .history-head{flex-direction:column}
+      .history-head .btn{flex:0 0 auto;min-width:0}
       .payment-row{align-items:flex-start;flex-direction:column}
       .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
@@ -197,8 +201,13 @@
 
       <aside class="panel">
         <div class="section">
-          <h2>Prethodne porudžbine</h2>
-          <p>Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
+          <div class="history-head">
+            <div>
+              <h2>Prethodne porudžbine</h2>
+              <p>Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
+            </div>
+            <button class="btn" id="markAllPaidBtn" type="button" disabled>Označi sve kao plaćeno</button>
+          </div>
           <div class="history-list" id="historyList">Uloguj se za pregled.</div>
         </div>
       </aside>
@@ -255,6 +264,7 @@
     const paidMsg = $("paidMsg");
     const pricesList = $("pricesList");
     const historyList = $("historyList");
+    const markAllPaidBtn = $("markAllPaidBtn");
     const themeBtn = $("themeBtn");
     const orderProgress = $("orderProgress");
     const confirmModal = $("confirmModal");
@@ -471,8 +481,10 @@
       historyList.textContent = "";
       if (!j.orders || j.orders.length === 0){
         historyList.textContent = "Još nema prethodnih porudžbina.";
+        markAllPaidBtn.disabled = true;
         return;
       }
+      markAllPaidBtn.disabled = false;
       j.orders.forEach((order) => {
         const div = document.createElement("div");
         div.className = "history-item";
@@ -674,6 +686,23 @@
       }
     }
 
+    async function markAllOrdersPaid(){
+      if (!confirm("Označiti sve prethodne porudžbine kao plaćene?")) return;
+      markAllPaidBtn.disabled = true;
+      markAllPaidBtn.textContent = "Čuvam...";
+      let completed = false;
+      try{
+        await api("/api/order_paid_all.php", { method:"POST", body:JSON.stringify({}) });
+        await loadOrders();
+        completed = true;
+      }catch(e){
+        alert(e.message);
+      }finally{
+        if (!completed) markAllPaidBtn.disabled = false;
+        markAllPaidBtn.textContent = "Označi sve kao plaćeno";
+      }
+    }
+
     async function sendGameRequest(){
       hide(gameRequestMsg);
       const suggestion = gameRequestText.value.trim();
@@ -707,6 +736,7 @@
       setStatus("offline");
       balanceText.textContent = "0 RSD";
       historyList.textContent = "Uloguj se za pregled.";
+      markAllPaidBtn.disabled = true;
       loginBox.style.display = "block";
       appBox.style.display = "none";
     }
@@ -714,6 +744,7 @@
     loginBtn.addEventListener("click", login);
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
+    markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
     requestGameBtn.addEventListener("click", openGameRequest);
     logoutBtn.addEventListener("click", logout);
     productSearch.addEventListener("input", (event) => {
