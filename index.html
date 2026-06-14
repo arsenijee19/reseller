@@ -320,7 +320,7 @@
     const gameRequestMsg = $("gameRequestMsg");
     const releaseModal = $("releaseModal");
     const dismissReleaseBtn = $("dismissReleaseBtn");
-    const releaseStorageKey = "pw-reseller-release-2026-06-notes-paid";
+    const releaseStorageKey = "pw-reseller-release-2026-06-14-v2";
 
     function setStatus(value){ statusText.textContent = value; }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
@@ -637,6 +637,7 @@
         await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
         setStatus("online");
         showAppShell();
+        showReleaseNotesOnce();
 
         loadMe().catch((e) => {
           balanceText.textContent = "Proveri kasnije";
@@ -670,6 +671,7 @@
         setStatus("online");
         balanceText.textContent = price(me.balance_rsd) + " RSD";
         showAppShell();
+        showReleaseNotesOnce();
 
         loadCatalog()
           .then(() => {
@@ -828,7 +830,6 @@
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     setTheme(defaultTheme());
     restoreSession();
-    showReleaseNotesOnce();
   </script>
 </body>
 </html>
