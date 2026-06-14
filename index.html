@@ -23,6 +23,7 @@
       --shadow:0 14px 34px rgba(15,23,42,.08);
       --shadow-hover:0 18px 42px rgba(15,23,42,.12);
       --glow:0 0 0 1px rgba(23,105,224,.08),0 10px 28px rgba(23,105,224,.16);
+      --success:#19a35b;
       --ease:cubic-bezier(.16,1,.3,1);
       --ease-fast:cubic-bezier(.2,.8,.2,1);
       --font:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
@@ -43,6 +44,7 @@
       --shadow:0 16px 34px rgba(0,0,0,.28);
       --shadow-hover:0 22px 48px rgba(0,0,0,.36);
       --glow:0 0 0 1px rgba(75,141,247,.16),0 12px 34px rgba(75,141,247,.22);
+      --success:#34d27a;
     }
     *{box-sizing:border-box}
     body{
@@ -75,24 +77,34 @@
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
     body:not(.is-authenticated) .layout{grid-template-columns:minmax(0,520px);justify-content:center}
-    .panel{background:linear-gradient(180deg,var(--panel),rgba(248,250,252,.72));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease)}
+    .panel{background:linear-gradient(180deg,var(--panel),rgba(248,250,252,.72));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease),opacity .18s var(--ease)}
     :root[data-theme="dark"] .panel{background:linear-gradient(180deg,var(--panel),rgba(16,23,32,.82))}
     .panel:hover{border-color:rgba(23,105,224,.18);box-shadow:var(--shadow-hover)}
     .section{padding:18px}
     .section + .section{border-top:1px solid var(--line)}
     label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px}
-    input,select,textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease)}
+    input,select,textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease),transform .16s var(--ease)}
     textarea{min-height:112px;resize:vertical}
     input:hover,select:hover,textarea:hover{border-color:rgba(23,105,224,.26)}
-    input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
+    input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,105,224,.12),0 10px 26px rgba(23,105,224,.08);transform:translateY(-1px)}
+    input.is-typing{animation:field-type .18s var(--ease)}
+    input.field-error{border-color:var(--bad);animation:field-shake .28s var(--ease);box-shadow:0 0 0 3px rgba(195,41,41,.11)}
+    input.field-success{border-color:var(--success);animation:field-success .36s var(--ease);box-shadow:0 0 0 3px rgba(25,163,91,.12)}
     .select-wrap{position:relative}
-    .select-wrap select{appearance:none;padding-right:42px;background:linear-gradient(180deg,var(--panel),var(--soft))}
-    .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(45deg);pointer-events:none}
+    .select-wrap::before{content:"";position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(120deg,rgba(23,105,224,.0),rgba(23,105,224,.22),rgba(55,214,177,.18),rgba(23,105,224,.0));opacity:0;transform:scaleX(.86);filter:blur(8px);transition:opacity .22s var(--ease),transform .22s var(--ease);pointer-events:none}
+    .select-wrap:hover::before,.select-wrap:focus-within::before,.select-wrap.is-selecting::before{opacity:1;transform:scaleX(1)}
+    .select-wrap select{appearance:none;padding-right:42px;background:linear-gradient(180deg,var(--panel),var(--soft));position:relative}
+    .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(45deg);pointer-events:none;transition:border-color .16s var(--ease),transform .18s var(--ease)}
+    .select-wrap:hover::after,.select-wrap:focus-within::after{border-color:var(--brand);transform:translateY(-45%) rotate(45deg)}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
     .login-actions{justify-content:center}
-    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;line-height:1.2;text-align:center;transition:transform .14s var(--ease),background .14s var(--ease),border-color .14s var(--ease),box-shadow .14s var(--ease),filter .14s var(--ease)}
+    .btn{--mx:50%;--my:50%;display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;line-height:1.2;text-align:center;position:relative;overflow:hidden;isolation:isolate;transition:transform .14s var(--ease),background .14s var(--ease),border-color .14s var(--ease),box-shadow .14s var(--ease),filter .14s var(--ease)}
+    .btn::before{content:"";position:absolute;inset:-1px;background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.52),rgba(75,141,247,.18) 22%,transparent 46%);opacity:0;transform:scale(.92);transition:opacity .16s var(--ease),transform .16s var(--ease);pointer-events:none;z-index:-1}
+    .btn::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent,rgba(255,255,255,.12),transparent);opacity:0;transform:translateX(-70%);transition:opacity .16s var(--ease),transform .38s var(--ease);pointer-events:none;z-index:-1}
     a.btn{text-decoration:none}
     .btn:hover{transform:translateY(-1px);border-color:rgba(23,105,224,.34);box-shadow:var(--glow)}
+    .btn:hover::before{opacity:1;transform:scale(1)}
+    .btn:hover::after{opacity:1;transform:translateX(70%)}
     .btn:active{transform:translateY(0) scale(.985);filter:saturate(1.05)}
     .btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.tab:focus-visible{outline:2px solid rgba(75,141,247,.72);outline-offset:2px}
     .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
@@ -102,7 +114,7 @@
     .btn.good{background:linear-gradient(135deg,var(--good),var(--accent));border-color:rgba(19,138,67,.62);color:#fff;box-shadow:0 8px 22px rgba(19,138,67,.16)}
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
-    .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
+    .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap;animation:message-in .22s var(--ease)}
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
     .msg.bad{display:block;border-color:rgba(195,41,41,.25);background:rgba(195,41,41,.08)}
@@ -134,17 +146,19 @@
     .theme-btn{min-width:58px;height:42px;border-radius:999px!important;padding:8px 14px;font-size:16px;line-height:1}
     .progress{display:none;margin-top:14px;border:1px solid var(--line);border-radius:999px;background:var(--soft);height:10px;overflow:hidden}
     .progress.active{display:block}
-    .progress-bar{width:38%;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--accent));animation:progress-slide .9s cubic-bezier(.4,0,.2,1) infinite}
+    .progress-bar{width:38%;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--accent),var(--brand));background-size:180% 100%;animation:progress-slide .75s cubic-bezier(.4,0,.2,1) infinite,gradient-drift 1.2s linear infinite}
     @keyframes progress-slide{
       0%{transform:translateX(-115%)}
       100%{transform:translateX(280%)}
     }
-    .modal-backdrop,.release-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,13,20,.08);padding:16px;z-index:10;opacity:0;visibility:hidden;pointer-events:none;backdrop-filter:blur(0);transition:opacity .18s var(--ease),visibility 0s linear .18s,background .18s var(--ease),backdrop-filter .18s var(--ease)}
+    .modal-backdrop,.release-backdrop,.success-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,13,20,.08);padding:16px;z-index:10;opacity:0;visibility:hidden;pointer-events:none;backdrop-filter:blur(0);transition:opacity .18s var(--ease),visibility 0s linear .18s,background .18s var(--ease),backdrop-filter .18s var(--ease)}
     .release-backdrop{padding:18px;z-index:20}
-    .modal-backdrop.open,.release-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;background:rgba(8,13,20,.62);backdrop-filter:blur(12px);transition:opacity .18s var(--ease),visibility 0s,background .18s var(--ease),backdrop-filter .18s var(--ease)}
+    .success-backdrop{z-index:30}
+    .modal-backdrop.open,.release-backdrop.open,.success-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;background:rgba(8,13,20,.62);backdrop-filter:blur(12px);transition:opacity .18s var(--ease),visibility 0s,background .18s var(--ease),backdrop-filter .18s var(--ease)}
     .release-backdrop.open{background:rgba(8,13,20,.72)}
-    .modal,.release-modal{transform:translateY(14px) scale(.96);opacity:0;transition:transform .22s var(--ease),opacity .18s var(--ease),box-shadow .18s var(--ease);will-change:transform,opacity}
-    .modal-backdrop.open .modal,.release-backdrop.open .release-modal{transform:translateY(0) scale(1);opacity:1}
+    .success-backdrop.open{background:rgba(8,13,20,.68)}
+    .modal,.release-modal,.success-modal{transform:translateY(14px) scale(.96);opacity:0;transition:transform .22s var(--ease),opacity .18s var(--ease),box-shadow .18s var(--ease);will-change:transform,opacity}
+    .modal-backdrop.open .modal,.release-backdrop.open .release-modal,.success-backdrop.open .success-modal{transform:translateY(0) scale(1);opacity:1}
     .modal{width:min(460px,100%);background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.04);padding:18px}
     .release-modal{width:min(560px,100%);max-height:min(720px,92vh);overflow:auto;background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.04);padding:22px}
     .release-modal h2{font-size:20px;margin-bottom:8px}
@@ -157,6 +171,28 @@
     .detail-row{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-size:13px}
     .detail-row span{color:var(--muted)}
     .detail-row b{overflow-wrap:anywhere}
+    .success-modal{width:min(430px,100%);text-align:center;background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(25,163,91,.22);border-radius:14px;box-shadow:0 28px 90px rgba(0,0,0,.34),0 0 0 1px rgba(52,210,122,.08);padding:26px 20px 20px}
+    .success-icon{width:92px;height:92px;margin:0 auto 16px;display:block;filter:drop-shadow(0 16px 30px rgba(25,163,91,.22));transform-origin:center}
+    .success-icon circle{fill:none;stroke:var(--success);stroke-width:5;stroke-linecap:round;stroke-dasharray:176;stroke-dashoffset:176}
+    .success-icon path{fill:none;stroke:var(--success);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:52;stroke-dashoffset:52}
+    .success-glow{transform-origin:center;fill:rgba(25,163,91,.12);stroke:none;opacity:0}
+    .success-backdrop.open .success-icon{animation:success-settle .72s var(--ease) both}
+    .success-backdrop.open .success-icon circle:not(.success-glow){animation:draw-circle .56s var(--ease) .08s forwards}
+    .success-backdrop.open .success-icon path{animation:draw-check .38s var(--ease) .42s forwards}
+    .success-backdrop.open .success-glow{animation:success-pulse 1.1s var(--ease) .18s both}
+    .success-modal h2{font-size:20px;margin-bottom:8px}
+    .success-modal p{max-width:330px;margin:0 auto}
+    .success-small{margin-top:10px!important;font-size:12px}
+    .success-modal .actions{justify-content:center}
+    @keyframes field-type{0%{transform:scale(.997)}60%{transform:scale(1.008)}100%{transform:scale(1)}}
+    @keyframes field-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}55%{transform:translateX(4px)}78%{transform:translateX(-2px)}}
+    @keyframes field-success{0%{transform:scale(.996)}55%{transform:scale(1.01)}100%{transform:scale(1)}}
+    @keyframes message-in{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+    @keyframes gradient-drift{0%{background-position:0 50%}100%{background-position:180% 50%}}
+    @keyframes draw-circle{to{stroke-dashoffset:0}}
+    @keyframes draw-check{to{stroke-dashoffset:0}}
+    @keyframes success-pulse{0%{opacity:0;transform:scale(.72)}45%{opacity:1;transform:scale(1.08)}100%{opacity:.7;transform:scale(1)}}
+    @keyframes success-settle{0%{transform:perspective(420px) rotateY(-28deg) rotateX(10deg) scale(.78);opacity:0}62%{transform:perspective(420px) rotateY(8deg) rotateX(-3deg) scale(1.06);opacity:1}100%{transform:perspective(420px) rotateY(0) rotateX(0) scale(1)}}
     @media (max-width:860px){
       .shell{padding:16px 12px 32px}
       .topbar{align-items:flex-start;flex-direction:column}
@@ -177,11 +213,13 @@
       .detail-row{grid-template-columns:1fr;gap:3px}
       .release-backdrop{align-items:flex-start;padding:12px}
       .release-modal{max-height:calc(100vh - 24px);padding:18px}
+      .success-backdrop{align-items:flex-start;padding:12px}
+      .success-modal{margin-top:10px;padding:22px 16px 18px}
     }
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
       .btn:hover,.panel:hover,.history-item:hover,.price-item:hover,.release-item:hover,.pill:hover,.brand:hover .logo{transform:none!important}
-      .modal,.release-modal{transform:none!important}
+      .modal,.release-modal,.success-modal{transform:none!important}
     }
   </style>
 </head>
@@ -324,6 +362,22 @@
     </div>
   </div>
 
+  <div class="success-backdrop" id="successModal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="success-modal">
+      <svg class="success-icon" viewBox="0 0 72 72" aria-hidden="true">
+        <circle class="success-glow" cx="36" cy="36" r="32"></circle>
+        <circle cx="36" cy="36" r="28"></circle>
+        <path d="M23 37.5 32.2 46 50 27"></path>
+      </svg>
+      <h2 id="successTitle">Hvala Vam na porudžbini!</h2>
+      <p>Kredencijali Vam stižu u najkraćem mogućem roku.</p>
+      <p class="success-small">Naš tim je primio Vašu porudžbinu i uskoro kreće sa obradom.</p>
+      <div class="actions">
+        <button class="btn primary" id="closeSuccessBtn" type="button">Razumem</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const $ = (id) => document.getElementById(id);
     const state = { csrf: "", orderInProgress: false, products: [], prices: new Map(), productSearch: "", pendingOrder: null };
@@ -362,11 +416,32 @@
     const releaseBtn = $("releaseBtn");
     const releaseModal = $("releaseModal");
     const dismissReleaseBtn = $("dismissReleaseBtn");
+    const successModal = $("successModal");
+    const closeSuccessBtn = $("closeSuccessBtn");
+    let typingTimer = null;
 
     function setStatus(value){ statusText.textContent = value; }
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; }
+    function markField(el, stateName){
+      el.classList.remove("field-error", "field-success");
+      if (stateName) el.classList.add(stateName === "ok" ? "field-success" : "field-error");
+    }
+    function pulseTyping(el){
+      el.classList.remove("is-typing");
+      void el.offsetWidth;
+      el.classList.add("is-typing");
+      window.clearTimeout(typingTimer);
+      typingTimer = window.setTimeout(() => el.classList.remove("is-typing"), 180);
+    }
+    function enhanceButtonHover(event){
+      const btn = event.currentTarget || event.target.closest(".btn");
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      btn.style.setProperty("--mx", `${event.clientX - rect.left}px`);
+      btn.style.setProperty("--my", `${event.clientY - rect.top}px`);
+    }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
@@ -573,6 +648,17 @@
       releaseModal.classList.remove("open");
     }
 
+    function openSuccessModal(){
+      successModal.classList.remove("open");
+      void successModal.offsetWidth;
+      successModal.classList.add("open");
+      closeSuccessBtn.focus();
+    }
+
+    function closeSuccessModal(){
+      successModal.classList.remove("open");
+    }
+
     async function loadOrders(){
       const j = await api("/api/orders.php");
       historyList.textContent = "";
@@ -670,8 +756,10 @@
       loginBtn.textContent = "Učitavanje...";
       try{
         const token = tokenInput.value.trim();
+        markField(tokenInput, token ? "ok" : "bad");
         if (!token) throw new Error("Unesi token.");
         await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
+        markField(tokenInput, "ok");
         setStatus("online");
         showAppShell();
 
@@ -694,6 +782,7 @@
           historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
         });
       }catch(e){
+        markField(tokenInput, "bad");
         show(loginMsg, "bad", e.message);
       }finally{
         loginBtn.disabled = false;
@@ -732,7 +821,10 @@
       try{
         const details = selectedProductDetails();
         if (!details || !details.product_id) throw new Error("Izaberi proizvod.");
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.customer_email);
+        markField(custEmail, emailOk ? "ok" : "bad");
         if (!details.customer_email) throw new Error("Unesi email kupca.");
+        if (!emailOk) throw new Error("Email kupca nije validan.");
         openConfirmation(details);
       }catch(e){
         show(orderMsg, "bad", e.message);
@@ -751,13 +843,16 @@
       hide(orderMsg);
       try{
         await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
-        show(orderMsg, "ok", "Porudžbina je uspešno kreirana.\nAko isporuka ne stigne u roku od 2 minuta, kontaktirajte nas radi provere.");
+        hide(orderMsg);
+        openSuccessModal();
         custEmail.value = "";
+        markField(custEmail, "");
         await loadMe();
         loadOrders().catch(() => {
           historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
         });
       }catch(e){
+        markField(custEmail, "bad");
         show(orderMsg, "bad", e.message);
       }finally{
         state.orderInProgress = false;
@@ -850,6 +945,28 @@
       renderProductOptions();
       renderPrices();
     });
+    document.addEventListener("pointermove", (event) => {
+      const btn = event.target.closest(".btn");
+      if (btn) enhanceButtonHover({ currentTarget:btn, clientX:event.clientX, clientY:event.clientY });
+    });
+    [tokenInput, custEmail].forEach((field) => {
+      field.addEventListener("input", () => {
+        pulseTyping(field);
+        markField(field, "");
+      });
+    });
+    custEmail.addEventListener("blur", () => {
+      const value = custEmail.value.trim();
+      if (value) markField(custEmail, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "ok" : "bad");
+    });
+    productSelect.addEventListener("change", () => {
+      const wrap = productSelect.closest(".select-wrap");
+      if (!wrap) return;
+      wrap.classList.remove("is-selecting");
+      void wrap.offsetWidth;
+      wrap.classList.add("is-selecting");
+      window.setTimeout(() => wrap.classList.remove("is-selecting"), 420);
+    });
     releaseBtn.addEventListener("click", openReleaseNotes);
     themeBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     confirmOrderBtn.addEventListener("click", submitConfirmedOrder);
@@ -858,12 +975,15 @@
     sendGameRequestBtn.addEventListener("click", sendGameRequest);
     cancelGameRequestBtn.addEventListener("click", closeGameRequest);
     dismissReleaseBtn.addEventListener("click", dismissReleaseNotes);
+    closeSuccessBtn.addEventListener("click", closeSuccessModal);
+    successModal.addEventListener("click", (event) => { if (event.target === successModal) closeSuccessModal(); });
     releaseModal.addEventListener("click", (event) => { if (event.target === releaseModal) dismissReleaseNotes(); });
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
       if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
       if (event.key === "Escape" && releaseModal.classList.contains("open")) dismissReleaseNotes();
+      if (event.key === "Escape" && successModal.classList.contains("open")) closeSuccessModal();
     });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });

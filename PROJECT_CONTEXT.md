@@ -25,6 +25,7 @@
   - Reseller UI has a responsive “Šta je novo?” release notes dialog opened from the portal header.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
+  - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
   - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
@@ -155,6 +156,7 @@
 - Replaced the automatic release notes popup with a manual responsive “Šta je novo?” header control.
 - Added premium, performant UI micro-interactions across reseller/admin panels, including fluid modal transitions and reduced-motion fallbacks.
 - Moved reseller-only header/history/release controls behind authenticated UI state and refreshed the reseller logo/copy.
+- Added advanced reseller UI motion: cursor-follow button glow, animated input feedback, game select gradient reveal, and animated order success modal.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
