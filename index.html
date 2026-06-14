@@ -74,6 +74,7 @@
     .pill:hover{border-color:rgba(23,105,224,.28);box-shadow:0 8px 22px rgba(15,23,42,.08);transform:translateY(-1px)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+    body:not(.is-authenticated) .layout{grid-template-columns:minmax(0,520px);justify-content:center}
     .panel{background:linear-gradient(180deg,var(--panel),rgba(248,250,252,.72));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease)}
     :root[data-theme="dark"] .panel{background:linear-gradient(180deg,var(--panel),rgba(16,23,32,.82))}
     .panel:hover{border-color:rgba(23,105,224,.18);box-shadow:var(--shadow-hover)}
@@ -163,6 +164,7 @@
       .status{justify-content:flex-start;width:100%}
       .status .theme-btn{flex:0 0 auto;min-width:58px;margin-left:auto}
       .layout{grid-template-columns:1fr}
+      body:not(.is-authenticated) .layout{grid-template-columns:1fr}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
       .mini-btn{flex:0 0 auto;min-width:0}
