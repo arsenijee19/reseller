@@ -22,6 +22,7 @@
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
   - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
   - Reseller UI restores an existing server session on page load, so refresh does not force a new login while the session is valid.
+  - Reseller UI shows a one-time responsive release notes popup for the latest panel changes.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
@@ -149,6 +150,7 @@
 - Added reseller-owned internal paid/unpaid markers per order with confirmation before changing state.
 - Added reseller bulk “Označi sve kao plaćeno” action with confirmation.
 - Refined reseller order cards with alternating backgrounds and paid/unpaid color states.
+- Added a one-time responsive “Novo u reseller panelu” popup stored in browser localStorage.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.

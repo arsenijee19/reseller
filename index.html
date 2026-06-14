@@ -116,6 +116,14 @@
     .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,20,.58);padding:16px;z-index:10}
     .modal-backdrop.open{display:flex}
     .modal{width:min(460px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 22px 70px rgba(0,0,0,.28);padding:18px}
+    .release-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,20,.72);padding:18px;z-index:20}
+    .release-backdrop.open{display:flex}
+    .release-modal{width:min(560px,100%);max-height:min(720px,92vh);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.34);padding:22px}
+    .release-modal h2{font-size:20px;margin-bottom:8px}
+    .release-list{display:grid;gap:10px;margin:16px 0}
+    .release-item{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:11px 12px}
+    .release-item strong{display:block;font-size:13px;margin-bottom:4px}
+    .release-item p{font-size:12px}
     .details{display:grid;gap:10px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
     .detail-row{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-size:13px}
     .detail-row span{color:var(--muted)}
@@ -134,6 +142,8 @@
       .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
       .detail-row{grid-template-columns:1fr;gap:3px}
+      .release-backdrop{align-items:flex-start;padding:12px}
+      .release-modal{max-height:calc(100vh - 24px);padding:18px}
     }
   </style>
 </head>
@@ -241,6 +251,38 @@
     </div>
   </div>
 
+  <div class="release-backdrop" id="releaseModal" role="dialog" aria-modal="true" aria-labelledby="releaseTitle">
+    <div class="release-modal">
+      <h2 id="releaseTitle">Novo u reseller panelu</h2>
+      <p>Dodali smo nekoliko opcija za lakšu evidenciju i brži rad.</p>
+      <div class="release-list">
+        <div class="release-item">
+          <strong>Notes po porudžbini</strong>
+          <p>Uz svaku porudžbinu možeš da upišeš telefon kupca, email naloga ili internu napomenu.</p>
+        </div>
+        <div class="release-item">
+          <strong>Plaćeno / nije plaćeno</strong>
+          <p>Svaku porudžbinu možeš da označiš kao plaćenu, a oznaku možeš i da poništiš.</p>
+        </div>
+        <div class="release-item">
+          <strong>Označi sve kao plaćeno</strong>
+          <p>Za bržu evidenciju možeš jednim klikom da označiš prethodne porudžbine kao plaćene.</p>
+        </div>
+        <div class="release-item">
+          <strong>Zatraži igru</strong>
+          <p>Ako igra nije u ponudi, pošalji predlog direktno iz panela.</p>
+        </div>
+        <div class="release-item">
+          <strong>Brža pretraga proizvoda</strong>
+          <p>Pretraga pomaže da brzo pronađeš igru, tip naloga ili cenu.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="dismissReleaseBtn" type="button">Razumem</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const $ = (id) => document.getElementById(id);
     const state = { csrf: "", orderInProgress: false, products: [], prices: new Map(), productSearch: "", pendingOrder: null };
@@ -276,6 +318,9 @@
     const sendGameRequestBtn = $("sendGameRequestBtn");
     const cancelGameRequestBtn = $("cancelGameRequestBtn");
     const gameRequestMsg = $("gameRequestMsg");
+    const releaseModal = $("releaseModal");
+    const dismissReleaseBtn = $("dismissReleaseBtn");
+    const releaseStorageKey = "pw-reseller-release-2026-06-notes-paid";
 
     function setStatus(value){ statusText.textContent = value; }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
@@ -474,6 +519,21 @@
     function closeGameRequest(){
       requestGameModal.classList.remove("open");
       hide(gameRequestMsg);
+    }
+
+    function showReleaseNotesOnce(){
+      try{
+        if (localStorage.getItem(releaseStorageKey) === "seen") return;
+      }catch(e){}
+      releaseModal.classList.add("open");
+      dismissReleaseBtn.focus();
+    }
+
+    function dismissReleaseNotes(){
+      releaseModal.classList.remove("open");
+      try{
+        localStorage.setItem(releaseStorageKey, "seen");
+      }catch(e){}
     }
 
     async function loadOrders(){
@@ -758,6 +818,7 @@
     confirmModal.addEventListener("click", (event) => { if (event.target === confirmModal) closeConfirmation(); });
     sendGameRequestBtn.addEventListener("click", sendGameRequest);
     cancelGameRequestBtn.addEventListener("click", closeGameRequest);
+    dismissReleaseBtn.addEventListener("click", dismissReleaseNotes);
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
@@ -767,6 +828,7 @@
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     setTheme(defaultTheme());
     restoreSession();
+    showReleaseNotesOnce();
   </script>
 </body>
 </html>
