@@ -14,6 +14,7 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
+  - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
   - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
@@ -159,6 +160,7 @@
 - Moved reseller-only header/history/release controls behind authenticated UI state and refreshed the reseller logo/copy.
 - Added advanced reseller UI motion: cursor-follow button glow, animated input feedback, game select gradient reveal, and animated order success modal.
 - Replaced technical CSRF/unauthorized API errors with user-facing refresh/re-login guidance.
+- Added authenticated admin self-service password change with current-password verification and secure hashing.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.

@@ -134,6 +134,7 @@ try {
     json_response([
       'ok' => true,
       'logged_in' => isset($_SESSION['admin_id']),
+      'username' => h_string($_SESSION['admin_username'] ?? ''),
       'csrf_token' => csrf_token(),
     ]);
   }
@@ -182,6 +183,40 @@ try {
   require_post();
   require_csrf();
   $input = read_json_body();
+
+  if ($action === 'change_password') {
+    $currentPassword = (string)($input['current_password'] ?? '');
+    $newPassword = (string)($input['new_password'] ?? '');
+    $confirmPassword = (string)($input['confirm_password'] ?? '');
+    $admin = require_admin();
+
+    if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+      json_response(['ok' => false, 'error' => 'Popunite trenutnu šifru, novu šifru i potvrdu.'], 400);
+    }
+    if (strlen($newPassword) < 8) {
+      json_response(['ok' => false, 'error' => 'Nova admin šifra mora imati najmanje 8 karaktera.'], 400);
+    }
+    if ($newPassword !== $confirmPassword) {
+      json_response(['ok' => false, 'error' => 'Nova šifra i potvrda se ne poklapaju.'], 400);
+    }
+
+    $stmt = $pdo->prepare('SELECT password_hash FROM admin_users WHERE id = ? AND status = ? LIMIT 1');
+    $stmt->execute([(int)$admin['id'], 'active']);
+    $hash = $stmt->fetchColumn();
+
+    if (!$hash || !password_verify($currentPassword, (string)$hash)) {
+      json_response(['ok' => false, 'error' => 'Trenutna admin šifra nije tačna.'], 401);
+    }
+
+    $fields = ['password_hash = ?'];
+    if (has_column($pdo, 'admin_users', 'updated_at')) {
+      $fields[] = 'updated_at = NOW()';
+    }
+    $update = $pdo->prepare('UPDATE admin_users SET ' . implode(', ', $fields) . ' WHERE id = ?');
+    $update->execute([password_hash($newPassword, PASSWORD_DEFAULT), (int)$admin['id']]);
+
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
 
   if ($action === 'update_reseller') {
     $id = (int)($input['id'] ?? 0);

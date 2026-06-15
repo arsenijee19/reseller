@@ -103,6 +103,8 @@
     .wide{min-width:220px}
     .form-panel{border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--soft),rgba(23,105,224,.035));padding:16px;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
     .form-panel:hover{border-color:rgba(23,105,224,.22);box-shadow:0 12px 28px rgba(15,23,42,.07)}
+    .account-panel{margin-bottom:14px}
+    .account-panel .form-actions{margin-top:0;align-items:end}
     .form-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}
     .form-grid label{margin:0 0 6px}
     .form-grid .full{grid-column:span 2}
@@ -131,6 +133,7 @@
       .span-3,.span-4,.span-6,.span-8,.span-12{grid-column:span 1}
       .form-grid{grid-template-columns:1fr}
       .form-grid .full{grid-column:span 1}
+      .account-panel .form-actions{margin-top:4px}
       .form-actions{justify-content:stretch}
       .form-actions .btn{width:100%}
       .table-toolbar{align-items:stretch;flex-direction:column}
@@ -181,6 +184,21 @@
 
       <nav class="tabs" id="tabs"></nav>
       <div class="msg" id="adminMsg"></div>
+
+      <div class="form-panel account-panel">
+        <div class="section-head">
+          <div class="section-title">
+            <h2>Admin nalog</h2>
+            <p>Promena šifre za trenutno ulogovan admin nalog.</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div><label for="currentAdminPassword">Trenutna šifra</label><input id="currentAdminPassword" type="password" autocomplete="current-password" /></div>
+          <div><label for="newAdminPassword">Nova šifra</label><input id="newAdminPassword" type="password" autocomplete="new-password" /></div>
+          <div><label for="confirmAdminPassword">Potvrdi novu šifru</label><input id="confirmAdminPassword" type="password" autocomplete="new-password" /></div>
+          <div class="form-actions"><button class="btn primary" id="changeAdminPasswordBtn" type="button">Promeni šifru</button></div>
+        </div>
+      </div>
 
       <div class="panel">
         <div class="section view" id="view-resellers">
@@ -615,6 +633,31 @@
       }
     }
 
+    async function changeAdminPassword(){
+      const btn = $("changeAdminPasswordBtn");
+      const currentPassword = $("currentAdminPassword").value;
+      const newPassword = $("newAdminPassword").value;
+      const confirmPassword = $("confirmAdminPassword").value;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Čuvam...";
+        await api("change_password", { method:"POST", body:JSON.stringify({
+          current_password:currentPassword,
+          new_password:newPassword,
+          confirm_password:confirmPassword
+        }) });
+        $("currentAdminPassword").value = "";
+        $("newAdminPassword").value = "";
+        $("confirmAdminPassword").value = "";
+        showMsg("ok", "Admin šifra je promenjena.");
+      }catch(e){
+        showMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Promeni šifru";
+      }
+    }
+
     $("adminLoginBtn").addEventListener("click", login);
     $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
@@ -623,6 +666,10 @@
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
+    $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
+    ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });
+    });
     $("createProductBtn").addEventListener("click", async () => {
       const btn = $("createProductBtn");
       try{
