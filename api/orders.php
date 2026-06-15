@@ -9,7 +9,7 @@ start_secure_session();
 
 if (!isset($_SESSION["reseller_id"])) {
   http_response_code(401);
-  echo json_encode(["ok"=>false,"error"=>"Unauthorized"]);
+  echo json_encode(["ok"=>false,"error"=>"Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo."]);
   exit;
 }
 

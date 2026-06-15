@@ -32,7 +32,7 @@ try {
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
   if (!$row) {
-    json_response(['ok' => false, 'error' => 'Reseller not found'], 404);
+    json_response(['ok' => false, 'error' => 'Nalog nije pronađen. Refrešujte stranicu i ulogujte se ponovo.'], 404);
   }
 
   $subject = 'Reseller je zatražio novu igru';

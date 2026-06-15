@@ -279,6 +279,16 @@
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
     function money(v){ const n=Number(v); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : v; }
     function normalizeSearch(value){ return String(value == null ? "" : value).toLowerCase().trim(); }
+    function userErrorMessage(message){
+      const text = String(message || "");
+      if (text === "Invalid CSRF token" || text.toLowerCase().includes("csrf")) {
+        return "Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.";
+      }
+      if (text === "Unauthorized") {
+        return "Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.";
+      }
+      return text;
+    }
     function cleanDefault(value){
       const text = value == null ? "" : String(value);
       if (text.length >= 2 && text.startsWith("'") && text.endsWith("'")) return text.slice(1, -1);
@@ -324,7 +334,7 @@
       }catch(e){
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
-      if (!json.ok) throw new Error(json.error || `Zahtev nije uspeo (${res.status}).`);
+      if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }

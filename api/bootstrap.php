@@ -64,14 +64,14 @@ function require_csrf(): void {
   $sent = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
   $known = (string)($_SESSION['csrf_token'] ?? '');
   if ($known === '' || $sent === '' || !hash_equals($known, $sent)) {
-    json_response(['ok' => false, 'error' => 'Invalid CSRF token'], 403);
+    json_response(['ok' => false, 'error' => 'Sesija je istekla. Refrešujte stranicu i pokušajte ponovo.'], 403);
   }
 }
 
 function require_reseller(): array {
   start_secure_session();
   if (!isset($_SESSION['reseller_id'], $_SESSION['reseller_email'])) {
-    json_response(['ok' => false, 'error' => 'Unauthorized'], 401);
+    json_response(['ok' => false, 'error' => 'Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.'], 401);
   }
   return [
     'id' => (int)$_SESSION['reseller_id'],
@@ -82,7 +82,7 @@ function require_reseller(): array {
 function require_admin(): array {
   start_secure_session();
   if (!isset($_SESSION['admin_id'], $_SESSION['admin_username'])) {
-    json_response(['ok' => false, 'error' => 'Unauthorized'], 401);
+    json_response(['ok' => false, 'error' => 'Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.'], 401);
   }
   return [
     'id' => (int)$_SESSION['admin_id'],

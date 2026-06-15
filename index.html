@@ -442,6 +442,19 @@
       btn.style.setProperty("--mx", `${event.clientX - rect.left}px`);
       btn.style.setProperty("--my", `${event.clientY - rect.top}px`);
     }
+    function userErrorMessage(message){
+      const text = String(message || "");
+      if (text === "Invalid CSRF token" || text.toLowerCase().includes("csrf")) {
+        return "Sesija je istekla. Refrešujte stranicu i pokušajte ponovo.";
+      }
+      if (text === "Unauthorized") {
+        return "Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.";
+      }
+      if (text === "Reseller not found") {
+        return "Nalog nije pronađen. Refrešujte stranicu i ulogujte se ponovo.";
+      }
+      return text;
+    }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
@@ -493,7 +506,7 @@
       }catch(e){
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
-      if (!json.ok) throw new Error(json.error || `Zahtev nije uspeo (${res.status}).`);
+      if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }

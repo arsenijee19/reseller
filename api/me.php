@@ -17,7 +17,7 @@ try {
 
   if (!$row) {
     http_response_code(404);
-    echo json_encode(["ok"=>false,"error"=>"Reseller not found"]);
+    echo json_encode(["ok"=>false,"error"=>"Nalog nije pronađen. Refrešujte stranicu i ulogujte se ponovo."]);
     exit;
   }
 

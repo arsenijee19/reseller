@@ -29,7 +29,7 @@ try {
   $rid = (int)$st->fetchColumn();
 
   if (!$rid) {
-    throw new RuntimeException('Reseller not found');
+    throw new RuntimeException('Reseller nije pronađen.');
   }
 
   $pdo->prepare('UPDATE resellers SET balance_rsd = balance_rsd + ? WHERE id = ?')
