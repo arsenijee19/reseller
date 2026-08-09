@@ -268,6 +268,15 @@
             </div>
           </div>
           <div class="grid" id="inventoryConfigBox"></div>
+          <div class="form-panel" style="margin-top:14px">
+            <h3>Poveži / promeni Inventory API</h3>
+            <p class="muted">Token se upisuje u privatni <span class="mono">api/config.local.php</span> i ne prikazuje se ponovo u adminu.</p>
+            <div class="grid">
+              <div class="span-4"><label>API Base URL</label><input id="inventoryApiBaseInput" type="url" placeholder="https://baza.igreps.rs" /></div>
+              <div class="span-5"><label>Supplier token</label><input id="inventoryTokenInput" type="password" placeholder="Unesite novi token ili ostavite prazno bez promene" /></div>
+              <div class="span-3 filter-actions"><button class="btn primary" id="saveInventoryConfigBtn">Sačuvaj API</button></div>
+            </div>
+          </div>
 
           <div class="section-head" style="margin-top:18px">
             <div class="section-title">
@@ -624,6 +633,8 @@
 
     function renderInventory(){
       const config = state.data.inventory_config || {};
+      $("inventoryApiBaseInput").value = config.api_base_url || "https://baza.igreps.rs";
+      $("inventoryTokenInput").value = "";
       const configBox = $("inventoryConfigBox");
       configBox.textContent = "";
       [
@@ -644,6 +655,16 @@
         panel.className = "span-6 form-panel";
         text(panel, "h3", "Poslednja greška");
         text(panel, "div", `${config.last_error.result || ""} / HTTP ${config.last_error.http_status || "-"} / ${config.last_error.error_message || "bez detalja"}`, "muted");
+        configBox.appendChild(panel);
+      }
+      if (!config.token_configured) {
+        const panel = document.createElement("div");
+        panel.className = "span-6 form-panel";
+        text(panel, "h3", "API token nije povezan");
+        text(panel, "div", "Dodajte Inventory supplier token u api/config.local.php na cPanelu. Token mora imati scope supplier:2fa:email-send.", "muted");
+        const pre = document.createElement("pre");
+        pre.textContent = "'inventory' => [\n  'api_base' => 'https://baza.igreps.rs',\n  'supplier_token' => 'OVDE_IDE_SUPPLIER_TOKEN',\n],";
+        panel.appendChild(pre);
         configBox.appendChild(panel);
       }
 
@@ -812,6 +833,25 @@
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("applyInventoryFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
+    $("saveInventoryConfigBtn").addEventListener("click", async () => {
+      const btn = $("saveInventoryConfigBtn");
+      btn.disabled = true;
+      try{
+        state.data = await api("save_inventory_config", {
+          method:"POST",
+          body:JSON.stringify({
+            api_base:$("inventoryApiBaseInput").value,
+            supplier_token:$("inventoryTokenInput").value
+          })
+        });
+        showMsg("ok", "Inventory API podešavanja su sačuvana.");
+        render();
+      }catch(e){
+        showMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+      }
+    });
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
     ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });

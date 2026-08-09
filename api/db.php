@@ -10,6 +10,27 @@ function app_config(): array {
   return is_array($config) ? $config : [];
 }
 
+function app_config_path(): string {
+  return __DIR__ . '/config.local.php';
+}
+
+function write_app_config(array $config): void {
+  $path = app_config_path();
+  $export = var_export($config, true);
+  $content = "<?php\n";
+  $content .= "declare(strict_types=1);\n\n";
+  $content .= "return " . $export . ";\n";
+
+  $dir = dirname($path);
+  if (!is_writable($dir) && (!is_file($path) || !is_writable($path))) {
+    throw new RuntimeException('api/config.local.php nije upisiv. Proverite file permissions na cPanelu.');
+  }
+  if (file_put_contents($path, $content, LOCK_EX) === false) {
+    throw new RuntimeException('Ne mogu da upišem api/config.local.php.');
+  }
+  clearstatcache(true, $path);
+}
+
 function app_config_status(): array {
   $localConfig = __DIR__ . '/config.local.php';
   $config = app_config();

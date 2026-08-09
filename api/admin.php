@@ -356,6 +356,37 @@ try {
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
 
+  if ($action === 'save_inventory_config') {
+    $apiBase = rtrim(h_string($input['api_base'] ?? ''), '/');
+    $supplierToken = trim((string)($input['supplier_token'] ?? ''));
+
+    if ($apiBase === '' || !preg_match('#^https?://#i', $apiBase)) {
+      json_response(['ok' => false, 'error' => 'Unesite validan API Base URL, npr. https://baza.igreps.rs.'], 400);
+    }
+    if ($supplierToken === '' && inventory_supplier_token() === '') {
+      json_response(['ok' => false, 'error' => 'Unesite supplier token.'], 400);
+    }
+    if ($supplierToken !== '' && strlen($supplierToken) < 24) {
+      json_response(['ok' => false, 'error' => 'Supplier token deluje prekratko.'], 400);
+    }
+
+    $config = app_config();
+    if (!is_array($config['inventory'] ?? null)) {
+      $config['inventory'] = [];
+    }
+    $config['inventory']['api_base'] = $apiBase;
+    if ($supplierToken !== '') {
+      $config['inventory']['supplier_token'] = $supplierToken;
+    }
+    write_app_config($config);
+    audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'inventory_config_updated', 'success', [
+      'api_base' => $apiBase,
+      'token_changed' => $supplierToken !== '',
+    ]);
+
+    json_response(dashboard_payload($pdo));
+  }
+
   if ($action === 'update_reseller') {
     $id = (int)($input['id'] ?? 0);
     $email = h_string($input['email'] ?? '');

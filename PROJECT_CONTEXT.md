@@ -22,6 +22,7 @@
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
+  - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
   - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
@@ -49,7 +50,7 @@
 - Unfinished work:
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
   - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
-  - Configure Inventory Supplier API server-side values in `api/config.local.php` or env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
+  - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
   - Confirm live mail delivery from cPanel for `mail()`.
 - Known limitations:
@@ -226,6 +227,8 @@
 - Added no-cache headers for HTML/PHP responses to prevent Safari and mobile browsers from showing stale panel versions after deployment.
 - Moved reseller account settings into a modal opened from the header and made the current release-notes popup appear once after login.
 - Simplified reseller onboarding to name/email/phone only, added hidden-on-demand token change, implemented optional TOTP 2FA with recovery codes, and updated n8n workflow export so missing-game reports route only to Telegram notification without replaying delivery.
+- Added an Admin Inventory warning with the exact `api/config.local.php` snippet when the Inventory Supplier API token is missing.
+- Added Admin Inventory form that saves API Base URL and supplier token into ignored server-side `api/config.local.php`.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
