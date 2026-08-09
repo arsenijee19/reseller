@@ -79,6 +79,19 @@ function require_reseller(): array {
   ];
 }
 
+function require_2fa_pending(): array {
+  start_secure_session();
+  $expires = (int)($_SESSION['pending_2fa_expires_at'] ?? 0);
+  if (!isset($_SESSION['pending_reseller_id'], $_SESSION['pending_reseller_email']) || $expires < time()) {
+    unset($_SESSION['pending_reseller_id'], $_SESSION['pending_reseller_email'], $_SESSION['pending_2fa_expires_at'], $_SESSION['pending_2fa_attempts']);
+    json_response(['ok' => false, 'error' => '2-step sesija je istekla. Ulogujte se ponovo.'], 401);
+  }
+  return [
+    'id' => (int)$_SESSION['pending_reseller_id'],
+    'email' => (string)$_SESSION['pending_reseller_email'],
+  ];
+}
+
 function require_admin(): array {
   start_secure_session();
   if (!isset($_SESSION['admin_id'], $_SESSION['admin_username'])) {
@@ -157,6 +170,19 @@ function safe_public_error(string $message): string {
 function ensure_security_tables(PDO $pdo): void {
   static $done = false;
   if ($done) return;
+
+  foreach ([
+    'display_name VARCHAR(120) NULL',
+    'phone VARCHAR(32) NULL',
+    'profile_completed_at DATETIME NULL',
+    'credential_changed_at DATETIME NULL',
+    'security_2fa_reminded_at DATETIME NULL',
+  ] as $definition) {
+    $column = strtok($definition, ' ');
+    if ($column && !has_column($pdo, 'resellers', $column)) {
+      $pdo->exec("ALTER TABLE resellers ADD COLUMN {$definition}");
+    }
+  }
 
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS security_audit_events (
@@ -238,6 +264,33 @@ function ensure_security_tables(PDO $pdo): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   ");
 
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS reseller_two_factor (
+      reseller_id INT UNSIGNED NOT NULL,
+      secret_encrypted TEXT NULL,
+      pending_secret_encrypted TEXT NULL,
+      enabled_at DATETIME NULL,
+      disabled_at DATETIME NULL,
+      last_used_at DATETIME NULL,
+      recovery_codes_regenerated_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (reseller_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS reseller_recovery_codes (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      reseller_id INT UNSIGNED NOT NULL,
+      code_hash VARCHAR(255) NOT NULL,
+      used_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_recovery_reseller (reseller_id, used_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
   $done = true;
 }
 
@@ -261,7 +314,7 @@ function audit_event(PDO $pdo, string $actorType, ?int $actorId, string $eventTy
 function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'balance_rsd', 'status'];
-  foreach (['phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
 
@@ -269,6 +322,152 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $stmt->execute([$resellerId]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   return $row ?: null;
+}
+
+function security_encryption_key(): string {
+  $configured = (string)config_value('security.encryption_key', getenv('SECURITY_ENCRYPTION_KEY') ?: getenv('APP_KEY') ?: '');
+  if ($configured !== '') return hash('sha256', $configured, true);
+
+  // Fallback keeps existing installs working, but production should set security.encryption_key.
+  $fallback = (string)config_value('db.pass', '') . '|' . (string)config_value('admin.password_hash', '');
+  return hash('sha256', $fallback !== '|' ? $fallback : __DIR__, true);
+}
+
+function encrypt_secret(string $plaintext): string {
+  $iv = random_bytes(12);
+  $tag = '';
+  $ciphertext = openssl_encrypt($plaintext, 'aes-256-gcm', security_encryption_key(), OPENSSL_RAW_DATA, $iv, $tag);
+  if ($ciphertext === false) {
+    throw new RuntimeException('Secret encryption failed.');
+  }
+  return base64_encode($iv . $tag . $ciphertext);
+}
+
+function decrypt_secret(?string $encoded): string {
+  if (!$encoded) return '';
+  $raw = base64_decode($encoded, true);
+  if ($raw === false || strlen($raw) < 29) return '';
+  $iv = substr($raw, 0, 12);
+  $tag = substr($raw, 12, 16);
+  $ciphertext = substr($raw, 28);
+  $plaintext = openssl_decrypt($ciphertext, 'aes-256-gcm', security_encryption_key(), OPENSSL_RAW_DATA, $iv, $tag);
+  return $plaintext === false ? '' : $plaintext;
+}
+
+function base32_encode_secret(string $bytes): string {
+  $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  $bits = '';
+  for ($i = 0; $i < strlen($bytes); $i++) {
+    $bits .= str_pad(decbin(ord($bytes[$i])), 8, '0', STR_PAD_LEFT);
+  }
+  $out = '';
+  for ($i = 0; $i < strlen($bits); $i += 5) {
+    $chunk = substr($bits, $i, 5);
+    if (strlen($chunk) < 5) $chunk = str_pad($chunk, 5, '0', STR_PAD_RIGHT);
+    $out .= $alphabet[bindec($chunk)];
+  }
+  return $out;
+}
+
+function base32_decode_secret(string $secret): string {
+  $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  $secret = strtoupper(preg_replace('/[^A-Z2-7]/i', '', $secret) ?: '');
+  $bits = '';
+  for ($i = 0; $i < strlen($secret); $i++) {
+    $pos = strpos($alphabet, $secret[$i]);
+    if ($pos === false) continue;
+    $bits .= str_pad(decbin($pos), 5, '0', STR_PAD_LEFT);
+  }
+  $out = '';
+  for ($i = 0; $i + 8 <= strlen($bits); $i += 8) {
+    $out .= chr(bindec(substr($bits, $i, 8)));
+  }
+  return $out;
+}
+
+function generate_totp_secret(): string {
+  return base32_encode_secret(random_bytes(20));
+}
+
+function hotp_code(string $secret, int $counter): string {
+  $key = base32_decode_secret($secret);
+  $binaryCounter = pack('N*', 0) . pack('N*', $counter);
+  $hash = hash_hmac('sha1', $binaryCounter, $key, true);
+  $offset = ord(substr($hash, -1)) & 0x0F;
+  $value = unpack('N', substr($hash, $offset, 4))[1] & 0x7FFFFFFF;
+  return str_pad((string)($value % 1000000), 6, '0', STR_PAD_LEFT);
+}
+
+function verify_totp_code(string $secret, string $code, int $window = 1): bool {
+  $code = preg_replace('/\s+/', '', $code) ?: '';
+  if (!preg_match('/^\d{6}$/', $code)) return false;
+  $counter = (int)floor(time() / 30);
+  for ($i = -$window; $i <= $window; $i++) {
+    if (hash_equals(hotp_code($secret, $counter + $i), $code)) return true;
+  }
+  return false;
+}
+
+function two_factor_row(PDO $pdo, int $resellerId): ?array {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->prepare('SELECT * FROM reseller_two_factor WHERE reseller_id = ? LIMIT 1');
+  $stmt->execute([$resellerId]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  return $row ?: null;
+}
+
+function two_factor_enabled(PDO $pdo, int $resellerId): bool {
+  $row = two_factor_row($pdo, $resellerId);
+  return $row && (string)($row['enabled_at'] ?? '') !== '' && (string)($row['secret_encrypted'] ?? '') !== '';
+}
+
+function recovery_code_count(PDO $pdo, int $resellerId): int {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->prepare('SELECT COUNT(*) FROM reseller_recovery_codes WHERE reseller_id = ? AND used_at IS NULL');
+  $stmt->execute([$resellerId]);
+  return (int)$stmt->fetchColumn();
+}
+
+function generate_recovery_codes(PDO $pdo, int $resellerId): array {
+  ensure_security_tables($pdo);
+  $codes = [];
+  $pdo->prepare('DELETE FROM reseller_recovery_codes WHERE reseller_id = ?')->execute([$resellerId]);
+  $insert = $pdo->prepare('INSERT INTO reseller_recovery_codes (reseller_id, code_hash) VALUES (?, ?)');
+  for ($i = 0; $i < 8; $i++) {
+    $code = strtoupper(substr(bin2hex(random_bytes(5)), 0, 5) . '-' . substr(bin2hex(random_bytes(5)), 0, 5));
+    $codes[] = $code;
+    $insert->execute([$resellerId, password_hash($code, PASSWORD_DEFAULT)]);
+  }
+  $pdo->prepare('UPDATE reseller_two_factor SET recovery_codes_regenerated_at = NOW(), updated_at = NOW() WHERE reseller_id = ?')->execute([$resellerId]);
+  return $codes;
+}
+
+function consume_recovery_code(PDO $pdo, int $resellerId, string $code): bool {
+  ensure_security_tables($pdo);
+  $code = strtoupper(trim($code));
+  if ($code === '') return false;
+  $stmt = $pdo->prepare('SELECT id, code_hash FROM reseller_recovery_codes WHERE reseller_id = ? AND used_at IS NULL ORDER BY id ASC');
+  $stmt->execute([$resellerId]);
+  foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    if (password_verify($code, (string)$row['code_hash'])) {
+      $update = $pdo->prepare('UPDATE reseller_recovery_codes SET used_at = NOW() WHERE id = ? AND used_at IS NULL');
+      $update->execute([(int)$row['id']]);
+      return $update->rowCount() > 0;
+    }
+  }
+  return false;
+}
+
+function verify_current_reseller_token(PDO $pdo, int $resellerId, string $token): bool {
+  $stmt = $pdo->prepare('SELECT token_hash FROM resellers WHERE id = ? AND status = ? LIMIT 1');
+  $stmt->execute([$resellerId, 'active']);
+  $hash = (string)($stmt->fetchColumn() ?: '');
+  return $hash !== '' && password_verify($token, $hash);
+}
+
+function otpauth_uri(string $issuer, string $account, string $secret): string {
+  $label = rawurlencode($issuer . ':' . $account);
+  return 'otpauth://totp/' . $label . '?secret=' . rawurlencode($secret) . '&issuer=' . rawurlencode($issuer) . '&algorithm=SHA1&digits=6&period=30';
 }
 
 function profile_is_complete(PDO $pdo, int $resellerId): bool {

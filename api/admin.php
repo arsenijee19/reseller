@@ -15,11 +15,15 @@ function require_post(): void {
 }
 
 function fetch_resellers(PDO $pdo): array {
+  ensure_security_tables($pdo);
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'status', 'balance_rsd'];
   foreach (['phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
+  $select[] = "(SELECT enabled_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_enabled_at";
+  $select[] = "(SELECT last_used_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_last_used_at";
+  $select[] = "(SELECT COUNT(*) FROM reseller_recovery_codes rc WHERE rc.reseller_id = resellers.id AND rc.used_at IS NULL) AS recovery_codes_remaining";
   $stmt = $pdo->query('SELECT ' . implode(', ', $select) . ' FROM resellers ORDER BY id DESC');
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

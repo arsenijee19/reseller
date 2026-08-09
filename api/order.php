@@ -25,6 +25,8 @@ if ($product_id === "" || $customer_email === "") {
 
 $reseller_id = (int)$reseller["id"];
 $reseller_email = (string)$reseller["email"];
+$reseller_name = "";
+$reseller_phone = "";
 
 function update_order_delivery_state(PDO $pdo, int $orderId, string $status, array $payload = [], string $notes = ''): void {
   $sets = [];
@@ -54,6 +56,11 @@ function update_order_delivery_state(PDO $pdo, int $orderId, string $status, arr
 
 $pdo = db();
 require_completed_profile($pdo, $reseller_id);
+$profile = reseller_profile($pdo, $reseller_id);
+if ($profile) {
+  $reseller_name = (string)($profile["display_name"] ?? "");
+  $reseller_phone = (string)($profile["phone"] ?? "");
+}
 
 try {
   $pdo->beginTransaction();
@@ -119,7 +126,13 @@ try {
   $message .= "Cena: " . $price . " RSD\n\n";
 
   $message .= "Reseller\n";
+  if ($reseller_name !== "") {
+    $message .= "Ime: " . $reseller_name . "\n";
+  }
   $message .= "Email: " . $reseller_email . "\n";
+  if ($reseller_phone !== "") {
+    $message .= "Telefon: " . $reseller_phone . "\n";
+  }
   $message .= "ID: " . $reseller_id . "\n\n";
 
   $message .= "Kupac\n";
@@ -142,6 +155,8 @@ try {
     "request_id" => $request_id,
     "order_db_id" => $orderDbId,
     "reseller_email" => $reseller_email,
+    "reseller_name" => $reseller_name,
+    "reseller_phone" => $reseller_phone,
     "product_id" => $product_id,
     "product_name" => (string)$p["product_name"],
     "account_type" => (string)$p["account_type"],

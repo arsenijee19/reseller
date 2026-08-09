@@ -424,7 +424,7 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Email","Telefon","Status profila","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["ID","Email","Telefon","Status profila","2FA","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
@@ -432,6 +432,7 @@
         const email = input(r.email, "wide"); row.insertCell().appendChild(email);
         const phone = input(r.phone || "", "wide"); phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
         text(row.insertCell(), "span", r.profile_completed_at ? "završen" : "nije završen", "muted");
+        text(row.insertCell(), "span", r.two_factor_enabled_at ? `uključen (${r.recovery_codes_remaining || 0} recovery)` : "nije uključen", "muted");
         const status = input(r.status || "active", "compact"); row.insertCell().appendChild(status);
         const balance = input(r.balance_rsd || 0, "compact"); balance.type = "number"; row.insertCell().appendChild(balance);
         const token = input("", "wide"); token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);

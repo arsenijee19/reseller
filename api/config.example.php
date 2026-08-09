@@ -16,6 +16,9 @@ return [
     'username' => 'admin',
     'password_hash' => 'GENERATE_WITH_password_hash_DO_NOT_COMMIT_REAL_HASH',
   ],
+  'security' => [
+    'encryption_key' => 'GENERATE_LONG_RANDOM_VALUE_DO_NOT_COMMIT_REAL_KEY',
+  ],
   'mail' => [
     'from' => 'no-reply@example.com',
     'order_to' => 'admin@example.com',

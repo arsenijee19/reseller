@@ -2,6 +2,7 @@
 -- Run after the existing admin/order notes migrations. Backward compatible; does not delete data.
 
 ALTER TABLE resellers
+  ADD COLUMN IF NOT EXISTS display_name VARCHAR(120) NULL,
   ADD COLUMN IF NOT EXISTS phone VARCHAR(32) NULL,
   ADD COLUMN IF NOT EXISTS profile_completed_at DATETIME NULL,
   ADD COLUMN IF NOT EXISTS credential_changed_at DATETIME NULL,
@@ -77,4 +78,27 @@ CREATE TABLE IF NOT EXISTS missing_game_reports (
   UNIQUE KEY uniq_missing_game_order (order_id),
   KEY idx_missing_game_reseller (reseller_id, created_at),
   KEY idx_missing_game_status (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS reseller_two_factor (
+  reseller_id INT UNSIGNED NOT NULL,
+  secret_encrypted TEXT NULL,
+  pending_secret_encrypted TEXT NULL,
+  enabled_at DATETIME NULL,
+  disabled_at DATETIME NULL,
+  last_used_at DATETIME NULL,
+  recovery_codes_regenerated_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (reseller_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS reseller_recovery_codes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  reseller_id INT UNSIGNED NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  used_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_recovery_reseller (reseller_id, used_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

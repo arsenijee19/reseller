@@ -34,6 +34,8 @@
   - Reseller UI has a responsive “Šta je novo?” release notes dialog opened from the portal header.
   - Reseller UI automatically shows the current “Šta je novo?” dialog once per browser after login/update.
   - Reseller account settings are hidden behind a header menu button and open in a modal instead of occupying a public panel section.
+  - Reseller onboarding now asks only for display name, email, and phone; token change is optional and hidden behind an explicit choice.
+  - Optional reseller 2-step verification is implemented using standard TOTP plus one-time recovery codes.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
@@ -42,19 +44,19 @@
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
-  - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the live n8n workflow must route that event to the intended Telegram group/channel.
-  - Optional TOTP 2FA is documented as the next security phase; it is not implemented because the project has no dependency manager/library in place and a hand-rolled TOTP implementation would be risky.
+  - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
+  - 2FA setup currently provides a manual Authenticator key and `otpauth://` setup link instead of a locally rendered QR image, because no reviewed local QR generator dependency exists in this no-build project.
 - Unfinished work:
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
-  - Run `sql/2026-08-09_account_security_inventory.sql` before enabling account onboarding, Inventory API history, and missing-game reports in production.
+  - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
   - Configure Inventory Supplier API server-side values in `api/config.local.php` or env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
-  - Update the n8n workflow to handle `event=reseller_missing_game` if Telegram notification is required for missing-game reports.
+  - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
   - Confirm live mail delivery from cPanel for `mail()`.
 - Known limitations:
   - Local database was not available in this workspace, so database-backed flows need final live/staging validation after migration.
   - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
   - Inventory health testing is intentionally not implemented because no safe non-consuming health endpoint is known.
-  - Full optional TOTP 2FA, recovery codes, active sessions, trusted devices, and 2FA admin reset are not implemented yet.
+  - Active sessions, trusted devices, and admin-side 2FA reset are not implemented.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -70,11 +72,13 @@
 - `api/config.local.php` - ignored private configuration file required on cPanel; never commit it.
 - `.htaccess` and `api/.htaccess` - deny directory listing, block public access to docs, SQL files, logs, dotfiles, and private config, and force browsers to revalidate HTML/PHP responses after deploys.
 - `.cpanel.yml` - cPanel Git deployment recipe that copies versioned panel files into `/home/psigrersrs/reseller.psigre.rs`.
+- `LOGIN_SECURITY_REVIEW.md` - concise login/account security review and 2FA implementation notes.
 - `api/bootstrap.php` - shared JSON responses, secure sessions, CSRF helpers, auth guards, DB schema helpers.
 - `api/login.php` - reseller token login.
 - `api/logout.php` - destroys reseller/admin session.
 - `api/me.php` - current reseller profile/balance and CSRF token.
 - `api/profile.php` - reseller account profile/settings update and optional reseller credential change.
+- `api/2fa.php` - reseller TOTP 2-step setup, login challenge, recovery-code regeneration, and disable flow.
 - `api/verification_code.php` - server-side Inventory Supplier API email-code request flow with idempotency, daily limit, and audit logging.
 - `api/missing_game.php` - reseller-owned missing-game report endpoint with duplicate protection and n8n notification payload.
 - `api/products.php` - active product list for reseller order form.
@@ -97,11 +101,14 @@
 - Database: MySQL/MariaDB via PDO.
 - Authentication:
   - Resellers authenticate with token/password verified against `resellers.token_hash`.
+  - Resellers with enabled 2FA enter a temporary pre-auth session after the first factor and receive full panel access only after TOTP/recovery-code verification.
   - Admin authenticates with `admin_users.password_hash`.
   - Sessions use HTTP-only cookies and `SameSite=Lax`; secure cookies are enabled when HTTPS is detected.
   - Reseller/admin sessions expire after 60 minutes of inactivity.
   - Login attempts are rate-limited using `login_attempts`; audit entries are stored in `security_audit_events`.
+  - 2FA challenge attempts are separately rate-limited and audited without logging TOTP or recovery-code values.
   - Reseller credential changes require current token/password confirmation and store only `password_hash()` output.
+  - TOTP secrets are encrypted at rest with AES-256-GCM using `security.encryption_key` / `SECURITY_ENCRYPTION_KEY` when configured; recovery codes are stored only as password hashes and shown once.
 - CSRF:
   - Mutating reseller/admin POST requests use `X-CSRF-Token`.
 - SQL safety:
@@ -217,13 +224,13 @@
 - Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`; it explicitly creates/copies `api` and `sql` contents for cPanel compatibility.
 - Added no-cache headers for HTML/PHP responses to prevent Safari and mobile browsers from showing stale panel versions after deployment.
 - Moved reseller account settings into a modal opened from the header and made the current release-notes popup appear once after login.
+- Simplified reseller onboarding to name/email/phone only, added hidden-on-demand token change, implemented optional TOTP 2FA with recovery codes, and updated n8n workflow export so missing-game reports route only to Telegram notification without replaying delivery.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
 - Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
 - Configure Inventory Supplier API base URL and supplier token in ignored server-side config/env.
 - Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.
-- Implement full optional TOTP 2FA with a vetted library/dependency approach, encrypted secret storage, recovery codes, and pre-auth login state.
 - Validate admin login and all admin edit flows on live/staging data.
 - Confirm `mail()` delivery for order and payment-notice emails.
 - Rotate the database password and n8n webhook because earlier commits contained those values.
@@ -234,7 +241,7 @@
 - Hard deletes of products can affect historical order readability; prefer deactivation unless deletion is intentional.
 - Git history previously contained production DB credentials and webhook URL. The latest source removes them, but the live secrets should still be rotated.
 - Runtime `CREATE TABLE IF NOT EXISTS` helpers require DB user privileges; production should still run the SQL migration explicitly.
-- Optional 2FA requested in the larger specification is not complete in this phase.
+- 2FA has no local QR image renderer yet; use the manual key or `otpauth://` setup link.
 
 ## LLM Handoff Notes
 - Read first:
@@ -270,6 +277,6 @@
   - Do not bypass CSRF on mutating admin/reseller actions.
   - Do not expose Inventory Supplier API token or idempotency key plaintext to the frontend.
   - Do not make Inventory health tests by sending real code requests.
-  - Do not hand-roll TOTP 2FA without a reviewed library and storage plan.
+  - Do not expose TOTP secrets, recovery codes, or Inventory Supplier API tokens in logs, Telegram, admin UI, or frontend responses after setup.
   - Do not hardcode product lists in frontend.
   - Do not delete old products when deactivation is enough.

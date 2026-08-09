@@ -9,6 +9,7 @@ $reseller = require_reseller();
 
 try {
   $pdo = db();
+  ensure_security_tables($pdo);
   $rid = (int)$reseller["id"];
 
   $row = reseller_profile($pdo, $rid);
@@ -21,6 +22,7 @@ try {
 
   echo json_encode([
     "ok" => true,
+    "display_name" => (string)($row["display_name"] ?? ""),
     "email" => $row["email"],
     "phone" => (string)($row["phone"] ?? ""),
     "profile_completed" => !has_column($pdo, 'resellers', 'profile_completed_at') || (string)($row["profile_completed_at"] ?? "") !== "",

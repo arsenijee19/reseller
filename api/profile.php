@@ -8,6 +8,7 @@ start_secure_session();
 
 $reseller = require_reseller();
 $pdo = db();
+ensure_security_tables($pdo);
 $resellerId = (int)$reseller['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -18,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
   json_response([
     'ok' => true,
+    'display_name' => (string)($profile['display_name'] ?? ''),
     'email' => (string)$profile['email'],
     'phone' => (string)($profile['phone'] ?? ''),
     'profile_completed' => !has_column($pdo, 'resellers', 'profile_completed_at') || (string)($profile['profile_completed_at'] ?? '') !== '',
@@ -34,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_csrf();
 
 $input = read_json_body();
+$displayName = trim((string)($input['display_name'] ?? ''));
 $email = normalize_email((string)($input['email'] ?? ''));
 $phone = normalize_phone((string)($input['phone'] ?? ''));
 $currentToken = (string)($input['current_token'] ?? '');
@@ -43,6 +46,10 @@ $completeOnboarding = !empty($input['complete_onboarding']);
 
 if (!valid_email($email)) {
   json_response(['ok' => false, 'error' => 'Unesite validnu email adresu.'], 400);
+}
+
+if ($displayName !== '' && strlen($displayName) > 120) {
+  json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
 }
 
 if (!valid_phone($phone)) {
@@ -92,6 +99,10 @@ try {
 
   $fields = ['email = ?', 'phone = ?'];
   $params = [$email, $phone];
+  if (has_column($pdo, 'resellers', 'display_name')) {
+    $fields[] = 'display_name = ?';
+    $params[] = $displayName !== '' ? $displayName : null;
+  }
 
   if ($completeOnboarding || (string)($profile['profile_completed_at'] ?? '') === '') {
     $fields[] = 'profile_completed_at = COALESCE(profile_completed_at, NOW())';
@@ -116,6 +127,7 @@ try {
   audit_event($pdo, 'reseller', $resellerId, $completeOnboarding ? 'profile_completed' : 'profile_updated', 'success', [
     'email_changed' => $email !== normalize_email((string)$profile['email']),
     'phone_changed' => $phone !== (string)($profile['phone'] ?? ''),
+    'name_changed' => $displayName !== (string)($profile['display_name'] ?? ''),
   ]);
   if ($tokenChangeRequested) {
     audit_event($pdo, 'reseller', $resellerId, 'credential_changed', 'success');
@@ -125,6 +137,7 @@ try {
 
   json_response([
     'ok' => true,
+    'display_name' => $displayName,
     'email' => $email,
     'phone' => $phone,
     'profile_completed' => true,

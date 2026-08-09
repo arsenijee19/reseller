@@ -293,15 +293,15 @@
 
           <div class="section">
             <h2>Verifikacioni kod</h2>
-            <p>Unesite email PlayStation naloga za koji Vam je potreban kod. Kod se šalje na email povezan sa Vašim reseller nalogom.</p>
+            <p>Unesite email PlayStation naloga. Kod šaljemo na email koji je vezan za Vaš reseller nalog.</p>
             <label for="codeAccountEmail">Email PlayStation naloga</label>
             <input id="codeAccountEmail" type="email" autocomplete="off" placeholder="psn-nalog@email.com" />
-            <p class="meta">Maksimalno 3 zahteva dnevno po jednom PlayStation nalogu.</p>
+            <p class="meta">Za isti PlayStation nalog možete poslati do 3 zahteva dnevno.</p>
             <div class="actions">
               <button class="btn primary" id="sendCodeBtn" type="button">Zatraži verifikacioni kod</button>
             </div>
             <div class="msg" id="codeMsg"></div>
-            <p class="meta">Ako kod ne radi ili nije dostupan, kontaktirajte PlayWorld putem Vibera ili preko <a href="https://support.playworld.rs" target="_blank" rel="noopener">support.playworld.rs</a>.</p>
+            <p class="meta">Ako kod ne stigne ili ne radi, javite se PlayWorld podršci.</p>
           </div>
 
           <div class="section">
@@ -371,17 +371,55 @@
   <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modal locked">
       <h2 id="settingsTitle">Podešavanja naloga</h2>
-      <p>Email se koristi za verifikacione kodove i kontakt sa PlayWorld timom.</p>
+      <p>Ovde možeš promeniti kontakt podatke i pristup panelu.</p>
       <div class="settings-grid">
+        <div class="full"><label for="settingsName">Ime</label><input id="settingsName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" /></div>
         <div><label for="settingsEmail">Email</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
         <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
         <div class="full security-note">
           <p><strong>Bezbednost naloga</strong></p>
-          <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude aktivirana u sledećoj fazi.</p>
+          <p>Ako želiš, možeš promeniti reseller token za pristup panelu.</p>
+          <div class="actions">
+            <button class="btn" id="toggleTokenChangeBtn" type="button">Želim da promenim token</button>
+          </div>
         </div>
-        <div><label for="currentToken">Trenutni token/šifra</label><input id="currentToken" type="password" autocomplete="current-password" /></div>
-        <div><label for="newToken">Novi token/šifra</label><input id="newToken" type="password" autocomplete="new-password" placeholder="Najmanje 12 karaktera" /></div>
-        <div><label for="confirmToken">Potvrdi novi token/šifru</label><input id="confirmToken" type="password" autocomplete="new-password" /></div>
+        <div class="full" id="tokenChangeFields" style="display:none">
+          <div class="settings-grid">
+            <div><label for="currentToken">Trenutni token</label><input id="currentToken" type="password" autocomplete="current-password" /></div>
+            <div><label for="newToken">Novi token</label><input id="newToken" type="password" autocomplete="new-password" placeholder="Najmanje 12 karaktera" /></div>
+            <div><label for="confirmToken">Potvrdi novi token</label><input id="confirmToken" type="password" autocomplete="new-password" /></div>
+          </div>
+        </div>
+        <div class="full security-note">
+          <p><strong>Verifikacija u 2 koraka</strong></p>
+          <p id="twoFactorStatusText">Učitavanje statusa...</p>
+          <div class="actions">
+            <button class="btn" id="start2faBtn" type="button">Aktiviraj 2-step</button>
+            <button class="btn" id="regenRecoveryBtn" type="button">Novi recovery kodovi</button>
+            <button class="btn" id="disable2faBtn" type="button">Isključi 2-step</button>
+          </div>
+          <div id="twoFactorSetupBox" style="display:none">
+            <label for="twoFactorCurrentToken">Trenutni token</label>
+            <input id="twoFactorCurrentToken" type="password" autocomplete="current-password" />
+            <p class="meta">U Authenticator aplikaciji izaberite ručni unos i unesite ovaj ključ:</p>
+            <div class="pill mono" id="twoFactorManualKey" style="justify-content:flex-start;width:100%;overflow-wrap:anywhere;white-space:normal"></div>
+            <p class="meta">Ako aplikacija podržava otvaranje setup linka, možete koristiti i link ispod.</p>
+            <a class="btn" id="twoFactorOtpLink" href="#" target="_blank" rel="noopener">Otvori setup link</a>
+            <label for="twoFactorSetupCode">Kod iz aplikacije</label>
+            <input id="twoFactorSetupCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+            <div class="actions">
+              <button class="btn primary" id="confirm2faBtn" type="button">Potvrdi i uključi</button>
+            </div>
+          </div>
+          <div id="twoFactorManageBox" style="display:none">
+            <label for="twoFactorManageToken">Trenutni token</label>
+            <input id="twoFactorManageToken" type="password" autocomplete="current-password" />
+            <label for="twoFactorManageCode">Kod iz aplikacije ili recovery kod</label>
+            <input id="twoFactorManageCode" type="text" autocomplete="one-time-code" />
+          </div>
+          <div class="msg" id="twoFactorMsg"></div>
+          <div class="msg ok" id="recoveryCodesBox" style="display:none"></div>
+        </div>
       </div>
       <div class="actions">
         <button class="btn primary" id="saveSettingsBtn" type="button">Sačuvaj podešavanja</button>
@@ -394,27 +432,38 @@
   <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
     <div class="modal locked">
       <h2 id="profileTitle">Dovršite podešavanja naloga</h2>
-      <p>Potvrdite kontakt podatke pre korišćenja panela. Novi sistem omogućava da verifikacioni kod zatražite direktno iz panela, a kod stiže na email vezan za Vaš reseller nalog.</p>
-      <div class="security-note">
-        <p><strong>Dodatna zaštita naloga</strong></p>
-        <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude dostupna. To pomaže da sprečimo neovlašćene porudžbine i nepotrebne troškove.</p>
-      </div>
+      <p>Unesite ime, email i broj telefona resellera. Ovi podaci nam pomažu da brže proverimo porudžbine i podršku.</p>
+      <label for="profileName">Ime</label>
+      <input id="profileName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" />
       <label for="profileEmail">Email</label>
       <input id="profileEmail" type="email" autocomplete="email" />
       <label for="profilePhone">Telefon</label>
       <input id="profilePhone" type="tel" autocomplete="tel" placeholder="+381..." />
-      <label for="profileCurrentToken">Trenutni token/šifra za opcionalnu promenu</label>
-      <input id="profileCurrentToken" type="password" autocomplete="current-password" />
-      <label for="profileNewToken">Novi sigurniji token/šifra</label>
-      <input id="profileNewToken" type="password" autocomplete="new-password" placeholder="Ostavite prazno ako menjate kasnije" />
-      <label for="profileConfirmToken">Potvrdi novi token/šifru</label>
-      <input id="profileConfirmToken" type="password" autocomplete="new-password" />
-      <p class="meta">Maksimalno 3 verifikaciona koda dnevno po jednom PlayStation nalogu. Ako kod ne radi ili nije dostupan, kontaktirajte PlayWorld putem Vibera ili <a href="https://support.playworld.rs" target="_blank" rel="noopener">support.playworld.rs</a>.</p>
+      <div style="display:none">
+        <input id="profileCurrentToken" type="password" autocomplete="current-password" />
+        <input id="profileNewToken" type="password" autocomplete="new-password" />
+        <input id="profileConfirmToken" type="password" autocomplete="new-password" />
+      </div>
+      <p class="meta">Verifikacioni kodovi se od sada traže direktno iz panela i šalju se na email koji ovde upišete.</p>
       <div class="actions">
         <button class="btn primary" id="completeProfileBtn" type="button">Sačuvaj i nastavi</button>
         <button class="btn" id="profileLogoutBtn" type="button">Logout</button>
       </div>
       <div class="msg" id="profileMsg"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="twoFactorLoginModal" role="dialog" aria-modal="true" aria-labelledby="twoFactorLoginTitle">
+    <div class="modal">
+      <h2 id="twoFactorLoginTitle">Verifikacija u 2 koraka</h2>
+      <p>Unesite kod iz Authenticator aplikacije ili jedan recovery kod.</p>
+      <label for="twoFactorLoginCode">Kod</label>
+      <input id="twoFactorLoginCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+      <div class="actions">
+        <button class="btn primary" id="verify2faLoginBtn" type="button">Nastavi</button>
+        <button class="btn" id="cancel2faLoginBtn" type="button">Odustani</button>
+      </div>
+      <div class="msg" id="twoFactorLoginMsg"></div>
     </div>
   </div>
 
@@ -507,14 +556,32 @@
     const codeMsg = $("codeMsg");
     const accountSettingsBtn = $("accountSettingsBtn");
     const settingsModal = $("settingsModal");
+    const settingsName = $("settingsName");
     const settingsEmail = $("settingsEmail");
     const settingsPhone = $("settingsPhone");
+    const toggleTokenChangeBtn = $("toggleTokenChangeBtn");
+    const tokenChangeFields = $("tokenChangeFields");
     const currentToken = $("currentToken");
     const newToken = $("newToken");
     const confirmToken = $("confirmToken");
     const saveSettingsBtn = $("saveSettingsBtn");
     const closeSettingsBtn = $("closeSettingsBtn");
     const settingsMsg = $("settingsMsg");
+    const twoFactorStatusText = $("twoFactorStatusText");
+    const start2faBtn = $("start2faBtn");
+    const regenRecoveryBtn = $("regenRecoveryBtn");
+    const disable2faBtn = $("disable2faBtn");
+    const twoFactorSetupBox = $("twoFactorSetupBox");
+    const twoFactorCurrentToken = $("twoFactorCurrentToken");
+    const twoFactorManualKey = $("twoFactorManualKey");
+    const twoFactorOtpLink = $("twoFactorOtpLink");
+    const twoFactorSetupCode = $("twoFactorSetupCode");
+    const confirm2faBtn = $("confirm2faBtn");
+    const twoFactorManageBox = $("twoFactorManageBox");
+    const twoFactorManageToken = $("twoFactorManageToken");
+    const twoFactorManageCode = $("twoFactorManageCode");
+    const twoFactorMsg = $("twoFactorMsg");
+    const recoveryCodesBox = $("recoveryCodesBox");
     const historyList = $("historyList");
     const markAllPaidBtn = $("markAllPaidBtn");
     const themeBtn = $("themeBtn");
@@ -533,6 +600,7 @@
     const missingGameMsg = $("missingGameMsg");
     const closeMissingGameBtn = $("closeMissingGameBtn");
     const profileModal = $("profileModal");
+    const profileName = $("profileName");
     const profileEmail = $("profileEmail");
     const profilePhone = $("profilePhone");
     const profileCurrentToken = $("profileCurrentToken");
@@ -545,6 +613,11 @@
     const dismissReleaseBtn = $("dismissReleaseBtn");
     const successModal = $("successModal");
     const closeSuccessBtn = $("closeSuccessBtn");
+    const twoFactorLoginModal = $("twoFactorLoginModal");
+    const twoFactorLoginCode = $("twoFactorLoginCode");
+    const verify2faLoginBtn = $("verify2faLoginBtn");
+    const cancel2faLoginBtn = $("cancel2faLoginBtn");
+    const twoFactorLoginMsg = $("twoFactorLoginMsg");
     let typingTimer = null;
 
     function setStatus(value){ statusText.textContent = value; }
@@ -651,8 +724,10 @@
     }
 
     function fillProfileForms(profile){
+      const name = profile && profile.display_name ? profile.display_name : "";
       const email = profile && profile.email ? profile.email : "";
       const phone = profile && profile.phone ? profile.phone : "";
+      [settingsName, profileName].forEach((el) => { if (el) el.value = name; });
       [settingsEmail, profileEmail].forEach((el) => { if (el) el.value = email; });
       [settingsPhone, profilePhone].forEach((el) => { if (el) el.value = phone; });
     }
@@ -685,13 +760,148 @@
       currentToken.value = "";
       newToken.value = "";
       confirmToken.value = "";
+      tokenChangeFields.style.display = "none";
+      toggleTokenChangeBtn.textContent = "Želim da promenim token";
       settingsModal.classList.add("open");
-      settingsEmail.focus();
+      settingsName.focus();
+      loadTwoFactorStatus();
     }
 
     function closeSettingsModal(){
       settingsModal.classList.remove("open");
       hide(settingsMsg);
+      hide(twoFactorMsg);
+      recoveryCodesBox.style.display = "none";
+    }
+
+    function renderTwoFactorStatus(info){
+      const enabled = !!(info && info.enabled);
+      twoFactorStatusText.textContent = enabled
+        ? `Uključeno${info.last_used_at ? " - poslednja potvrda: " + dateTime(info.last_used_at) : ""}. Recovery kodova: ${info.recovery_codes_remaining || 0}.`
+        : "Nije uključeno. Preporučujemo da ga aktivirate zbog sigurnosti naloga.";
+      start2faBtn.style.display = enabled ? "none" : "inline-flex";
+      start2faBtn.textContent = "Aktiviraj 2-step";
+      regenRecoveryBtn.style.display = enabled ? "inline-flex" : "none";
+      disable2faBtn.style.display = enabled ? "inline-flex" : "none";
+      twoFactorSetupBox.style.display = "none";
+      twoFactorManageBox.style.display = "none";
+    }
+
+    async function loadTwoFactorStatus(){
+      try{
+        const j = await api("/api/2fa.php?action=status");
+        renderTwoFactorStatus(j.two_factor || {});
+      }catch(e){
+        twoFactorStatusText.textContent = "Status 2-step zaštite trenutno nije dostupan.";
+      }
+    }
+
+    function showRecoveryCodes(codes){
+      recoveryCodesBox.style.display = "block";
+      recoveryCodesBox.textContent = "Sačuvajte ove recovery kodove na sigurnom mestu. Svaki može da se iskoristi samo jednom:\n\n" + (codes || []).join("\n");
+    }
+
+    async function startTwoFactorSetup(){
+      hide(twoFactorMsg);
+      recoveryCodesBox.style.display = "none";
+      if (twoFactorSetupBox.style.display === "none") {
+        twoFactorSetupBox.style.display = "block";
+        start2faBtn.textContent = "Generiši setup ključ";
+        twoFactorCurrentToken.focus();
+        return;
+      }
+      start2faBtn.disabled = true;
+      try{
+        const j = await api("/api/2fa.php?action=setup_start", { method:"POST", body:JSON.stringify({ current_token:twoFactorCurrentToken.value }) });
+        twoFactorManualKey.textContent = j.manual_key || "";
+        twoFactorOtpLink.href = j.otpauth_uri || "#";
+        show(twoFactorMsg, "ok", "Unesite ključ u Authenticator aplikaciju, zatim upišite šestocifreni kod.");
+        twoFactorSetupCode.focus();
+      }catch(e){
+        show(twoFactorMsg, "bad", e.message);
+      }finally{
+        start2faBtn.disabled = false;
+      }
+    }
+
+    async function confirmTwoFactorSetup(){
+      hide(twoFactorMsg);
+      confirm2faBtn.disabled = true;
+      try{
+        const j = await api("/api/2fa.php?action=setup_confirm", { method:"POST", body:JSON.stringify({ code:twoFactorSetupCode.value }) });
+        renderTwoFactorStatus(j.two_factor || {});
+        start2faBtn.textContent = "Aktiviraj 2-step";
+        showRecoveryCodes(j.recovery_codes || []);
+        show(twoFactorMsg, "ok", "2-step verifikacija je uključena.");
+      }catch(e){
+        show(twoFactorMsg, "bad", e.message);
+      }finally{
+        confirm2faBtn.disabled = false;
+      }
+    }
+
+    async function regenerateRecoveryCodes(){
+      hide(twoFactorMsg);
+      recoveryCodesBox.style.display = "none";
+      twoFactorManageBox.style.display = "block";
+      if (!twoFactorManageToken.value || !twoFactorManageCode.value) {
+        show(twoFactorMsg, "warn", "Unesite trenutni token i kod iz aplikacije, pa kliknite ponovo.");
+        twoFactorManageToken.focus();
+        return;
+      }
+      try{
+        const j = await api("/api/2fa.php?action=regenerate_recovery", { method:"POST", body:JSON.stringify({ current_token:twoFactorManageToken.value, code:twoFactorManageCode.value }) });
+        renderTwoFactorStatus(j.two_factor || {});
+        showRecoveryCodes(j.recovery_codes || []);
+      }catch(e){
+        show(twoFactorMsg, "bad", e.message);
+      }
+    }
+
+    async function disableTwoFactor(){
+      hide(twoFactorMsg);
+      recoveryCodesBox.style.display = "none";
+      twoFactorManageBox.style.display = "block";
+      if (!twoFactorManageToken.value || !twoFactorManageCode.value) {
+        show(twoFactorMsg, "warn", "Za isključivanje unesite trenutni token i kod iz aplikacije ili recovery kod, pa kliknite ponovo.");
+        twoFactorManageToken.focus();
+        return;
+      }
+      if (!confirm("Isključiti verifikaciju u 2 koraka?")) return;
+      try{
+        const j = await api("/api/2fa.php?action=disable", { method:"POST", body:JSON.stringify({ current_token:twoFactorManageToken.value, code:twoFactorManageCode.value }) });
+        renderTwoFactorStatus(j.two_factor || {});
+        show(twoFactorMsg, "ok", "2-step verifikacija je isključena.");
+      }catch(e){
+        show(twoFactorMsg, "bad", e.message);
+      }
+    }
+
+    function openTwoFactorLogin(){
+      hide(twoFactorLoginMsg);
+      twoFactorLoginCode.value = "";
+      twoFactorLoginModal.classList.add("open");
+      twoFactorLoginCode.focus();
+    }
+
+    function closeTwoFactorLogin(){
+      twoFactorLoginModal.classList.remove("open");
+      hide(twoFactorLoginMsg);
+    }
+
+    async function verifyTwoFactorLogin(){
+      hide(twoFactorLoginMsg);
+      verify2faLoginBtn.disabled = true;
+      try{
+        await api("/api/2fa.php?action=challenge", { method:"POST", body:JSON.stringify({ code:twoFactorLoginCode.value }) });
+        closeTwoFactorLogin();
+        const me = await loadMe();
+        await enterAuthenticatedPanel(me);
+      }catch(e){
+        show(twoFactorLoginMsg, "bad", e.message);
+      }finally{
+        verify2faLoginBtn.disabled = false;
+      }
     }
 
     function shouldShowReleaseNotes(){
@@ -756,6 +966,7 @@
     function profilePayload(prefix, completeOnboarding){
       const isProfile = prefix === "profile";
       return {
+        display_name:(isProfile ? profileName : settingsName).value.trim(),
         email:(isProfile ? profileEmail : settingsEmail).value.trim(),
         phone:(isProfile ? profilePhone : settingsPhone).value.trim(),
         current_token:(isProfile ? profileCurrentToken : currentToken).value,
@@ -1145,8 +1356,12 @@
         const token = tokenInput.value.trim();
         markField(tokenInput, token ? "ok" : "bad");
         if (!token) throw new Error("Unesi token.");
-        await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
+        const loginResult = await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
         markField(tokenInput, "ok");
+        if (loginResult.requires_2fa) {
+          openTwoFactorLogin();
+          return;
+        }
         const me = await loadMe();
         await enterAuthenticatedPanel(me);
       }catch(e){
@@ -1290,6 +1505,7 @@
       appBox.style.display = "none";
       closeProfileModal();
       closeSettingsModal();
+      closeTwoFactorLogin();
       closeMissingGame();
     }
 
@@ -1299,8 +1515,18 @@
     missingGameBtn.addEventListener("click", () => openMissingGame().catch((e) => show(missingGameMsg, "bad", e.message)));
     sendCodeBtn.addEventListener("click", sendVerificationCode);
     accountSettingsBtn.addEventListener("click", openSettingsModal);
+    toggleTokenChangeBtn.addEventListener("click", () => {
+      const isOpen = tokenChangeFields.style.display !== "none";
+      tokenChangeFields.style.display = isOpen ? "none" : "block";
+      toggleTokenChangeBtn.textContent = isOpen ? "Želim da promenim token" : "Ne želim sada da menjam token";
+      if (!isOpen) currentToken.focus();
+    });
     saveSettingsBtn.addEventListener("click", () => saveProfile("settings", false));
     closeSettingsBtn.addEventListener("click", closeSettingsModal);
+    start2faBtn.addEventListener("click", startTwoFactorSetup);
+    confirm2faBtn.addEventListener("click", confirmTwoFactorSetup);
+    regenRecoveryBtn.addEventListener("click", regenerateRecoveryCodes);
+    disable2faBtn.addEventListener("click", disableTwoFactor);
     completeProfileBtn.addEventListener("click", () => saveProfile("profile", true));
     profileLogoutBtn.addEventListener("click", logout);
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
@@ -1348,21 +1574,26 @@
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
     settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettingsModal(); });
+    twoFactorLoginModal.addEventListener("click", (event) => { if (event.target === twoFactorLoginModal) closeTwoFactorLogin(); });
+    verify2faLoginBtn.addEventListener("click", verifyTwoFactorLogin);
+    cancel2faLoginBtn.addEventListener("click", () => logout().finally(closeTwoFactorLogin));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
       if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
       if (event.key === "Escape" && missingGameModal.classList.contains("open")) closeMissingGame();
       if (event.key === "Escape" && settingsModal.classList.contains("open")) closeSettingsModal();
+      if (event.key === "Escape" && twoFactorLoginModal.classList.contains("open")) logout().finally(closeTwoFactorLogin);
       if (event.key === "Escape" && releaseModal.classList.contains("open")) dismissReleaseNotes();
       if (event.key === "Escape" && successModal.classList.contains("open")) closeSuccessModal();
     });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     codeAccountEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") sendVerificationCode(); });
-    [profileEmail, profilePhone, profileCurrentToken, profileNewToken, profileConfirmToken].forEach((field) => {
+    twoFactorLoginCode.addEventListener("keydown", (event) => { if (event.key === "Enter") verifyTwoFactorLogin(); });
+    [profileName, profileEmail, profilePhone, profileCurrentToken, profileNewToken, profileConfirmToken].forEach((field) => {
       field.addEventListener("keydown", (event) => { if (event.key === "Enter") saveProfile("profile", true); });
     });
-    [settingsEmail, settingsPhone, currentToken, newToken, confirmToken].forEach((field) => {
+    [settingsName, settingsEmail, settingsPhone, currentToken, newToken, confirmToken].forEach((field) => {
       field.addEventListener("keydown", (event) => { if (event.key === "Enter") saveProfile("settings", false); });
     });
     setTheme(defaultTheme());

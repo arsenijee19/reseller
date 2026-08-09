@@ -50,7 +50,23 @@ try {
   }
 
   start_secure_session();
+  if (two_factor_enabled($pdo, (int)$found['id'])) {
+    session_regenerate_id(true);
+    $_SESSION = [];
+    $_SESSION['pending_reseller_id'] = (int)$found['id'];
+    $_SESSION['pending_reseller_email'] = (string)$found['email'];
+    $_SESSION['pending_2fa_expires_at'] = time() + 300;
+    $_SESSION['pending_2fa_attempts'] = 0;
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    record_login_attempt($pdo, 'reseller_login', client_ip(), true);
+    audit_event($pdo, 'reseller', (int)$found['id'], 'login_first_factor_success', 'success');
+
+    echo json_encode(["ok"=>true, "requires_2fa"=>true, "csrf_token"=>csrf_token()]);
+    exit;
+  }
+
   session_regenerate_id(true);
+  unset($_SESSION['pending_reseller_id'], $_SESSION['pending_reseller_email'], $_SESSION['pending_2fa_expires_at'], $_SESSION['pending_2fa_attempts']);
   $_SESSION["reseller_id"] = (int)$found["id"];
   $_SESSION["reseller_email"] = $found["email"];
   $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
