@@ -125,7 +125,7 @@
 - Installation steps:
   - cPanel live web root is `/home/psigrersrs/reseller.psigre.rs`.
   - Preferred deployment is cPanel Git Version Control with the repository cloned outside the live web root, then deployed via `.cpanel.yml`.
-  - `.cpanel.yml` copies `index.html`, `admin.html`, `.htaccess`, `api`, and `sql` into the live web root without deleting server-only files such as `api/config.local.php`.
+  - `.cpanel.yml` copies `index.html`, `admin.html`, `.htaccess`, versioned PHP API files, `api/.htaccess`, and SQL migrations into the live web root without deleting server-only files such as `api/config.local.php`.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
   - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
@@ -212,7 +212,7 @@
 - Added Inventory Supplier API configuration support, verification-code request endpoint, idempotency/daily limit handling, and admin request history.
 - Added reseller “Igra mi nije stigla” report flow with duplicate protection and n8n notification payload.
 - Added admin Inventory tab with config status, sanitized API history, missing-game reports, and recent security audit entries.
-- Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`.
+- Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`; it explicitly creates/copies `api` and `sql` contents for cPanel compatibility.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
