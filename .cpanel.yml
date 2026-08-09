@@ -1,0 +1,8 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/psigrersrs/reseller.psigre.rs
+    - /bin/mkdir -p $DEPLOYPATH
+    - /bin/cp -f index.html admin.html .htaccess $DEPLOYPATH/
+    - /bin/cp -R api $DEPLOYPATH/
+    - /bin/cp -R sql $DEPLOYPATH/

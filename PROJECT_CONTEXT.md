@@ -67,6 +67,7 @@
 - `api/config.example.php` - safe template for local/private configuration.
 - `api/config.local.php` - ignored private configuration file required on cPanel; never commit it.
 - `.htaccess` and `api/.htaccess` - deny directory listing and block public access to docs, SQL files, logs, dotfiles, and private config.
+- `.cpanel.yml` - cPanel Git deployment recipe that copies versioned panel files into `/home/psigrersrs/reseller.psigre.rs`.
 - `api/bootstrap.php` - shared JSON responses, secure sessions, CSRF helpers, auth guards, DB schema helpers.
 - `api/login.php` - reseller token login.
 - `api/logout.php` - destroys reseller/admin session.
@@ -122,7 +123,9 @@
   - Optional fallback keys use uppercase config paths, for example `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `ADMIN_PASSWORD_HASH`.
   - Inventory fallback keys: `PWRS_INVENTORY_API_BASE` and `PWRS_INVENTORY_SUPPLIER_TOKEN`.
 - Installation steps:
-  - Upload the project folder contents to cPanel public web root.
+  - cPanel live web root is `/home/psigrersrs/reseller.psigre.rs`.
+  - Preferred deployment is cPanel Git Version Control with the repository cloned outside the live web root, then deployed via `.cpanel.yml`.
+  - `.cpanel.yml` copies `index.html`, `admin.html`, `.htaccess`, `api`, and `sql` into the live web root without deleting server-only files such as `api/config.local.php`.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
   - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
@@ -209,6 +212,7 @@
 - Added Inventory Supplier API configuration support, verification-code request endpoint, idempotency/daily limit handling, and admin request history.
 - Added reseller “Igra mi nije stigla” report flow with duplicate protection and n8n notification payload.
 - Added admin Inventory tab with config status, sanitized API history, missing-game reports, and recent security audit entries.
+- Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
