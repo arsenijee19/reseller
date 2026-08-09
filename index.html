@@ -142,7 +142,39 @@
     .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .settings-grid .full{grid-column:1 / -1}
     .security-note{margin-top:12px;border:1px solid rgba(23,105,224,.18);border-radius:8px;background:rgba(23,105,224,.06);padding:11px 12px}
-    .code-result{display:grid;gap:4px;margin-top:10px}
+    .code-result{
+      display:grid;gap:12px;margin-top:14px;border:1px solid rgba(19,138,67,.22);border-radius:14px;
+      background:
+        radial-gradient(circle at 0 0,rgba(25,163,91,.14),transparent 34%),
+        linear-gradient(180deg,rgba(19,138,67,.08),rgba(19,138,67,.035));
+      padding:14px;box-shadow:0 12px 28px rgba(19,138,67,.08);animation:message-in .22s var(--ease)
+    }
+    .code-result.warn{
+      border-color:rgba(183,121,31,.28);
+      background:radial-gradient(circle at 0 0,rgba(183,121,31,.16),transparent 34%),linear-gradient(180deg,rgba(183,121,31,.10),rgba(183,121,31,.045));
+      box-shadow:0 12px 28px rgba(183,121,31,.08)
+    }
+    .code-result.bad{
+      border-color:rgba(195,41,41,.24);
+      background:radial-gradient(circle at 0 0,rgba(195,41,41,.14),transparent 34%),linear-gradient(180deg,rgba(195,41,41,.09),rgba(195,41,41,.04));
+      box-shadow:0 12px 28px rgba(195,41,41,.08)
+    }
+    .code-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .code-result-title{font-weight:800;font-size:14px;color:var(--text)}
+    .code-result-subtitle{margin-top:3px;color:var(--muted);font-size:12px;line-height:1.35}
+    .code-status{
+      display:inline-flex;align-items:center;justify-content:center;min-height:30px;border-radius:999px;padding:6px 10px;
+      background:rgba(19,138,67,.12);color:var(--good);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.035em;white-space:nowrap
+    }
+    .code-result.warn .code-status{background:rgba(183,121,31,.13);color:var(--warn)}
+    .code-result.bad .code-status{background:rgba(195,41,41,.12);color:var(--bad)}
+    .code-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .code-detail{
+      border:1px solid rgba(223,228,236,.82);border-radius:11px;background:rgba(255,255,255,.62);padding:9px 10px;min-width:0
+    }
+    :root[data-theme="dark"] .code-detail{border-color:rgba(42,52,66,.82);background:rgba(16,23,32,.58)}
+    .code-detail span{display:block;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .code-detail strong{display:block;margin-top:3px;font-size:13px;overflow-wrap:anywhere}
     .order-picker{display:grid;gap:10px;margin-top:12px;max-height:min(420px,60vh);overflow:auto;padding-right:3px}
     .order-choice{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px}
     .order-choice .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
@@ -218,6 +250,8 @@
       .payment-row{align-items:flex-start;flex-direction:column}
       .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
+      .code-result-head{flex-direction:column}
+      .code-detail-grid{grid-template-columns:1fr}
       .settings-grid{grid-template-columns:1fr}
       .order-choice{flex-direction:column}
       .order-choice .btn{flex:0 0 auto;min-width:0}
@@ -620,7 +654,7 @@
     function setStatus(value){ statusText.textContent = value; }
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
-    function hide(el){ el.style.display = "none"; }
+    function hide(el){ el.style.display = "none"; el.textContent = ""; el.className = "msg"; }
     function markField(el, stateName){
       el.classList.remove("field-error", "field-success");
       if (stateName) el.classList.add(stateName === "ok" ? "field-success" : "field-error");
@@ -693,6 +727,33 @@
       el.textContent = text;
       parent.appendChild(el);
       return el;
+    }
+
+    function renderCodeResult(type, payload){
+      codeMsg.textContent = "";
+      codeMsg.className = `code-result ${type || "ok"}`;
+      codeMsg.style.display = "grid";
+      const head = document.createElement("div");
+      head.className = "code-result-head";
+      const copy = document.createElement("div");
+      appendText(copy, "div", payload.title || "Kod je poslat na vaš email.", "code-result-title");
+      appendText(copy, "div", payload.subtitle || "Proverite inbox i spam/junk folder.", "code-result-subtitle");
+      const badge = document.createElement("div");
+      badge.className = "code-status";
+      badge.textContent = payload.status || (type === "bad" ? "Greška" : "Poslato");
+      head.append(copy, badge);
+      codeMsg.appendChild(head);
+
+      const grid = document.createElement("div");
+      grid.className = "code-detail-grid";
+      (payload.details || []).forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.className = "code-detail";
+        appendText(item, "span", label);
+        appendText(item, "strong", value || "-");
+        grid.appendChild(item);
+      });
+      codeMsg.appendChild(grid);
     }
 
     async function api(url, options = {}){
@@ -1270,17 +1331,27 @@
       sendCodeBtn.textContent = "Šaljem zahtev...";
       try{
         const j = await api("/api/verification_code.php", { method:"POST", body:JSON.stringify({ account_email }) });
-        const lines = [
-          j.message || "Kod je poslat na vaš email.",
-          `PlayStation nalog: ${j.account_email}`,
-          `Poslato na: ${j.recipient_email_masked}`,
-          `Status: ${j.status || "sent"}`,
-          `Vreme: ${dateTime(j.sent_at || new Date().toISOString())}`
-        ];
-        show(codeMsg, j.duplicate ? "warn" : "ok", lines.join("\n"));
+        renderCodeResult(j.duplicate ? "warn" : "ok", {
+          title: j.duplicate ? "Zahtev je već kreiran." : (j.message || "Kod je poslat na vaš email."),
+          subtitle: j.duplicate ? "Proverite email pre ponovnog slanja." : "Kod šaljemo na email vezan za Vaš reseller nalog.",
+          status: j.status || "sent",
+          details: [
+            ["PlayStation nalog", j.account_email],
+            ["Poslato na", j.recipient_email_masked],
+            ["Vreme", dateTime(j.sent_at || new Date().toISOString())]
+          ]
+        });
         codeAccountEmail.value = "";
       }catch(e){
-        show(codeMsg, "bad", `${e.message}\n\nPodrška: Viber PlayWorld support ili support.playworld.rs`);
+        renderCodeResult("bad", {
+          title: e.message,
+          subtitle: "Ako se ponavlja, javite se PlayWorld podršci.",
+          status: "Nedostupno",
+          details: [
+            ["Podrška", "Viber PlayWorld support"],
+            ["Website", "support.playworld.rs"]
+          ]
+        });
       }finally{
         state.codeInProgress = false;
         sendCodeBtn.disabled = false;

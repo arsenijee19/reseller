@@ -39,7 +39,9 @@
   - Optional reseller 2-step verification is implemented using standard TOTP plus one-time recovery codes.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
+  - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
+  - Reseller verification-code responses render as modern status cards with badges and structured details instead of multiline system text.
   - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
   - Expired session/CSRF errors are shown as user-friendly refresh-and-login-again messages.
 - Partially implemented functionality:
@@ -229,6 +231,8 @@
 - Simplified reseller onboarding to name/email/phone only, added hidden-on-demand token change, implemented optional TOTP 2FA with recovery codes, and updated n8n workflow export so missing-game reports route only to Telegram notification without replaying delivery.
 - Added an Admin Inventory warning with the exact `api/config.local.php` snippet when the Inventory Supplier API token is missing.
 - Added Admin Inventory form that saves API Base URL and supplier token into ignored server-side `api/config.local.php`.
+- Refreshed Admin panel UI/UX with centered navigation, dashboard summary cards, softer visual hierarchy, updated table/form styling, and responsive spacing.
+- Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.

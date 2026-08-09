@@ -121,6 +121,7 @@
     .msg.ok{display:block;border-color:rgba(20,128,74,.25);background:rgba(20,128,74,.08)}
     .msg.bad{display:block;border-color:rgba(189,43,43,.25);background:rgba(189,43,43,.08)}
     .muted{color:var(--muted);font-size:12px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
     .hidden{display:none!important}
     @media (max-width:860px){
       .shell{padding:16px 12px 34px}
@@ -150,6 +151,127 @@
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
       .btn:hover,.tab:hover,.panel:hover,.form-panel:hover{transform:none!important}
+    }
+    /* 2026 admin UX refresh: calmer layout, centered content, clearer hierarchy. */
+    :root{
+      --bg:#eef3f8;
+      --panel:#ffffff;
+      --soft:#f6f9fc;
+      --line:#d8e0eb;
+      --muted:#66758a;
+      --text:#122033;
+      --brand:#0f63d8;
+      --brand-dark:#0b4fb3;
+      --accent:#10a37f;
+      --radius:18px;
+      --shadow:0 18px 46px rgba(18,32,51,.08);
+      --shadow-hover:0 24px 58px rgba(18,32,51,.12);
+    }
+    :root[data-theme="dark"]{
+      --bg:#0d141d;
+      --panel:#141d29;
+      --soft:#101823;
+      --line:#263344;
+      --muted:#9eabbb;
+      --text:#f2f6fb;
+      --brand:#5b93ff;
+      --brand-dark:#3778ee;
+      --accent:#35d0aa;
+    }
+    body{
+      background:
+        radial-gradient(circle at 15% -5%,rgba(15,99,216,.14),transparent 34%),
+        radial-gradient(circle at 88% 4%,rgba(16,163,127,.12),transparent 30%),
+        linear-gradient(180deg,#f7fafc 0%,var(--bg) 42%,var(--bg) 100%);
+    }
+    :root[data-theme="dark"] body{
+      background:
+        radial-gradient(circle at 15% -5%,rgba(91,147,255,.18),transparent 34%),
+        radial-gradient(circle at 88% 4%,rgba(53,208,170,.13),transparent 30%),
+        linear-gradient(180deg,#111b27 0%,var(--bg) 44%,var(--bg) 100%);
+    }
+    .shell{width:min(100%,1360px);padding:28px 24px 56px}
+    .topbar{
+      position:sticky;top:0;z-index:30;align-items:center;margin:-8px -10px 18px;padding:12px 10px;
+      background:linear-gradient(180deg,rgba(247,250,252,.92),rgba(247,250,252,.70));
+      backdrop-filter:blur(18px);border-bottom:1px solid rgba(216,224,235,.72)
+    }
+    :root[data-theme="dark"] .topbar{background:linear-gradient(180deg,rgba(17,27,39,.92),rgba(17,27,39,.68));border-bottom-color:rgba(38,51,68,.72)}
+    h1{font-size:28px;letter-spacing:-.04em}
+    h2{font-size:20px;letter-spacing:-.025em}
+    h3{font-size:15px;letter-spacing:-.01em}
+    p{font-size:14px}
+    .topbar-title p{font-size:14px;margin-top:2px}
+    .topbar .actions{gap:10px}
+    .panel,.form-panel,.table-wrap{
+      border-color:rgba(216,224,235,.88);border-radius:var(--radius);box-shadow:var(--shadow)
+    }
+    .panel:hover,.form-panel:hover,.table-wrap:hover{box-shadow:var(--shadow-hover)}
+    .section{padding:26px}
+    .section-head{align-items:center;margin-bottom:18px}
+    .tabs{
+      position:sticky;top:73px;z-index:20;justify-content:center;gap:10px;margin:0 auto 18px;padding:10px;
+      width:max-content;max-width:100%;background:rgba(255,255,255,.78);border:1px solid rgba(216,224,235,.82);
+      border-radius:999px;box-shadow:0 16px 38px rgba(18,32,51,.08);backdrop-filter:blur(16px)
+    }
+    :root[data-theme="dark"] .tabs{background:rgba(20,29,41,.78);border-color:rgba(38,51,68,.88)}
+    .tab{min-height:44px;padding:10px 20px;border-radius:999px;border-color:transparent;background:transparent;color:var(--muted)}
+    .tab.active{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff}
+    .admin-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 18px}
+    .summary-card{
+      padding:18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--panel),var(--soft));
+      box-shadow:0 14px 34px rgba(18,32,51,.06)
+    }
+    .summary-card span{display:block;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+    .summary-card strong{display:block;margin-top:7px;font-size:26px;letter-spacing:-.04em}
+    .account-panel{padding:18px;margin:0 0 18px;background:linear-gradient(135deg,rgba(15,99,216,.055),rgba(16,163,127,.045))}
+    .account-panel .section-head{margin-bottom:12px}
+    .account-panel .form-grid{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}
+    label{font-size:12px;text-transform:none;letter-spacing:.01em}
+    input,select,textarea{min-height:46px;border-radius:13px;padding:11px 13px;background:rgba(255,255,255,.86)}
+    :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:rgba(16,24,35,.88)}
+    .btn{min-height:46px;border-radius:13px;padding:11px 16px}
+    .btn.primary,.btn.good{box-shadow:0 12px 28px rgba(15,99,216,.18)}
+    .form-panel{padding:20px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(246,249,252,.94))}
+    :root[data-theme="dark"] .form-panel{background:linear-gradient(180deg,rgba(20,29,41,.94),rgba(16,24,35,.94))}
+    .grid{gap:16px;align-items:end}
+    .filter-actions{align-items:end}
+    .table-wrap{border-radius:18px;overflow:auto;background:var(--panel)}
+    table{min-width:1040px;border-collapse:separate;border-spacing:0}
+    th,td{padding:13px 14px;border-bottom:1px solid var(--line)}
+    th{
+      top:0;background:linear-gradient(180deg,var(--soft),rgba(246,249,252,.94));font-size:12px;text-transform:uppercase;letter-spacing:.045em;
+      color:#536278
+    }
+    :root[data-theme="dark"] th{background:linear-gradient(180deg,var(--soft),rgba(16,24,35,.96));color:#aeb8c7}
+    tbody tr:nth-child(even){background:rgba(15,99,216,.025)}
+    tbody tr:hover{background:rgba(15,99,216,.07)}
+    td input,td select,td textarea{min-width:150px;min-height:40px;border-radius:10px}
+    .table-actions{justify-content:center;min-width:260px}
+    .wide{min-width:240px}
+    .compact{max-width:130px}
+    .msg{border-radius:14px;padding:13px 15px}
+    .login{max-width:460px;margin:15vh auto 0;border-radius:24px}
+    .login .section{text-align:center;padding:30px}
+    .login label{text-align:left}
+    .login .actions{justify-content:center}
+    pre{
+      overflow:auto;margin:12px 0 0;padding:14px;border-radius:14px;border:1px solid var(--line);background:rgba(18,32,51,.04);
+      color:var(--text);font-size:12px;line-height:1.45
+    }
+    :root[data-theme="dark"] pre{background:rgba(255,255,255,.045)}
+    @media (max-width:980px){
+      .shell{padding:18px 12px 40px}
+      .topbar{position:static;margin:0 0 14px;padding:0;border:0;background:transparent;backdrop-filter:none}
+      .tabs{position:static;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:22px}
+      .admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .account-panel .form-grid{grid-template-columns:1fr}
+      .section{padding:18px}
+    }
+    @media (max-width:560px){
+      .admin-summary{grid-template-columns:1fr}
+      h1{font-size:24px}
+      .tabs{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -184,6 +306,7 @@
 
       <nav class="tabs" id="tabs"></nav>
       <div class="msg" id="adminMsg"></div>
+      <div class="admin-summary" id="adminSummary"></div>
 
       <div class="form-panel account-panel">
         <div class="section-head">
@@ -349,6 +472,7 @@
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
     function money(v){ const n=Number(v); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : v; }
+    function percent(part, total){ return total ? Math.round((part / total) * 100) + "%" : "0%"; }
     function normalizeSearch(value){ return String(value == null ? "" : value).toLowerCase().trim(); }
     function userErrorMessage(message){
       const text = String(message || "");
@@ -427,6 +551,33 @@
       });
       document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
       $("view-" + state.tab).classList.remove("hidden");
+    }
+
+    function renderSummary(){
+      const box = $("adminSummary");
+      if (!box || !state.data) return;
+      const resellers = state.data.resellers || [];
+      const products = state.data.products || [];
+      const orders = state.data.orders || [];
+      const config = state.data.inventory_config || {};
+      const activeResellers = resellers.filter((r) => String(r.status || "active").toLowerCase() === "active").length;
+      const activeProducts = products.filter((p) => String(p.status || "active").toLowerCase() === "active").length;
+      const deliveredOrders = orders.filter((o) => String(o.status || "").toLowerCase().includes("deliver")).length;
+      const cards = [
+        ["Aktivni reselleri", `${activeResellers}/${resellers.length}`, percent(activeResellers, resellers.length) + " aktivnih naloga"],
+        ["Aktivni proizvodi", `${activeProducts}/${products.length}`, "vidljivo resellerima"],
+        ["Porudžbine", orders.length, deliveredOrders ? `${deliveredOrders} isporučeno` : "pregled poslednjih porudžbina"],
+        ["Inventory API", config.token_configured ? "Povezan" : "Nije povezan", config.last_success_at ? `poslednji uspeh: ${config.last_success_at}` : "proveri token u Inventory tabu"]
+      ];
+      box.textContent = "";
+      cards.forEach(([label, value, hint]) => {
+        const card = document.createElement("div");
+        card.className = "summary-card";
+        text(card, "span", label);
+        text(card, "strong", value);
+        text(card, "div", hint, "muted");
+        box.appendChild(card);
+      });
     }
 
     function renderResellers(){
@@ -778,6 +929,7 @@
     function render(){
       renderTabs();
       if (!state.data) return;
+      renderSummary();
       renderResellers();
       renderProducts();
       renderOrders();
