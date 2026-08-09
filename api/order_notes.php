@@ -28,6 +28,7 @@ if ($notesLength > 2000) {
 
 try {
   $pdo = db();
+  require_completed_profile($pdo, (int)$reseller['id']);
 
   if (!has_column($pdo, 'orders', 'reseller_notes')) {
     json_response(['ok' => false, 'error' => 'Notes kolona nije dostupna. Pokreni SQL migraciju za reseller notes.'], 500);

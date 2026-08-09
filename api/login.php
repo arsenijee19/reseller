@@ -19,6 +19,15 @@ if ($token === "") {
 
 try {
   $pdo = db();
+  ensure_security_tables($pdo);
+  enforce_rate_limit(
+    $pdo,
+    'reseller_login',
+    client_ip(),
+    12,
+    900,
+    'Previše pokušaja prijave. Sačekajte nekoliko minuta i pokušajte ponovo.'
+  );
 
   // Tražimo aktivne resellere (token se proverava preko password_verify)
   $stmt = $pdo->prepare("SELECT id, email, token_hash, status FROM resellers WHERE status='active'");
@@ -34,6 +43,8 @@ try {
   }
 
   if (!$found) {
+    record_login_attempt($pdo, 'reseller_login', client_ip(), false);
+    audit_event($pdo, 'reseller', null, 'login_failed', 'failed', ['reason' => 'invalid_token']);
     http_response_code(401);
     echo json_encode(["ok"=>false,"error"=>"Pogrešan token."]); exit;
   }
@@ -43,6 +54,8 @@ try {
   $_SESSION["reseller_id"] = (int)$found["id"];
   $_SESSION["reseller_email"] = $found["email"];
   $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+  record_login_attempt($pdo, 'reseller_login', client_ip(), true);
+  audit_event($pdo, 'reseller', (int)$found['id'], 'login_success', 'success');
 
   echo json_encode(["ok"=>true, "csrf_token"=>csrf_token()]);
 } catch (Throwable $e) {

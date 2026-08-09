@@ -8,12 +8,20 @@
 ## Current Project Status
 - Completed functionality:
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
+  - Reseller login/admin login now have server-side rate limiting and security audit records without storing plaintext credentials.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
+  - Resellers must complete account profile onboarding after the account-security migration: email and phone are stored on the reseller profile before protected panel actions are available.
+  - Resellers can update account email/phone and optionally change their reseller token/password after confirming the current token/password.
+  - Resellers can request PlayStation email verification codes through the Inventory Supplier API; recipient email is always taken from the server-side reseller profile.
+  - Inventory verification-code requests are audited with HTTP/result metadata, sanitized errors, idempotency fingerprints, and reseller/account/day daily-limit records.
+  - Reseller verification-code requests enforce a persisted limit of 3 attempts per reseller + PlayStation account email + local app date.
+  - Resellers can submit “Igra mi nije stigla” reports for their own orders; duplicate reports per order are blocked and notification status is stored.
   - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
+  - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
   - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
@@ -32,12 +40,19 @@
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
+  - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the live n8n workflow must route that event to the intended Telegram group/channel.
+  - Optional TOTP 2FA is documented as the next security phase; it is not implemented because the project has no dependency manager/library in place and a hand-rolled TOTP implementation would be risky.
 - Unfinished work:
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
+  - Run `sql/2026-08-09_account_security_inventory.sql` before enabling account onboarding, Inventory API history, and missing-game reports in production.
+  - Configure Inventory Supplier API server-side values in `api/config.local.php` or env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
+  - Update the n8n workflow to handle `event=reseller_missing_game` if Telegram notification is required for missing-game reports.
   - Confirm live mail delivery from cPanel for `mail()`.
 - Known limitations:
   - Local database was not available in this workspace, so database-backed flows need final live/staging validation after migration.
-  - Existing database credentials are in `api/db.php` from the uploaded live project; do not duplicate them in docs or UI.
+  - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
+  - Inventory health testing is intentionally not implemented because no safe non-consuming health endpoint is known.
+  - Full optional TOTP 2FA, recovery codes, active sessions, trusted devices, and 2FA admin reset are not implemented yet.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -56,6 +71,9 @@
 - `api/login.php` - reseller token login.
 - `api/logout.php` - destroys reseller/admin session.
 - `api/me.php` - current reseller profile/balance and CSRF token.
+- `api/profile.php` - reseller account profile/settings update and optional reseller credential change.
+- `api/verification_code.php` - server-side Inventory Supplier API email-code request flow with idempotency, daily limit, and audit logging.
+- `api/missing_game.php` - reseller-owned missing-game report endpoint with duplicate protection and n8n notification payload.
 - `api/products.php` - active product list for reseller order form.
 - `api/prices.php` - active price list for logged-in resellers.
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
@@ -69,6 +87,7 @@
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
+- `sql/2026-08-09_account_security_inventory.sql` - migration for reseller phone/profile completion metadata, security audit, login attempts, Inventory API history, and missing-game reports.
 
 ## Architecture & Technical Decisions
 - Frameworks: no framework; plain PHP 8+, static HTML/CSS/JS.
@@ -78,6 +97,8 @@
   - Admin authenticates with `admin_users.password_hash`.
   - Sessions use HTTP-only cookies and `SameSite=Lax`; secure cookies are enabled when HTTPS is detected.
   - Reseller/admin sessions expire after 60 minutes of inactivity.
+  - Login attempts are rate-limited using `login_attempts`; audit entries are stored in `security_audit_events`.
+  - Reseller credential changes require current token/password confirmation and store only `password_hash()` output.
 - CSRF:
   - Mutating reseller/admin POST requests use `X-CSRF-Token`.
 - SQL safety:
@@ -89,6 +110,9 @@
   - n8n receives `request_id`, `order_db_id`, `reseller_email`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email`, and timestamp.
   - Updated local n8n workflow export `/Users/arsoplayworld/Downloads/reseller.json` includes Telegram notifications for received orders and completed deliveries, with product, account type, and price included in the message.
   - `api/payment_notice.php` emails the configured payment notice recipient.
+  - `api/verification_code.php` posts to `PWRS_INVENTORY_API_BASE` `/api/supplier/v1/2fa/email-code-requests` using a server-side supplier bearer token.
+  - Inventory Supplier API token is never exposed to browser JavaScript, admin users, reseller users, docs, or audit logs.
+  - `api/missing_game.php` posts a `reseller_missing_game` event to the configured n8n webhook for downstream Telegram/support handling.
 
 ## Setup & Execution
 - Dependencies:
@@ -96,11 +120,13 @@
   - MySQL/MariaDB database with existing tables: `resellers`, `product_prices`, `orders`, `wallet_transactions`.
 - Environment variables:
   - Optional fallback keys use uppercase config paths, for example `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `ADMIN_PASSWORD_HASH`.
+  - Inventory fallback keys: `PWRS_INVENTORY_API_BASE` and `PWRS_INVENTORY_SUPPLIER_TOKEN`.
 - Installation steps:
   - Upload the project folder contents to cPanel public web root.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
   - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
+  - Run `sql/2026-08-09_account_security_inventory.sql` in phpMyAdmin for account onboarding, Inventory API audit, and missing-game reports.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
   - Local syntax check: `for f in api/*.php; do php -l "$f"; done`
@@ -108,6 +134,7 @@
   - None.
 - Test commands:
   - PHP syntax check above.
+  - Inline JS syntax check used during development: extract `<script>` contents to `/tmp` and run `node --check`.
 
 ## Important Business Logic
 - Reseller orders:
@@ -125,6 +152,22 @@
 - Product availability:
   - Migration adds `product_prices.status`; reseller-facing product and price APIs only show `status='active'` when this column exists.
   - Admin “Deaktiviraj” sets `status='inactive'` when available.
+- Account onboarding:
+  - When `resellers.profile_completed_at` exists and is empty, protected reseller actions return `profile_required`.
+  - The reseller must save valid email and phone through `api/profile.php`; logout remains available.
+  - The profile email is the recipient for Inventory verification codes and is not provided by request payloads.
+- Inventory verification codes:
+  - The reseller submits only the PlayStation account email.
+  - Backend uses reseller profile email as `recipient_email` and `reseller-{id}` as `requested_by`.
+  - Idempotency key is generated server-side from reseller ID, local app date, normalized account email hash, and daily slot.
+  - A MySQL named lock protects reseller/account/day limit checks from parallel requests.
+  - Repeated requests within 90 seconds for the same reseller/account return the existing request state instead of consuming another code.
+  - Daily limit is 3 counted attempts per reseller + normalized account email + app-local date; `502` counts because Inventory may already have consumed a code.
+  - Inventory `401`/`403` are shown to reseller as generic technical unavailability and logged for admin review.
+- Missing-game reports:
+  - Users can report only orders where `orders.reseller_id` matches their session reseller ID.
+  - `missing_game_reports.order_id` is unique to prevent repeated notifications for the same order.
+  - Report payload includes reseller email/phone from server profile and product/order details, never secrets.
 - Admin password:
   - Initial admin username and password hash are configured in ignored `api/config.local.php`.
   - If `admin_users` is empty, `api/admin.php` seeds the first admin from the private config.
@@ -161,12 +204,20 @@
 - Added advanced reseller UI motion: cursor-follow button glow, animated input feedback, game select gradient reveal, and animated order success modal.
 - Replaced technical CSRF/unauthorized API errors with user-facing refresh/re-login guidance.
 - Added authenticated admin self-service password change with current-password verification and secure hashing.
+- Added account-security migration, mandatory reseller profile onboarding, account settings, and reseller credential change flow.
+- Added server-side login/admin rate limiting and security audit events.
+- Added Inventory Supplier API configuration support, verification-code request endpoint, idempotency/daily limit handling, and admin request history.
+- Added reseller “Igra mi nije stigla” report flow with duplicate protection and n8n notification payload.
+- Added admin Inventory tab with config status, sanitized API history, missing-game reports, and recent security audit entries.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
+- Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
+- Configure Inventory Supplier API base URL and supplier token in ignored server-side config/env.
+- Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.
+- Implement full optional TOTP 2FA with a vetted library/dependency approach, encrypted secret storage, recovery codes, and pre-auth login state.
 - Validate admin login and all admin edit flows on live/staging data.
 - Confirm `mail()` delivery for order and payment-notice emails.
-- Add an admin password-change screen.
 - Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
@@ -174,17 +225,24 @@
 - `mail()` returns only a boolean and does not guarantee inbox delivery.
 - Hard deletes of products can affect historical order readability; prefer deactivation unless deletion is intentional.
 - Git history previously contained production DB credentials and webhook URL. The latest source removes them, but the live secrets should still be rotated.
+- Runtime `CREATE TABLE IF NOT EXISTS` helpers require DB user privileges; production should still run the SQL migration explicitly.
+- Optional 2FA requested in the larger specification is not complete in this phase.
 
 ## LLM Handoff Notes
 - Read first:
   - `PROJECT_CONTEXT.md`
   - `api/bootstrap.php`
   - `api/admin.php`
+  - `api/profile.php`
+  - `api/verification_code.php`
+  - `api/missing_game.php`
   - `api/order.php`
   - `index.html`
   - `admin.html`
 - Important assumptions:
   - Existing reseller login is token-based even when user-facing text says password/token.
+  - Inventory Supplier API token must stay in ignored `api/config.local.php` or environment variables; never commit it.
+  - App-local daily limit currently defaults to `Europe/Belgrade` via `app.timezone`.
   - `product_prices.product_id` is the stable product identifier used by orders.
   - cPanel serves the project over HTTPS in production.
 - `api/config.local.php` must exist on cPanel or equivalent environment variables must be set.
@@ -192,6 +250,8 @@
 - Fragile areas:
   - Database schema may differ slightly from inferred columns; admin API reads `INFORMATION_SCHEMA` to reduce hardcoding.
   - n8n webhook and email side effects happen after DB commit in `api/order.php`.
+  - `api/verification_code.php` intentionally does not retry 502 responses with a new idempotency key.
+  - `api/missing_game.php` uses the existing n8n webhook because no direct Telegram integration exists in this repo.
 - Project-specific conventions:
   - Keep PHP endpoint responses as JSON with `ok`.
   - Use PDO prepared statements.
@@ -200,5 +260,8 @@
   - Never commit `api/config.local.php` or runtime logs.
 - Common mistakes to avoid:
   - Do not bypass CSRF on mutating admin/reseller actions.
+  - Do not expose Inventory Supplier API token or idempotency key plaintext to the frontend.
+  - Do not make Inventory health tests by sending real code requests.
+  - Do not hand-roll TOTP 2FA without a reviewed library and storage plan.
   - Do not hardcode product lists in frontend.
   - Do not delete old products when deactivation is enough.

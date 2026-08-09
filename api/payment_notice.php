@@ -15,6 +15,7 @@ $reseller = require_reseller();
 
 try {
   $pdo = db();
+  require_completed_profile($pdo, (int)$reseller['id']);
   $stmt = $pdo->prepare('SELECT id, email, balance_rsd FROM resellers WHERE id = ? LIMIT 1');
   $stmt->execute([$reseller['id']]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);

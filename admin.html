@@ -260,6 +260,49 @@
           <div class="table-wrap" style="margin-top:14px"><table id="ordersTable"></table></div>
         </div>
 
+        <div class="section view hidden" id="view-inventory">
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Inventory Supplier API</h2>
+              <p>Status konfiguracije, istorija zahteva za verifikacione kodove i prijave za neisporučene igre.</p>
+            </div>
+          </div>
+          <div class="grid" id="inventoryConfigBox"></div>
+
+          <div class="section-head" style="margin-top:18px">
+            <div class="section-title">
+              <h2>Istorija Inventory zahteva</h2>
+              <p>Pregled je sanitizovan i ne prikazuje Authorization tokene ni verifikacione kodove.</p>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="span-3"><label>Reseller</label><select id="inventoryFilterReseller"></select></div>
+            <div class="span-3"><label>Account email</label><input id="inventoryFilterAccount" type="search" placeholder="mail naloga..." /></div>
+            <div class="span-3"><label>Rezultat</label><select id="inventoryFilterResult"></select></div>
+            <div class="span-3"><label>HTTP status</label><input id="inventoryFilterHttp" type="number" placeholder="200, 404, 502..." /></div>
+            <div class="span-3"><label>Od datuma</label><input id="inventoryFilterFrom" type="date" /></div>
+            <div class="span-3"><label>Do datuma</label><input id="inventoryFilterTo" type="date" /></div>
+            <div class="span-3 filter-actions"><button class="btn primary" id="applyInventoryFiltersBtn">Primeni filtere</button></div>
+          </div>
+          <div class="table-wrap" style="margin-top:14px"><table id="inventoryTable"></table></div>
+
+          <div class="section-head" style="margin-top:18px">
+            <div class="section-title">
+              <h2>Igra mi nije stigla</h2>
+              <p>Prijave resellera za porudžbine koje nisu stigle.</p>
+            </div>
+          </div>
+          <div class="table-wrap"><table id="missingReportsTable"></table></div>
+
+          <div class="section-head" style="margin-top:18px">
+            <div class="section-title">
+              <h2>Security audit</h2>
+              <p>Poslednji sigurnosni događaji bez plaintext šifri, tokena i kodova.</p>
+            </div>
+          </div>
+          <div class="table-wrap"><table id="securityAuditTable"></table></div>
+        </div>
+
         <div class="section view hidden" id="view-database">
           <div class="section-head">
             <div class="section-title">
@@ -280,6 +323,7 @@
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
       ["orders","Porudžbine"],
+      ["inventory","Inventory"],
       ["database","Baza"]
     ];
 
@@ -380,12 +424,14 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Email","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["ID","Email","Telefon","Status profila","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
         text(row.insertCell(), "span", r.id);
         const email = input(r.email, "wide"); row.insertCell().appendChild(email);
+        const phone = input(r.phone || "", "wide"); phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
+        text(row.insertCell(), "span", r.profile_completed_at ? "završen" : "nije završen", "muted");
         const status = input(r.status || "active", "compact"); row.insertCell().appendChild(status);
         const balance = input(r.balance_rsd || 0, "compact"); balance.type = "number"; row.insertCell().appendChild(balance);
         const token = input("", "wide"); token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
@@ -393,7 +439,7 @@
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
-            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, email:email.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
+            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
             showMsg("ok", "Reseller je ažuriran.");
             await load();
           }catch(e){
@@ -575,6 +621,97 @@
       });
     }
 
+    function renderInventory(){
+      const config = state.data.inventory_config || {};
+      const configBox = $("inventoryConfigBox");
+      configBox.textContent = "";
+      [
+        ["API Base URL", config.api_base_url || "Nije podešeno"],
+        ["Token", config.token_configured ? "Podešen (" + config.token_masked + ")" : "Nije podešen"],
+        ["Health test", config.health_test_available ? "Dostupan" : "Nije dostupan bez trošenja koda"],
+        ["Poslednji uspešan zahtev", config.last_success_at || "Nema"],
+        ["Poslednja komunikacija", config.last_communication_at || "Nema"]
+      ].forEach(([label, value]) => {
+        const panel = document.createElement("div");
+        panel.className = "span-3 form-panel";
+        text(panel, "h3", label);
+        text(panel, "div", value, "muted");
+        configBox.appendChild(panel);
+      });
+      if (config.last_error) {
+        const panel = document.createElement("div");
+        panel.className = "span-6 form-panel";
+        text(panel, "h3", "Poslednja greška");
+        text(panel, "div", `${config.last_error.result || ""} / HTTP ${config.last_error.http_status || "-"} / ${config.last_error.error_message || "bez detalja"}`, "muted");
+        configBox.appendChild(panel);
+      }
+
+      const reseller = $("inventoryFilterReseller");
+      const currentReseller = reseller.value;
+      reseller.textContent = "";
+      option(reseller, "", "Svi reselleri");
+      (state.data.resellers || []).forEach((r) => option(reseller, r.id, `${r.email} (#${r.id})`));
+      if (currentReseller) reseller.value = currentReseller;
+
+      const result = $("inventoryFilterResult");
+      const selectedResult = result.value;
+      result.textContent = "";
+      option(result, "", "Svi rezultati");
+      [...new Set((state.data.inventory_requests || []).map((r) => r.result).filter(Boolean))].sort().forEach((value) => option(result, value, value));
+      if (selectedResult) result.value = selectedResult;
+
+      const table = $("inventoryTable");
+      table.textContent = "";
+      const columns = ["id","reseller_email","account_email","recipient_email","order_reference","external_request_id","inventory_request_id","http_status","result","inventory_status","email_status","duplicate","duration_ms","created_at","response_received_at","error_message"];
+      const head = table.createTHead().insertRow();
+      columns.forEach((h) => text(head.insertCell(), "strong", h));
+      const body = table.createTBody();
+      (state.data.inventory_requests || []).forEach((row) => {
+        const tr = body.insertRow();
+        columns.forEach((name) => text(tr.insertCell(), "span", name === "duplicate" ? (Number(row[name]) === 1 ? "da" : "ne") : row[name]));
+      });
+      if (!(state.data.inventory_requests || []).length) {
+        const tr = body.insertRow();
+        const cell = tr.insertCell();
+        cell.colSpan = columns.length;
+        text(cell, "span", "Nema Inventory zahteva za izabrane filtere.", "muted");
+      }
+
+      const reportsTable = $("missingReportsTable");
+      reportsTable.textContent = "";
+      const reportColumns = ["id","reseller_email","order_id","product_name","account_type","status","notification_status","notification_message_id","created_at","updated_at","notification_error"];
+      const reportHead = reportsTable.createTHead().insertRow();
+      reportColumns.forEach((h) => text(reportHead.insertCell(), "strong", h));
+      const reportBody = reportsTable.createTBody();
+      (state.data.missing_game_reports || []).forEach((row) => {
+        const tr = reportBody.insertRow();
+        reportColumns.forEach((name) => text(tr.insertCell(), "span", row[name]));
+      });
+      if (!(state.data.missing_game_reports || []).length) {
+        const tr = reportBody.insertRow();
+        const cell = tr.insertCell();
+        cell.colSpan = reportColumns.length;
+        text(cell, "span", "Nema prijava.", "muted");
+      }
+
+      const auditTable = $("securityAuditTable");
+      auditTable.textContent = "";
+      const auditColumns = ["id","actor_type","actor_id","event_type","result","ip_address","created_at"];
+      const auditHead = auditTable.createTHead().insertRow();
+      auditColumns.forEach((h) => text(auditHead.insertCell(), "strong", h));
+      const auditBody = auditTable.createTBody();
+      (state.data.security_audit_events || []).forEach((row) => {
+        const tr = auditBody.insertRow();
+        auditColumns.forEach((name) => text(tr.insertCell(), "span", row[name]));
+      });
+      if (!(state.data.security_audit_events || []).length) {
+        const tr = auditBody.insertRow();
+        const cell = tr.insertCell();
+        cell.colSpan = auditColumns.length;
+        text(cell, "span", "Nema sigurnosnih događaja.", "muted");
+      }
+    }
+
     function renderSchema(){
       const box = $("schemaBox");
       box.textContent = "";
@@ -595,7 +732,13 @@
         status:$("filterStatus").value,
         product_id:$("filterProduct").value,
         date_from:$("filterFrom").value,
-        date_to:$("filterTo").value
+        date_to:$("filterTo").value,
+        inventory_reseller_id:$("inventoryFilterReseller") ? $("inventoryFilterReseller").value : "",
+        inventory_account_email:$("inventoryFilterAccount") ? $("inventoryFilterAccount").value : "",
+        inventory_result:$("inventoryFilterResult") ? $("inventoryFilterResult").value : "",
+        inventory_http_status:$("inventoryFilterHttp") ? $("inventoryFilterHttp").value : "",
+        inventory_from:$("inventoryFilterFrom") ? $("inventoryFilterFrom").value : "",
+        inventory_to:$("inventoryFilterTo") ? $("inventoryFilterTo").value : ""
       };
     }
 
@@ -616,6 +759,7 @@
       renderResellers();
       renderProducts();
       renderOrders();
+      renderInventory();
       renderSchema();
     }
 
@@ -666,6 +810,7 @@
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
+    $("applyInventoryFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
     ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });

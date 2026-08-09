@@ -16,6 +16,7 @@ if (!isset($_SESSION["reseller_id"])) {
 
 try {
   $pdo = db();
+  require_completed_profile($pdo, (int)$_SESSION["reseller_id"]);
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $stmt = $pdo->query("

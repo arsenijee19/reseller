@@ -23,6 +23,7 @@ if ($orderId <= 0) {
 
 try {
   $pdo = db();
+  require_completed_profile($pdo, (int)$reseller['id']);
 
   if (!has_column($pdo, 'orders', 'reseller_paid')) {
     json_response(['ok' => false, 'error' => 'Plaćeno kolona nije dostupna. Pokreni SQL migraciju za reseller notes.'], 500);

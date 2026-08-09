@@ -16,6 +16,7 @@ if (!isset($_SESSION["reseller_id"])) {
 try {
   $pdo = db();
   $resellerId = (int)$_SESSION["reseller_id"];
+  require_completed_profile($pdo, $resellerId);
   $notesSelect = has_column($pdo, 'orders', 'reseller_notes') ? 'o.reseller_notes,' : "'' AS reseller_notes,";
   $paidSelect = has_column($pdo, 'orders', 'reseller_paid') ? 'o.reseller_paid,' : '0 AS reseller_paid,';
   $paidAtSelect = has_column($pdo, 'orders', 'reseller_paid_at') ? 'o.reseller_paid_at,' : 'NULL AS reseller_paid_at,';

@@ -15,7 +15,12 @@ function require_post(): void {
 }
 
 function fetch_resellers(PDO $pdo): array {
-  $stmt = $pdo->query('SELECT id, email, status, balance_rsd FROM resellers ORDER BY id DESC');
+  $columns = column_names($pdo, 'resellers');
+  $select = ['id', 'email', 'status', 'balance_rsd'];
+  foreach (['phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
+    if (in_array($column, $columns, true)) $select[] = $column;
+  }
+  $stmt = $pdo->query('SELECT ' . implode(', ', $select) . ' FROM resellers ORDER BY id DESC');
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -64,6 +69,113 @@ function fetch_orders(PDO $pdo, array $filters): array {
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function fetch_inventory_requests(PDO $pdo, array $filters): array {
+  ensure_security_tables($pdo);
+  $where = [];
+  $params = [];
+
+  if (h_string($filters['inventory_reseller_id'] ?? '') !== '') {
+    $where[] = 'i.reseller_id = ?';
+    $params[] = (int)$filters['inventory_reseller_id'];
+  }
+  if (h_string($filters['inventory_account_email'] ?? '') !== '') {
+    $where[] = 'i.account_email LIKE ?';
+    $params[] = '%' . h_string($filters['inventory_account_email']) . '%';
+  }
+  if (h_string($filters['inventory_result'] ?? '') !== '') {
+    $where[] = 'i.result = ?';
+    $params[] = h_string($filters['inventory_result']);
+  }
+  if (h_string($filters['inventory_http_status'] ?? '') !== '') {
+    $where[] = 'i.http_status = ?';
+    $params[] = (int)$filters['inventory_http_status'];
+  }
+  if (h_string($filters['inventory_from'] ?? '') !== '') {
+    $where[] = 'DATE(i.created_at) >= ?';
+    $params[] = h_string($filters['inventory_from']);
+  }
+  if (h_string($filters['inventory_to'] ?? '') !== '') {
+    $where[] = 'DATE(i.created_at) <= ?';
+    $params[] = h_string($filters['inventory_to']);
+  }
+
+  $sql = "
+    SELECT i.*, r.email AS reseller_email
+    FROM inventory_api_requests i
+    LEFT JOIN resellers r ON r.id = i.reseller_id
+  ";
+  if ($where) {
+    $sql .= ' WHERE ' . implode(' AND ', $where);
+  }
+  $sql .= ' ORDER BY i.created_at DESC, i.id DESC LIMIT 250';
+
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute($params);
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function fetch_missing_game_reports(PDO $pdo): array {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->query("
+    SELECT m.*, r.email AS reseller_email, o.product_id, o.created_at AS order_created_at, pp.product_name, pp.account_type
+    FROM missing_game_reports m
+    LEFT JOIN resellers r ON r.id = m.reseller_id
+    LEFT JOIN orders o ON o.id = m.order_id
+    LEFT JOIN product_prices pp ON pp.product_id = o.product_id
+    ORDER BY m.created_at DESC, m.id DESC
+    LIMIT 100
+  ");
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function fetch_security_audit_events(PDO $pdo): array {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->query("
+    SELECT id, actor_type, actor_id, event_type, result, ip_address, created_at
+    FROM security_audit_events
+    ORDER BY created_at DESC, id DESC
+    LIMIT 100
+  ");
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function inventory_config_payload(PDO $pdo): array {
+  ensure_security_tables($pdo);
+  $base = app_base_url();
+  $token = inventory_supplier_token();
+  $lastSuccess = $pdo->query("
+    SELECT response_received_at
+    FROM inventory_api_requests
+    WHERE result IN ('success', 'duplicate')
+    ORDER BY response_received_at DESC
+    LIMIT 1
+  ")->fetchColumn();
+  $lastError = $pdo->query("
+    SELECT result, http_status, error_message, response_received_at, created_at
+    FROM inventory_api_requests
+    WHERE result NOT IN ('success', 'duplicate')
+    ORDER BY COALESCE(response_received_at, created_at) DESC
+    LIMIT 1
+  ")->fetch(PDO::FETCH_ASSOC);
+  $lastCommunication = $pdo->query("
+    SELECT COALESCE(response_received_at, created_at)
+    FROM inventory_api_requests
+    ORDER BY COALESCE(response_received_at, created_at) DESC
+    LIMIT 1
+  ")->fetchColumn();
+
+  return [
+    'api_base_url' => $base,
+    'token_configured' => $token !== '',
+    'token_masked' => $token !== '' ? mask_secret($token) : '',
+    'token_source' => 'server_config',
+    'health_test_available' => false,
+    'last_success_at' => $lastSuccess ?: '',
+    'last_error' => $lastError ?: null,
+    'last_communication_at' => $lastCommunication ?: '',
+  ];
+}
+
 function clean_admin_value($value) {
   if (!is_string($value)) return $value;
   $value = trim($value);
@@ -106,6 +218,7 @@ function seed_admin_if_needed(PDO $pdo): void {
 }
 
 function dashboard_payload(PDO $pdo, array $filters = []): array {
+  ensure_security_tables($pdo);
   $orderStatuses = [];
   if (has_column($pdo, 'orders', 'status')) {
     $orderStatuses = $pdo->query("SELECT DISTINCT status FROM orders WHERE status IS NOT NULL AND status <> '' ORDER BY status")->fetchAll(PDO::FETCH_COLUMN);
@@ -118,10 +231,17 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
       'resellers' => table_columns($pdo, 'resellers'),
       'products' => table_columns($pdo, 'product_prices'),
       'orders' => table_columns($pdo, 'orders'),
+      'inventory_api_requests' => table_columns($pdo, 'inventory_api_requests'),
+      'missing_game_reports' => table_columns($pdo, 'missing_game_reports'),
+      'security_audit_events' => table_columns($pdo, 'security_audit_events'),
     ],
     'resellers' => fetch_resellers($pdo),
     'products' => fetch_products($pdo),
     'orders' => fetch_orders($pdo, $filters),
+    'inventory_config' => inventory_config_payload($pdo),
+    'inventory_requests' => fetch_inventory_requests($pdo, $filters),
+    'missing_game_reports' => fetch_missing_game_reports($pdo),
+    'security_audit_events' => fetch_security_audit_events($pdo),
     'order_statuses' => $orderStatuses,
   ];
 }
@@ -129,6 +249,7 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
 try {
   $pdo = db();
   ensure_admin_table($pdo);
+  ensure_security_tables($pdo);
 
   if ($action === 'session') {
     json_response([
@@ -149,6 +270,14 @@ try {
     }
 
     seed_admin_if_needed($pdo);
+    enforce_rate_limit(
+      $pdo,
+      'admin_login',
+      client_ip(),
+      10,
+      900,
+      'Previše pokušaja prijave. Sačekajte nekoliko minuta i pokušajte ponovo.'
+    );
 
     $username = h_string(config_value('admin.username', 'admin'));
     $stmt = $pdo->prepare('SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1');
@@ -156,6 +285,8 @@ try {
     $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$admin || $admin['status'] !== 'active' || !password_verify($password, (string)$admin['password_hash'])) {
+      record_login_attempt($pdo, 'admin_login', client_ip(), false);
+      audit_event($pdo, 'admin', null, 'admin_login_failed', 'failed');
       json_response(['ok' => false, 'error' => 'Pogrešna admin šifra.'], 401);
     }
 
@@ -163,6 +294,8 @@ try {
     $_SESSION['admin_id'] = (int)$admin['id'];
     $_SESSION['admin_username'] = (string)$admin['username'];
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    record_login_attempt($pdo, 'admin_login', client_ip(), true);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_login_success', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
@@ -214,6 +347,7 @@ try {
     }
     $update = $pdo->prepare('UPDATE admin_users SET ' . implode(', ', $fields) . ' WHERE id = ?');
     $update->execute([password_hash($newPassword, PASSWORD_DEFAULT), (int)$admin['id']]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_password_changed', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
@@ -221,6 +355,7 @@ try {
   if ($action === 'update_reseller') {
     $id = (int)($input['id'] ?? 0);
     $email = h_string($input['email'] ?? '');
+    $phone = normalize_phone((string)($input['phone'] ?? ''));
     $status = h_string($input['status'] ?? 'active');
     $balance = (int)($input['balance_rsd'] ?? 0);
     $newToken = (string)($input['new_token'] ?? '');
@@ -239,9 +374,24 @@ try {
 
     $fields = ['email = ?', 'status = ?', 'balance_rsd = ?'];
     $params = [$email, $status, $balance];
+    if (has_column($pdo, 'resellers', 'phone')) {
+      if ($phone !== '' && !valid_phone($phone)) {
+        throw new RuntimeException('Telefon nije validan.');
+      }
+      $fields[] = 'phone = ?';
+      $params[] = $phone;
+    }
     if ($newToken !== '') {
-      if (strlen($newToken) < 8) {
-        throw new RuntimeException('Nova šifra/token mora imati najmanje 8 karaktera.');
+      if (strlen($newToken) < 12) {
+        throw new RuntimeException('Nova šifra/token mora imati najmanje 12 karaktera.');
+      }
+      $lowerToken = strtolower($newToken);
+      if (
+        in_array($lowerToken, ['password', '123456789012', 'playworld123', 'reseller1234'], true) ||
+        strpos($lowerToken, strtolower($email)) !== false ||
+        ($phone !== '' && strpos(preg_replace('/\D+/', '', $newToken), preg_replace('/\D+/', '', $phone)) !== false)
+      ) {
+        throw new RuntimeException('Nova šifra/token je previše laka za pogoditi.');
       }
       $fields[] = 'token_hash = ?';
       $params[] = password_hash($newToken, PASSWORD_DEFAULT);
@@ -253,6 +403,10 @@ try {
 
     $stmt = $pdo->prepare('UPDATE resellers SET ' . implode(', ', $fields) . ' WHERE id = ?');
     $stmt->execute($params);
+    audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'reseller_updated', 'success', [
+      'reseller_id' => $id,
+      'credential_changed' => $newToken !== '',
+    ]);
 
     $diff = $balance - (int)$oldBalance;
     if ($diff !== 0) {

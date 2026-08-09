@@ -4,9 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
+start_secure_session();
+$reseller = require_reseller();
 
 try {
   $pdo = db();
+  require_completed_profile($pdo, (int)$reseller['id']);
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $stmt = $pdo->query("

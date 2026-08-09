@@ -11,9 +11,7 @@ try {
   $pdo = db();
   $rid = (int)$reseller["id"];
 
-  $stmt = $pdo->prepare("SELECT email, balance_rsd FROM resellers WHERE id=? LIMIT 1");
-  $stmt->execute([$rid]);
-  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  $row = reseller_profile($pdo, $rid);
 
   if (!$row) {
     http_response_code(404);
@@ -24,6 +22,11 @@ try {
   echo json_encode([
     "ok" => true,
     "email" => $row["email"],
+    "phone" => (string)($row["phone"] ?? ""),
+    "profile_completed" => !has_column($pdo, 'resellers', 'profile_completed_at') || (string)($row["profile_completed_at"] ?? "") !== "",
+    "profile_completed_at" => (string)($row["profile_completed_at"] ?? ""),
+    "credential_changed_at" => (string)($row["credential_changed_at"] ?? ""),
+    "security_2fa_reminded_at" => (string)($row["security_2fa_reminded_at"] ?? ""),
     "balance_rsd" => (int)$row["balance_rsd"],
     "csrf_token" => csrf_token()
   ]);

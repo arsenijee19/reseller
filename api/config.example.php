@@ -2,6 +2,9 @@
 declare(strict_types=1);
 
 return [
+  'app' => [
+    'timezone' => 'Europe/Belgrade',
+  ],
   'db' => [
     'host' => 'localhost',
     'name' => 'database_name',
@@ -20,5 +23,9 @@ return [
   ],
   'integrations' => [
     'n8n_webhook' => '',
+  ],
+  'inventory' => [
+    'api_base' => 'https://baza.igreps.rs',
+    'supplier_token' => '',
   ],
 ];

@@ -139,6 +139,14 @@
     .note-editor textarea{min-height:74px}
     .note-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
     .note-actions .btn{min-height:34px;padding:7px 10px;font-size:12px}
+    .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .settings-grid .full{grid-column:1 / -1}
+    .security-note{margin-top:12px;border:1px solid rgba(23,105,224,.18);border-radius:8px;background:rgba(23,105,224,.06);padding:11px 12px}
+    .code-result{display:grid;gap:4px;margin-top:10px}
+    .order-picker{display:grid;gap:10px;margin-top:12px;max-height:min(420px,60vh);overflow:auto;padding-right:3px}
+    .order-choice{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:11px 12px}
+    .order-choice .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
+    .modal.locked{width:min(540px,100%)}
     .meta{color:var(--muted);font-size:12px;line-height:1.45}
     .footer-actions{display:none;margin-top:18px;text-align:center}
     .footer-actions .btn{min-height:34px;padding:7px 12px;font-size:12px}
@@ -210,6 +218,9 @@
       .payment-row{align-items:flex-start;flex-direction:column}
       .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
+      .settings-grid{grid-template-columns:1fr}
+      .order-choice{flex-direction:column}
+      .order-choice .btn{flex:0 0 auto;min-width:0}
       .detail-row{grid-template-columns:1fr;gap:3px}
       .release-backdrop{align-items:flex-start;padding:12px}
       .release-modal{max-height:calc(100vh - 24px);padding:18px}
@@ -270,12 +281,46 @@
             <div class="actions">
               <button class="btn primary" id="orderBtn">Poruči</button>
               <button class="btn good" id="paidBtn">Uplatio sam</button>
+              <button class="btn" id="missingGameBtn" type="button">Igra mi nije stigla</button>
               <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
               <button class="btn" id="logoutBtn">Logout</button>
             </div>
             <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
             <div class="msg" id="orderMsg"></div>
             <div class="msg" id="paidMsg"></div>
+          </div>
+
+          <div class="section">
+            <h2>Verifikacioni kod</h2>
+            <p>Unesite email PlayStation naloga za koji Vam je potreban kod. Kod se šalje na email povezan sa Vašim reseller nalogom.</p>
+            <label for="codeAccountEmail">Email PlayStation naloga</label>
+            <input id="codeAccountEmail" type="email" autocomplete="off" placeholder="psn-nalog@email.com" />
+            <p class="meta">Maksimalno 3 zahteva dnevno po jednom PlayStation nalogu.</p>
+            <div class="actions">
+              <button class="btn primary" id="sendCodeBtn" type="button">Zatraži verifikacioni kod</button>
+            </div>
+            <div class="msg" id="codeMsg"></div>
+            <p class="meta">Ako kod ne radi ili nije dostupan, kontaktirajte PlayWorld putem Vibera ili preko <a href="https://support.playworld.rs" target="_blank" rel="noopener">support.playworld.rs</a>.</p>
+          </div>
+
+          <div class="section">
+            <h2>Podešavanja naloga</h2>
+            <p>Email se koristi za verifikacione kodove i kontakt sa PlayWorld timom.</p>
+            <div class="settings-grid">
+              <div><label for="settingsEmail">Email</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
+              <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
+              <div class="full security-note">
+                <p><strong>Bezbednost naloga</strong></p>
+                <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude aktivirana u sledećoj fazi.</p>
+              </div>
+              <div><label for="currentToken">Trenutni token/šifra</label><input id="currentToken" type="password" autocomplete="current-password" /></div>
+              <div><label for="newToken">Novi token/šifra</label><input id="newToken" type="password" autocomplete="new-password" placeholder="Najmanje 12 karaktera" /></div>
+              <div><label for="confirmToken">Potvrdi novi token/šifru</label><input id="confirmToken" type="password" autocomplete="new-password" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" id="saveSettingsBtn" type="button">Sačuvaj podešavanja</button>
+            </div>
+            <div class="msg" id="settingsMsg"></div>
           </div>
 
           <div class="section">
@@ -330,6 +375,45 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="missingGameModal" role="dialog" aria-modal="true" aria-labelledby="missingGameTitle">
+    <div class="modal">
+      <h2 id="missingGameTitle">Igra mi nije stigla</h2>
+      <p>Izaberite porudžbinu za koju želite da pošaljete prijavu PlayWorld timu.</p>
+      <div id="missingOrdersList" class="order-picker">Učitavanje porudžbina...</div>
+      <div class="msg" id="missingGameMsg"></div>
+      <div class="actions">
+        <button class="btn" id="closeMissingGameBtn" type="button">Zatvori</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modal locked">
+      <h2 id="profileTitle">Dovršite podešavanja naloga</h2>
+      <p>Potvrdite kontakt podatke pre korišćenja panela. Novi sistem omogućava da verifikacioni kod zatražite direktno iz panela, a kod stiže na email vezan za Vaš reseller nalog.</p>
+      <div class="security-note">
+        <p><strong>Dodatna zaštita naloga</strong></p>
+        <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude dostupna. To pomaže da sprečimo neovlašćene porudžbine i nepotrebne troškove.</p>
+      </div>
+      <label for="profileEmail">Email</label>
+      <input id="profileEmail" type="email" autocomplete="email" />
+      <label for="profilePhone">Telefon</label>
+      <input id="profilePhone" type="tel" autocomplete="tel" placeholder="+381..." />
+      <label for="profileCurrentToken">Trenutni token/šifra za opcionalnu promenu</label>
+      <input id="profileCurrentToken" type="password" autocomplete="current-password" />
+      <label for="profileNewToken">Novi sigurniji token/šifra</label>
+      <input id="profileNewToken" type="password" autocomplete="new-password" placeholder="Ostavite prazno ako menjate kasnije" />
+      <label for="profileConfirmToken">Potvrdi novi token/šifru</label>
+      <input id="profileConfirmToken" type="password" autocomplete="new-password" />
+      <p class="meta">Maksimalno 3 verifikaciona koda dnevno po jednom PlayStation nalogu. Ako kod ne radi ili nije dostupan, kontaktirajte PlayWorld putem Vibera ili <a href="https://support.playworld.rs" target="_blank" rel="noopener">support.playworld.rs</a>.</p>
+      <div class="actions">
+        <button class="btn primary" id="completeProfileBtn" type="button">Sačuvaj i nastavi</button>
+        <button class="btn" id="profileLogoutBtn" type="button">Logout</button>
+      </div>
+      <div class="msg" id="profileMsg"></div>
+    </div>
+  </div>
+
   <div class="release-backdrop" id="releaseModal" role="dialog" aria-modal="true" aria-labelledby="releaseTitle">
     <div class="release-modal">
       <h2 id="releaseTitle">Novo u reseller panelu</h2>
@@ -380,7 +464,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf: "", orderInProgress: false, products: [], prices: new Map(), productSearch: "", pendingOrder: null };
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -395,11 +479,22 @@
     const custEmail = $("custEmail");
     const orderBtn = $("orderBtn");
     const paidBtn = $("paidBtn");
+    const missingGameBtn = $("missingGameBtn");
     const requestGameBtn = $("requestGameBtn");
     const logoutBtn = $("logoutBtn");
     const orderMsg = $("orderMsg");
     const paidMsg = $("paidMsg");
     const pricesList = $("pricesList");
+    const codeAccountEmail = $("codeAccountEmail");
+    const sendCodeBtn = $("sendCodeBtn");
+    const codeMsg = $("codeMsg");
+    const settingsEmail = $("settingsEmail");
+    const settingsPhone = $("settingsPhone");
+    const currentToken = $("currentToken");
+    const newToken = $("newToken");
+    const confirmToken = $("confirmToken");
+    const saveSettingsBtn = $("saveSettingsBtn");
+    const settingsMsg = $("settingsMsg");
     const historyList = $("historyList");
     const markAllPaidBtn = $("markAllPaidBtn");
     const themeBtn = $("themeBtn");
@@ -413,6 +508,18 @@
     const sendGameRequestBtn = $("sendGameRequestBtn");
     const cancelGameRequestBtn = $("cancelGameRequestBtn");
     const gameRequestMsg = $("gameRequestMsg");
+    const missingGameModal = $("missingGameModal");
+    const missingOrdersList = $("missingOrdersList");
+    const missingGameMsg = $("missingGameMsg");
+    const closeMissingGameBtn = $("closeMissingGameBtn");
+    const profileModal = $("profileModal");
+    const profileEmail = $("profileEmail");
+    const profilePhone = $("profilePhone");
+    const profileCurrentToken = $("profileCurrentToken");
+    const profileNewToken = $("profileNewToken");
+    const profileConfirmToken = $("profileConfirmToken");
+    const completeProfileBtn = $("completeProfileBtn");
+    const profileLogoutBtn = $("profileLogoutBtn");
     const releaseBtn = $("releaseBtn");
     const releaseModal = $("releaseModal");
     const dismissReleaseBtn = $("dismissReleaseBtn");
@@ -455,6 +562,7 @@
       }
       return text;
     }
+    function validEmail(value){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
@@ -513,7 +621,123 @@
 
     async function loadMe(){
       const j = await api("/api/me.php");
+      state.me = j;
       balanceText.textContent = price(j.balance_rsd) + " RSD";
+      fillProfileForms(j);
+      return j;
+    }
+
+    function fillProfileForms(profile){
+      const email = profile && profile.email ? profile.email : "";
+      const phone = profile && profile.phone ? profile.phone : "";
+      [settingsEmail, profileEmail].forEach((el) => { if (el) el.value = email; });
+      [settingsPhone, profilePhone].forEach((el) => { if (el) el.value = phone; });
+    }
+
+    function setMainActionsEnabled(enabled){
+      productSelect.disabled = !enabled;
+      orderBtn.disabled = !enabled;
+      paidBtn.disabled = !enabled;
+      missingGameBtn.disabled = !enabled;
+      requestGameBtn.disabled = !enabled;
+      sendCodeBtn.disabled = !enabled;
+      saveSettingsBtn.disabled = !enabled;
+    }
+
+    function openProfileModal(){
+      hide(profileMsg);
+      profileCurrentToken.value = "";
+      profileNewToken.value = "";
+      profileConfirmToken.value = "";
+      profileModal.classList.add("open");
+      profileEmail.focus();
+    }
+
+    function closeProfileModal(){
+      profileModal.classList.remove("open");
+    }
+
+    async function loadProtectedData(){
+      setMainActionsEnabled(false);
+      pricesList.textContent = "Učitavanje cenovnika...";
+      historyList.textContent = "Učitavanje porudžbina...";
+
+      loadCatalog()
+        .then(() => setMainActionsEnabled(true))
+        .catch((e) => {
+          pricesList.textContent = "Cenovnik trenutno nije dostupan.";
+          show(orderMsg, "bad", e.message);
+          setMainActionsEnabled(true);
+        });
+
+      loadOrders().catch(() => {
+        historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
+      });
+    }
+
+    async function enterAuthenticatedPanel(profile){
+      setStatus("online");
+      showAppShell();
+      fillProfileForms(profile);
+
+      if (!profile.profile_completed) {
+        setMainActionsEnabled(false);
+        pricesList.textContent = "Dovršite podešavanja naloga za prikaz cenovnika.";
+        historyList.textContent = "Dovršite podešavanja naloga za pregled porudžbina.";
+        openProfileModal();
+        return;
+      }
+
+      closeProfileModal();
+      await loadProtectedData();
+    }
+
+    function profilePayload(prefix, completeOnboarding){
+      const isProfile = prefix === "profile";
+      return {
+        email:(isProfile ? profileEmail : settingsEmail).value.trim(),
+        phone:(isProfile ? profilePhone : settingsPhone).value.trim(),
+        current_token:(isProfile ? profileCurrentToken : currentToken).value,
+        new_token:(isProfile ? profileNewToken : newToken).value,
+        confirm_token:(isProfile ? profileConfirmToken : confirmToken).value,
+        complete_onboarding:completeOnboarding
+      };
+    }
+
+    async function saveProfile(prefix, completeOnboarding){
+      const btn = prefix === "profile" ? completeProfileBtn : saveSettingsBtn;
+      const msg = prefix === "profile" ? profileMsg : settingsMsg;
+      hide(msg);
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = "Čuvam...";
+      try{
+        const payload = profilePayload(prefix, completeOnboarding);
+        if (!validEmail(payload.email)) throw new Error("Unesite validan email.");
+        if (!payload.phone) throw new Error("Unesite broj telefona.");
+        const updated = await api("/api/profile.php", { method:"POST", body:JSON.stringify(payload) });
+        state.me = Object.assign({}, state.me || {}, updated);
+        fillProfileForms(state.me);
+        currentToken.value = "";
+        newToken.value = "";
+        confirmToken.value = "";
+        profileCurrentToken.value = "";
+        profileNewToken.value = "";
+        profileConfirmToken.value = "";
+        show(msg, "ok", completeOnboarding ? "Podešavanja su sačuvana. Panel je spreman." : "Podešavanja su sačuvana.");
+        if (completeOnboarding) {
+          closeProfileModal();
+          await loadMe();
+          await loadProtectedData();
+        } else {
+          await loadMe();
+        }
+      }catch(e){
+        show(msg, "bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
     }
 
     function productSearchText(product){
@@ -565,9 +789,7 @@
       setLoggedInUi(true);
       loginBox.style.display = "none";
       appBox.style.display = "block";
-      productSelect.disabled = true;
-      orderBtn.disabled = true;
-      paidBtn.disabled = false;
+      setMainActionsEnabled(false);
       state.products = [];
       state.prices = new Map();
       renderProductOptions();
@@ -674,14 +896,15 @@
 
     async function loadOrders(){
       const j = await api("/api/orders.php");
+      state.orders = j.orders || [];
       historyList.textContent = "";
-      if (!j.orders || j.orders.length === 0){
+      if (!state.orders.length){
         historyList.textContent = "Još nema prethodnih porudžbina.";
         markAllPaidBtn.disabled = true;
         return;
       }
       markAllPaidBtn.disabled = false;
-      j.orders.forEach((order) => {
+      state.orders.forEach((order) => {
         const div = document.createElement("div");
         div.className = "history-item";
         const name = order.product_name || order.product_id;
@@ -763,6 +986,94 @@
       });
     }
 
+    async function sendVerificationCode(){
+      if (state.codeInProgress) return;
+      hide(codeMsg);
+      const account_email = codeAccountEmail.value.trim();
+      if (!validEmail(account_email)) {
+        show(codeMsg, "bad", "Unesite validan email PlayStation naloga.");
+        return;
+      }
+      state.codeInProgress = true;
+      sendCodeBtn.disabled = true;
+      sendCodeBtn.textContent = "Šaljem zahtev...";
+      try{
+        const j = await api("/api/verification_code.php", { method:"POST", body:JSON.stringify({ account_email }) });
+        const lines = [
+          j.message || "Kod je poslat na vaš email.",
+          `PlayStation nalog: ${j.account_email}`,
+          `Poslato na: ${j.recipient_email_masked}`,
+          `Status: ${j.status || "sent"}`,
+          `Vreme: ${dateTime(j.sent_at || new Date().toISOString())}`
+        ];
+        show(codeMsg, j.duplicate ? "warn" : "ok", lines.join("\n"));
+        codeAccountEmail.value = "";
+      }catch(e){
+        show(codeMsg, "bad", `${e.message}\n\nPodrška: Viber PlayWorld support ili support.playworld.rs`);
+      }finally{
+        state.codeInProgress = false;
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = "Zatraži verifikacioni kod";
+      }
+    }
+
+    function renderMissingOrders(){
+      missingOrdersList.textContent = "";
+      const orders = state.orders || [];
+      if (!orders.length) {
+        missingOrdersList.textContent = "Nema prethodnih porudžbina za prijavu.";
+        return;
+      }
+      orders.forEach((order) => {
+        const row = document.createElement("div");
+        row.className = "order-choice";
+        const info = document.createElement("div");
+        const name = order.product_name || order.product_id;
+        const type = order.account_type ? ` (${order.account_type})` : "";
+        appendText(info, "strong", `#${order.id} - ${name}${type}`);
+        appendText(info, "div", `Poručeno: ${dateTime(order.created_at)}`, "meta");
+        if (order.price_rsd) appendText(info, "div", `Cena: ${price(order.price_rsd)} RSD`, "meta");
+        const btn = document.createElement("button");
+        btn.className = "btn primary";
+        btn.type = "button";
+        btn.textContent = "Pošalji zahtev";
+        btn.addEventListener("click", () => submitMissingGame(order.id, btn));
+        row.append(info, btn);
+        missingOrdersList.appendChild(row);
+      });
+    }
+
+    async function openMissingGame(){
+      hide(missingGameMsg);
+      missingGameModal.classList.add("open");
+      if (!state.orders.length) {
+        missingOrdersList.textContent = "Učitavanje porudžbina...";
+        await loadOrders().catch(() => {});
+      }
+      renderMissingOrders();
+    }
+
+    function closeMissingGame(){
+      missingGameModal.classList.remove("open");
+      hide(missingGameMsg);
+    }
+
+    async function submitMissingGame(order_id, btn){
+      hide(missingGameMsg);
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = "Šaljem...";
+      try{
+        const j = await api("/api/missing_game.php", { method:"POST", body:JSON.stringify({ order_id }) });
+        show(missingGameMsg, j.duplicate ? "warn" : "ok", j.message || "Prijava je poslata PlayWorld timu.");
+        btn.textContent = j.duplicate ? "Već poslato" : "Poslato";
+      }catch(e){
+        show(missingGameMsg, "bad", e.message);
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
     async function login(){
       hide(loginMsg);
       loginBtn.disabled = true;
@@ -773,27 +1084,8 @@
         if (!token) throw new Error("Unesi token.");
         await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
         markField(tokenInput, "ok");
-        setStatus("online");
-        showAppShell();
-
-        loadMe().catch((e) => {
-          balanceText.textContent = "Proveri kasnije";
-          show(orderMsg, "bad", e.message);
-        });
-
-        loadCatalog()
-          .then(() => {
-            productSelect.disabled = false;
-            orderBtn.disabled = false;
-          })
-          .catch((e) => {
-            pricesList.textContent = "Cenovnik trenutno nije dostupan.";
-            show(orderMsg, "bad", e.message);
-          });
-
-        loadOrders().catch(() => {
-          historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
-        });
+        const me = await loadMe();
+        await enterAuthenticatedPanel(me);
       }catch(e){
         markField(tokenInput, "bad");
         show(loginMsg, "bad", e.message);
@@ -806,23 +1098,9 @@
     async function restoreSession(){
       try{
         const me = await api("/api/me.php");
-        setStatus("online");
+        state.me = me;
         balanceText.textContent = price(me.balance_rsd) + " RSD";
-        showAppShell();
-
-        loadCatalog()
-          .then(() => {
-            productSelect.disabled = false;
-            orderBtn.disabled = false;
-          })
-          .catch((e) => {
-            pricesList.textContent = "Cenovnik trenutno nije dostupan.";
-            show(orderMsg, "bad", e.message);
-          });
-
-        loadOrders().catch(() => {
-          historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
-        });
+        await enterAuthenticatedPanel(me);
       }catch(e){
         setStatus("offline");
       }
@@ -934,6 +1212,8 @@
       state.csrf = "";
       state.products = [];
       state.prices = new Map();
+      state.orders = [];
+      state.me = null;
       state.productSearch = "";
       productSearch.value = "";
       productSelect.disabled = false;
@@ -945,11 +1225,18 @@
       markAllPaidBtn.disabled = true;
       loginBox.style.display = "block";
       appBox.style.display = "none";
+      closeProfileModal();
+      closeMissingGame();
     }
 
     loginBtn.addEventListener("click", login);
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
+    missingGameBtn.addEventListener("click", () => openMissingGame().catch((e) => show(missingGameMsg, "bad", e.message)));
+    sendCodeBtn.addEventListener("click", sendVerificationCode);
+    saveSettingsBtn.addEventListener("click", () => saveProfile("settings", false));
+    completeProfileBtn.addEventListener("click", () => saveProfile("profile", true));
+    profileLogoutBtn.addEventListener("click", logout);
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
     requestGameBtn.addEventListener("click", openGameRequest);
     logoutBtn.addEventListener("click", logout);
@@ -987,19 +1274,26 @@
     confirmModal.addEventListener("click", (event) => { if (event.target === confirmModal) closeConfirmation(); });
     sendGameRequestBtn.addEventListener("click", sendGameRequest);
     cancelGameRequestBtn.addEventListener("click", closeGameRequest);
+    closeMissingGameBtn.addEventListener("click", closeMissingGame);
     dismissReleaseBtn.addEventListener("click", dismissReleaseNotes);
     closeSuccessBtn.addEventListener("click", closeSuccessModal);
     successModal.addEventListener("click", (event) => { if (event.target === successModal) closeSuccessModal(); });
     releaseModal.addEventListener("click", (event) => { if (event.target === releaseModal) dismissReleaseNotes(); });
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
+    missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
       if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
+      if (event.key === "Escape" && missingGameModal.classList.contains("open")) closeMissingGame();
       if (event.key === "Escape" && releaseModal.classList.contains("open")) dismissReleaseNotes();
       if (event.key === "Escape" && successModal.classList.contains("open")) closeSuccessModal();
     });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
+    codeAccountEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") sendVerificationCode(); });
+    [profileEmail, profilePhone, profileCurrentToken, profileNewToken, profileConfirmToken].forEach((field) => {
+      field.addEventListener("keydown", (event) => { if (event.key === "Enter") saveProfile("profile", true); });
+    });
     setTheme(defaultTheme());
     setLoggedInUi(false);
     restoreSession();

@@ -26,25 +26,6 @@ if ($product_id === "" || $customer_email === "") {
 $reseller_id = (int)$reseller["id"];
 $reseller_email = (string)$reseller["email"];
 
-function post_json(string $url, array $payload, int $timeoutSeconds = 12, array $extraHeaders = []): array {
-  $ch = curl_init($url);
-  $headers = array_merge(["Content-Type: application/json"], $extraHeaders);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => $headers,
-    CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-    CURLOPT_CONNECTTIMEOUT => $timeoutSeconds,
-    CURLOPT_TIMEOUT => $timeoutSeconds,
-  ]);
-  $body = curl_exec($ch);
-  $err  = curl_error($ch);
-  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-
-  return ["ok" => ($err === "" && $code >= 200 && $code < 300), "code"=>$code, "err"=>$err, "body"=>$body];
-}
-
 function update_order_delivery_state(PDO $pdo, int $orderId, string $status, array $payload = [], string $notes = ''): void {
   $sets = [];
   $params = [];
@@ -72,6 +53,7 @@ function update_order_delivery_state(PDO $pdo, int $orderId, string $status, arr
 }
 
 $pdo = db();
+require_completed_profile($pdo, $reseller_id);
 
 try {
   $pdo->beginTransaction();
