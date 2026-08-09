@@ -16,11 +16,10 @@ require_csrf();
 
 $input = json_decode(file_get_contents("php://input"), true) ?: [];
 $product_id = trim((string)($input["product_id"] ?? ""));
-$customer_email = trim((string)($input["customer_email"] ?? ""));
 
-if ($product_id === "" || $customer_email === "") {
+if ($product_id === "") {
   http_response_code(400);
-  echo json_encode(["ok"=>false,"error"=>"Missing product_id or customer_email"]); exit;
+  echo json_encode(["ok"=>false,"error"=>"Missing product_id"]); exit;
 }
 
 $reseller_id = (int)$reseller["id"];
@@ -60,6 +59,10 @@ $profile = reseller_profile($pdo, $reseller_id);
 if ($profile) {
   $reseller_name = (string)($profile["display_name"] ?? "");
   $reseller_phone = (string)($profile["phone"] ?? "");
+}
+$customer_email = normalize_email((string)($profile["email"] ?? $reseller_email));
+if (!valid_email($customer_email)) {
+  throw new RuntimeException("Email resellera nije validan. Otvorite Nalog i proverite email adresu.");
 }
 
 try {
@@ -135,8 +138,8 @@ try {
   }
   $message .= "ID: " . $reseller_id . "\n\n";
 
-  $message .= "Kupac\n";
-  $message .= "Email: " . $customer_email . "\n\n";
+  $message .= "Isporuka\n";
+  $message .= "Email resellera: " . $customer_email . "\n\n";
   $message .= "Vreme: " . gmdate("Y-m-d H:i:s") . " UTC\n";
 
   $from = (string)config_value('mail.from', 'no-reply@localhost');

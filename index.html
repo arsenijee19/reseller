@@ -277,8 +277,6 @@
             </div>
             <label for="product">Proizvod</label>
             <div class="select-wrap"><select id="product"></select></div>
-            <label for="custEmail">Email kupca</label>
-            <input id="custEmail" type="email" autocomplete="email" placeholder="kupac@email.com" />
             <div class="actions">
               <button class="btn primary" id="orderBtn">Poruči</button>
               <button class="btn good" id="paidBtn">Uplatio sam</button>
@@ -542,7 +540,6 @@
     const productSearch = $("productSearch");
     const productSearchCount = $("productSearchCount");
     const productSelect = $("product");
-    const custEmail = $("custEmail");
     const orderBtn = $("orderBtn");
     const paidBtn = $("paidBtn");
     const missingGameBtn = $("missingGameBtn");
@@ -1108,7 +1105,7 @@
         account_type: product.account_type,
         price: product.price,
         currency: product.currency || "RSD",
-        customer_email: custEmail.value.trim()
+        customer_email: state.me && state.me.email ? state.me.email : ""
       };
     }
 
@@ -1118,7 +1115,7 @@
         ["Proizvod", details.product_name],
         ["Tip naloga", details.account_type],
         ["Cena", `${price(details.price)} ${details.currency}`],
-        ["Kupac", details.customer_email]
+        ["Isporuka", details.customer_email || "Email resellera"]
       ].forEach(([label, value]) => {
         const row = document.createElement("div");
         row.className = "detail-row";
@@ -1390,10 +1387,6 @@
       try{
         const details = selectedProductDetails();
         if (!details || !details.product_id) throw new Error("Izaberi proizvod.");
-        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.customer_email);
-        markField(custEmail, emailOk ? "ok" : "bad");
-        if (!details.customer_email) throw new Error("Unesi email kupca.");
-        if (!emailOk) throw new Error("Email kupca nije validan.");
         openConfirmation(details);
       }catch(e){
         show(orderMsg, "bad", e.message);
@@ -1411,17 +1404,14 @@
       setProgress(true);
       hide(orderMsg);
       try{
-        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id, customer_email:details.customer_email }) });
+        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id }) });
         hide(orderMsg);
         openSuccessModal();
-        custEmail.value = "";
-        markField(custEmail, "");
         await loadMe();
         loadOrders().catch(() => {
           historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
         });
       }catch(e){
-        markField(custEmail, "bad");
         show(orderMsg, "bad", e.message);
       }finally{
         state.orderInProgress = false;
@@ -1541,15 +1531,11 @@
       const btn = event.target.closest(".btn");
       if (btn) enhanceButtonHover({ currentTarget:btn, clientX:event.clientX, clientY:event.clientY });
     });
-    [tokenInput, custEmail].forEach((field) => {
+    [tokenInput].forEach((field) => {
       field.addEventListener("input", () => {
         pulseTyping(field);
         markField(field, "");
       });
-    });
-    custEmail.addEventListener("blur", () => {
-      const value = custEmail.value.trim();
-      if (value) markField(custEmail, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "ok" : "bad");
     });
     productSelect.addEventListener("change", () => {
       const wrap = productSelect.closest(".select-wrap");
@@ -1587,7 +1573,6 @@
       if (event.key === "Escape" && successModal.classList.contains("open")) closeSuccessModal();
     });
     tokenInput.addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
-    custEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") order(); });
     codeAccountEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") sendVerificationCode(); });
     twoFactorLoginCode.addEventListener("keydown", (event) => { if (event.key === "Enter") verifyTwoFactorLogin(); });
     [profileName, profileEmail, profilePhone, profileCurrentToken, profileNewToken, profileConfirmToken].forEach((field) => {

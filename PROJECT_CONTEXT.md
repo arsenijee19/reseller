@@ -2,7 +2,7 @@
 
 ## Project Overview
 - Live reseller portal for PlayWorld.rs hosted on cPanel.
-- Resellers log in with a token, create product orders for buyer emails, and spend wallet balance.
+- Resellers log in with a token, create product orders delivered to their reseller email, and spend wallet balance.
 - Admins manage resellers, balances, product prices, and order delivery/status data.
 
 ## Current Project Status
@@ -27,7 +27,7 @@
   - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
   - Reseller “Zatraži igru” button opens a popup and emails the requested game suggestion to the admin.
-  - Reseller order flow shows a confirmation dialog with product, account type, buyer email, and price before sending the order request/webhook.
+  - Reseller order flow shows a confirmation dialog with product, account type, reseller delivery email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
   - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
   - Reseller UI restores an existing server session on page load, so refresh does not force a new login while the session is valid.
@@ -117,7 +117,7 @@
   - Updated frontend uses `textContent`/DOM APIs for DB-rendered values instead of injecting user data as HTML.
 - Integrations:
   - `api/order.php` sends order emails and posts to the configured n8n webhook.
-  - n8n receives `request_id`, `order_db_id`, `reseller_email`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email`, and timestamp.
+  - n8n receives `request_id`, `order_db_id`, `reseller_email`, `reseller_name`, `reseller_phone`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email` populated from reseller email, and timestamp.
   - Updated local n8n workflow export `/Users/arsoplayworld/Downloads/reseller.json` includes Telegram notifications for received orders and completed deliveries, with product, account type, and price included in the message.
   - `api/payment_notice.php` emails the configured payment notice recipient.
   - `api/verification_code.php` posts to `PWRS_INVENTORY_API_BASE` `/api/supplier/v1/2fa/email-code-requests` using a server-side supplier bearer token.
@@ -153,6 +153,7 @@
   - Product price is loaded from `product_prices` by `product_id`.
   - Currency must be `RSD`.
   - New order creates a random `request_id`.
+  - Reseller UI no longer asks for buyer email; `orders.buyer_email` and n8n `customer_email` are populated from the reseller profile email.
   - Wallet transaction type `ORDER` is inserted with negative amount.
   - Reseller balance is decreased by product price.
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
