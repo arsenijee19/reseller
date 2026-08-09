@@ -83,16 +83,33 @@ try {
   $recentRow = $recent->fetch(PDO::FETCH_ASSOC);
   if ($recentRow) {
     release_inventory_lock($pdo, $lockName, $lockAcquired);
+    $recentResult = (string)($recentRow['result'] ?? '');
+    $recentHttp = (int)($recentRow['http_status'] ?? 0);
+    if (in_array($recentResult, ['success', 'duplicate', 'created'], true)) {
+      json_response([
+        'ok' => true,
+        'duplicate' => true,
+        'message' => $recentResult === 'created' ? 'Zahtev se još obrađuje. Proverite email pre ponovnog slanja.' : 'Zahtev je već kreiran. Proverite email pre ponovnog slanja.',
+        'account_email' => $accountEmail,
+        'recipient_email_masked' => mask_email($recipientEmail),
+        'status' => (string)($recentRow['inventory_status'] ?: $recentResult),
+        'sent_at' => (string)$recentRow['created_at'],
+        'csrf_token' => csrf_token(),
+      ]);
+    }
+    if ($recentResult === 'auth_error' || in_array($recentHttp, [401, 403], true)) {
+      json_response(['ok' => false, 'error' => 'Verifikacioni kod trenutno nije dostupan zbog API podešavanja. Kontaktirajte PlayWorld podršku.'], 502);
+    }
+    if ($recentResult === 'inventory_502' || $recentHttp === 502) {
+      json_response(['ok' => false, 'error' => 'Došlo je do problema prilikom slanja koda. Nemojte odmah ponavljati zahtev. Obratite se PlayWorld podršci ako kod ne stigne.'], 502);
+    }
+    if ($recentResult === 'timeout' || $recentHttp === 0) {
+      json_response(['ok' => false, 'error' => 'Inventory API trenutno ne odgovara. Pokušajte kasnije.'], 502);
+    }
     json_response([
-      'ok' => true,
-      'duplicate' => true,
-      'message' => 'Zahtev je već kreiran. Proverite email pre ponovnog slanja.',
-      'account_email' => $accountEmail,
-      'recipient_email_masked' => mask_email($recipientEmail),
-      'status' => (string)($recentRow['inventory_status'] ?: $recentRow['result']),
-      'sent_at' => (string)$recentRow['created_at'],
-      'csrf_token' => csrf_token(),
-    ]);
+      'ok' => false,
+      'error' => 'Prethodni zahtev nije uspeo. Proverite Admin Inventory history pre ponovnog slanja.',
+    ], 502);
   }
 
   $countStmt = $pdo->prepare("
