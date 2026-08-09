@@ -247,6 +247,7 @@
       <div class="status auth-only">
         <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
         <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
+        <button class="btn whats-new-btn" id="accountSettingsBtn" type="button">Nalog</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
       </div>
     </header>
@@ -301,26 +302,6 @@
             </div>
             <div class="msg" id="codeMsg"></div>
             <p class="meta">Ako kod ne radi ili nije dostupan, kontaktirajte PlayWorld putem Vibera ili preko <a href="https://support.playworld.rs" target="_blank" rel="noopener">support.playworld.rs</a>.</p>
-          </div>
-
-          <div class="section">
-            <h2>Podešavanja naloga</h2>
-            <p>Email se koristi za verifikacione kodove i kontakt sa PlayWorld timom.</p>
-            <div class="settings-grid">
-              <div><label for="settingsEmail">Email</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
-              <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
-              <div class="full security-note">
-                <p><strong>Bezbednost naloga</strong></p>
-                <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude aktivirana u sledećoj fazi.</p>
-              </div>
-              <div><label for="currentToken">Trenutni token/šifra</label><input id="currentToken" type="password" autocomplete="current-password" /></div>
-              <div><label for="newToken">Novi token/šifra</label><input id="newToken" type="password" autocomplete="new-password" placeholder="Najmanje 12 karaktera" /></div>
-              <div><label for="confirmToken">Potvrdi novi token/šifru</label><input id="confirmToken" type="password" autocomplete="new-password" /></div>
-            </div>
-            <div class="actions">
-              <button class="btn primary" id="saveSettingsBtn" type="button">Sačuvaj podešavanja</button>
-            </div>
-            <div class="msg" id="settingsMsg"></div>
           </div>
 
           <div class="section">
@@ -387,6 +368,29 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal locked">
+      <h2 id="settingsTitle">Podešavanja naloga</h2>
+      <p>Email se koristi za verifikacione kodove i kontakt sa PlayWorld timom.</p>
+      <div class="settings-grid">
+        <div><label for="settingsEmail">Email</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
+        <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
+        <div class="full security-note">
+          <p><strong>Bezbednost naloga</strong></p>
+          <p>Preporučujemo jači reseller token/šifru i verifikaciju u 2 koraka kada bude aktivirana u sledećoj fazi.</p>
+        </div>
+        <div><label for="currentToken">Trenutni token/šifra</label><input id="currentToken" type="password" autocomplete="current-password" /></div>
+        <div><label for="newToken">Novi token/šifra</label><input id="newToken" type="password" autocomplete="new-password" placeholder="Najmanje 12 karaktera" /></div>
+        <div><label for="confirmToken">Potvrdi novi token/šifru</label><input id="confirmToken" type="password" autocomplete="new-password" /></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="saveSettingsBtn" type="button">Sačuvaj podešavanja</button>
+        <button class="btn" id="closeSettingsBtn" type="button">Zatvori</button>
+      </div>
+      <div class="msg" id="settingsMsg"></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
     <div class="modal locked">
       <h2 id="profileTitle">Dovršite podešavanja naloga</h2>
@@ -417,8 +421,20 @@
   <div class="release-backdrop" id="releaseModal" role="dialog" aria-modal="true" aria-labelledby="releaseTitle">
     <div class="release-modal">
       <h2 id="releaseTitle">Novo u reseller panelu</h2>
-      <p>Dodali smo nekoliko opcija za lakšu evidenciju i brži rad.</p>
+      <p>Dodali smo novi sigurnosni update i lakši rad sa porudžbinama.</p>
       <div class="release-list">
+        <div class="release-item">
+          <strong>Kontakt podaci naloga</strong>
+          <p>Panel će tražiti email i telefon resellera kako bi verifikacioni kodovi i provere stizali na pravu adresu.</p>
+        </div>
+        <div class="release-item">
+          <strong>Verifikacioni kod iz panela</strong>
+          <p>Za PlayStation nalog možeš zatražiti kod direktno iz panela, najviše 3 puta dnevno po nalogu.</p>
+        </div>
+        <div class="release-item">
+          <strong>Igra mi nije stigla</strong>
+          <p>Ako porudžbina ne stigne, možeš izabrati prethodnu porudžbinu i poslati prijavu PlayWorld timu.</p>
+        </div>
         <div class="release-item">
           <strong>Notes po porudžbini</strong>
           <p>Uz svaku porudžbinu možeš da upišeš telefon kupca, email naloga ili internu napomenu.</p>
@@ -464,6 +480,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
+    const RELEASE_VERSION = "2026-08-09-account-security-inventory";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
@@ -488,12 +505,15 @@
     const codeAccountEmail = $("codeAccountEmail");
     const sendCodeBtn = $("sendCodeBtn");
     const codeMsg = $("codeMsg");
+    const accountSettingsBtn = $("accountSettingsBtn");
+    const settingsModal = $("settingsModal");
     const settingsEmail = $("settingsEmail");
     const settingsPhone = $("settingsPhone");
     const currentToken = $("currentToken");
     const newToken = $("newToken");
     const confirmToken = $("confirmToken");
     const saveSettingsBtn = $("saveSettingsBtn");
+    const closeSettingsBtn = $("closeSettingsBtn");
     const settingsMsg = $("settingsMsg");
     const historyList = $("historyList");
     const markAllPaidBtn = $("markAllPaidBtn");
@@ -563,6 +583,9 @@
       return text;
     }
     function validEmail(value){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
+    function hasCompleteContact(profile){
+      return validEmail(profile && profile.email) && String((profile && profile.phone) || "").trim().length > 0;
+    }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
@@ -657,6 +680,43 @@
       profileModal.classList.remove("open");
     }
 
+    function openSettingsModal(){
+      hide(settingsMsg);
+      currentToken.value = "";
+      newToken.value = "";
+      confirmToken.value = "";
+      settingsModal.classList.add("open");
+      settingsEmail.focus();
+    }
+
+    function closeSettingsModal(){
+      settingsModal.classList.remove("open");
+      hide(settingsMsg);
+    }
+
+    function shouldShowReleaseNotes(){
+      try{
+        return localStorage.getItem("pw-release-seen") !== RELEASE_VERSION;
+      }catch(e){
+        return false;
+      }
+    }
+
+    function markReleaseNotesSeen(){
+      try{
+        localStorage.setItem("pw-release-seen", RELEASE_VERSION);
+      }catch(e){}
+    }
+
+    function maybeOpenReleaseNotes(){
+      if (!shouldShowReleaseNotes()) return;
+      window.setTimeout(() => {
+        if (profileModal.classList.contains("open") || settingsModal.classList.contains("open")) return;
+        openReleaseNotes();
+        markReleaseNotesSeen();
+      }, 650);
+    }
+
     async function loadProtectedData(){
       setMainActionsEnabled(false);
       pricesList.textContent = "Učitavanje cenovnika...";
@@ -680,7 +740,7 @@
       showAppShell();
       fillProfileForms(profile);
 
-      if (!profile.profile_completed) {
+      if (!profile.profile_completed || !hasCompleteContact(profile)) {
         setMainActionsEnabled(false);
         pricesList.textContent = "Dovršite podešavanja naloga za prikaz cenovnika.";
         historyList.textContent = "Dovršite podešavanja naloga za pregled porudžbina.";
@@ -690,6 +750,7 @@
 
       closeProfileModal();
       await loadProtectedData();
+      maybeOpenReleaseNotes();
     }
 
     function profilePayload(prefix, completeOnboarding){
@@ -729,8 +790,10 @@
           closeProfileModal();
           await loadMe();
           await loadProtectedData();
+          maybeOpenReleaseNotes();
         } else {
           await loadMe();
+          closeSettingsModal();
         }
       }catch(e){
         show(msg, "bad", e.message);
@@ -1226,6 +1289,7 @@
       loginBox.style.display = "block";
       appBox.style.display = "none";
       closeProfileModal();
+      closeSettingsModal();
       closeMissingGame();
     }
 
@@ -1234,7 +1298,9 @@
     paidBtn.addEventListener("click", paidNotice);
     missingGameBtn.addEventListener("click", () => openMissingGame().catch((e) => show(missingGameMsg, "bad", e.message)));
     sendCodeBtn.addEventListener("click", sendVerificationCode);
+    accountSettingsBtn.addEventListener("click", openSettingsModal);
     saveSettingsBtn.addEventListener("click", () => saveProfile("settings", false));
+    closeSettingsBtn.addEventListener("click", closeSettingsModal);
     completeProfileBtn.addEventListener("click", () => saveProfile("profile", true));
     profileLogoutBtn.addEventListener("click", logout);
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
@@ -1281,10 +1347,12 @@
     releaseModal.addEventListener("click", (event) => { if (event.target === releaseModal) dismissReleaseNotes(); });
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
+    settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettingsModal(); });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
       if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
       if (event.key === "Escape" && missingGameModal.classList.contains("open")) closeMissingGame();
+      if (event.key === "Escape" && settingsModal.classList.contains("open")) closeSettingsModal();
       if (event.key === "Escape" && releaseModal.classList.contains("open")) dismissReleaseNotes();
       if (event.key === "Escape" && successModal.classList.contains("open")) closeSuccessModal();
     });
@@ -1293,6 +1361,9 @@
     codeAccountEmail.addEventListener("keydown", (event) => { if (event.key === "Enter") sendVerificationCode(); });
     [profileEmail, profilePhone, profileCurrentToken, profileNewToken, profileConfirmToken].forEach((field) => {
       field.addEventListener("keydown", (event) => { if (event.key === "Enter") saveProfile("profile", true); });
+    });
+    [settingsEmail, settingsPhone, currentToken, newToken, confirmToken].forEach((field) => {
+      field.addEventListener("keydown", (event) => { if (event.key === "Enter") saveProfile("settings", false); });
     });
     setTheme(defaultTheme());
     setLoggedInUi(false);

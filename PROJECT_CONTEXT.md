@@ -32,6 +32,8 @@
   - Reseller login shows the portal immediately after authentication; balance/catalog load first and order history loads in the background.
   - Reseller UI restores an existing server session on page load, so refresh does not force a new login while the session is valid.
   - Reseller UI has a responsive “Šta je novo?” release notes dialog opened from the portal header.
+  - Reseller UI automatically shows the current “Šta je novo?” dialog once per browser after login/update.
+  - Reseller account settings are hidden behind a header menu button and open in a modal instead of occupying a public panel section.
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
@@ -214,6 +216,7 @@
 - Added admin Inventory tab with config status, sanitized API history, missing-game reports, and recent security audit entries.
 - Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`; it explicitly creates/copies `api` and `sql` contents for cPanel compatibility.
 - Added no-cache headers for HTML/PHP responses to prevent Safari and mobile browsers from showing stale panel versions after deployment.
+- Moved reseller account settings into a modal opened from the header and made the current release-notes popup appear once after login.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
