@@ -66,7 +66,7 @@
 - `api/db.php` - PDO database connection and configuration loader.
 - `api/config.example.php` - safe template for local/private configuration.
 - `api/config.local.php` - ignored private configuration file required on cPanel; never commit it.
-- `.htaccess` and `api/.htaccess` - deny directory listing and block public access to docs, SQL files, logs, dotfiles, and private config.
+- `.htaccess` and `api/.htaccess` - deny directory listing, block public access to docs, SQL files, logs, dotfiles, and private config, and force browsers to revalidate HTML/PHP responses after deploys.
 - `.cpanel.yml` - cPanel Git deployment recipe that copies versioned panel files into `/home/psigrersrs/reseller.psigre.rs`.
 - `api/bootstrap.php` - shared JSON responses, secure sessions, CSRF helpers, auth guards, DB schema helpers.
 - `api/login.php` - reseller token login.
@@ -213,6 +213,7 @@
 - Added reseller “Igra mi nije stigla” report flow with duplicate protection and n8n notification payload.
 - Added admin Inventory tab with config status, sanitized API history, missing-game reports, and recent security audit entries.
 - Added cPanel Git deployment recipe targeting `/home/psigrersrs/reseller.psigre.rs`; it explicitly creates/copies `api` and `sql` contents for cPanel compatibility.
+- Added no-cache headers for HTML/PHP responses to prevent Safari and mobile browsers from showing stale panel versions after deployment.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
