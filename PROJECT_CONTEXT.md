@@ -10,7 +10,8 @@
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller login/admin login now have server-side rate limiting and security audit records without storing plaintext credentials.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
-  - Resellers must complete account profile onboarding after the account-security migration: email and phone are stored on the reseller profile before protected panel actions are available.
+  - Resellers must complete account profile onboarding after the account-security migration: personal email and phone are stored on the reseller profile before protected panel actions are available.
+  - Resellers still using internal `@playworld.rs` email addresses are forced back into the profile popup until they save a personal email for future delivery and verification-code messages.
   - Resellers can update account email/phone and optionally change their reseller token/password after confirming the current token/password.
   - Resellers can request PlayStation email verification codes through the Inventory Supplier API; recipient email is always taken from the server-side reseller profile.
   - Inventory verification-code requests are audited with HTTP/result metadata, sanitized errors, idempotency fingerprints, and reseller/account/day daily-limit records.
@@ -21,9 +22,11 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
+  - Admins can create new resellers from `/admin.html` with display name, personal email, phone, starting balance, and an initial token/password.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
+  - Optional admin 2-step verification is implemented using standard TOTP plus one-time recovery codes.
   - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
   - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
@@ -40,6 +43,7 @@
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
+  - Admin/reseller UI avoids aggressive scroll jumps after selection/save actions.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
   - Reseller verification-code responses render as modern status cards with badges and structured details instead of multiline system text.
   - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
@@ -59,7 +63,7 @@
   - Local database was not available in this workspace, so database-backed flows need final live/staging validation after migration.
   - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
   - Inventory health testing is intentionally not implemented because no safe non-consuming health endpoint is known.
-  - Active sessions, trusted devices, and admin-side 2FA reset are not implemented.
+  - Active sessions, trusted devices, and forced admin 2FA reset by another admin are not implemented.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -105,7 +109,7 @@
 - Authentication:
   - Resellers authenticate with token/password verified against `resellers.token_hash`.
   - Resellers with enabled 2FA enter a temporary pre-auth session after the first factor and receive full panel access only after TOTP/recovery-code verification.
-  - Admin authenticates with `admin_users.password_hash`.
+  - Admin authenticates with `admin_users.password_hash`; if admin 2FA is enabled, password verification creates a short pending 2FA session before full admin access.
   - Sessions use HTTP-only cookies and `SameSite=Lax`; secure cookies are enabled when HTTPS is detected.
   - Reseller/admin sessions expire after 60 minutes of inactivity.
   - Login attempts are rate-limited using `login_attempts`; audit entries are stored in `security_audit_events`.
@@ -169,8 +173,8 @@
   - Migration adds `product_prices.status`; reseller-facing product and price APIs only show `status='active'` when this column exists.
   - Admin “Deaktiviraj” sets `status='inactive'` when available.
 - Account onboarding:
-  - When `resellers.profile_completed_at` exists and is empty, protected reseller actions return `profile_required`.
-  - The reseller must save valid email and phone through `api/profile.php`; logout remains available.
+  - When `resellers.profile_completed_at` is empty, contact data is missing, or the profile email ends with `@playworld.rs`, protected reseller actions return `profile_required`.
+  - The reseller must save a valid personal email and phone through `api/profile.php`; logout remains available.
   - The profile email is the recipient for Inventory verification codes and is not provided by request payloads.
 - Inventory verification codes:
   - The reseller submits only the PlayStation account email.
@@ -233,6 +237,10 @@
 - Added Admin Inventory form that saves API Base URL and supplier token into ignored server-side `api/config.local.php`.
 - Refreshed Admin panel UI/UX with centered navigation, dashboard summary cards, softer visual hierarchy, updated table/form styling, and responsive spacing.
 - Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
+- Added admin-created reseller flow with personal email validation, initial token hashing, starting balance support, and optional profile data.
+- Added admin TOTP 2FA with pending login challenge, encrypted secret storage, hashed recovery codes, management UI, audit records, and rate limiting.
+- Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
+- Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.

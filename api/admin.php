@@ -18,7 +18,7 @@ function fetch_resellers(PDO $pdo): array {
   ensure_security_tables($pdo);
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'status', 'balance_rsd'];
-  foreach (['phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
   $select[] = "(SELECT enabled_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_enabled_at";
@@ -221,6 +221,17 @@ function seed_admin_if_needed(PDO $pdo): void {
   $stmt->execute([$username, $hash, 'active']);
 }
 
+function admin_twofa_public_status(PDO $pdo, int $adminId): array {
+  $row = admin_two_factor_row($pdo, $adminId);
+  return [
+    'enabled' => admin_two_factor_enabled($pdo, $adminId),
+    'enabled_at' => (string)($row['enabled_at'] ?? ''),
+    'last_used_at' => (string)($row['last_used_at'] ?? ''),
+    'recovery_codes_regenerated_at' => (string)($row['recovery_codes_regenerated_at'] ?? ''),
+    'recovery_codes_remaining' => admin_recovery_code_count($pdo, $adminId),
+  ];
+}
+
 function dashboard_payload(PDO $pdo, array $filters = []): array {
   ensure_security_tables($pdo);
   $orderStatuses = [];
@@ -294,12 +305,64 @@ try {
       json_response(['ok' => false, 'error' => 'Pogrešna admin šifra.'], 401);
     }
 
+    record_login_attempt($pdo, 'admin_login', client_ip(), true);
+    if (admin_two_factor_enabled($pdo, (int)$admin['id'])) {
+      session_regenerate_id(true);
+      $_SESSION['pending_admin_id'] = (int)$admin['id'];
+      $_SESSION['pending_admin_username'] = (string)$admin['username'];
+      $_SESSION['pending_admin_2fa_expires_at'] = time() + 300;
+      $_SESSION['pending_admin_2fa_attempts'] = 0;
+      $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      audit_event($pdo, 'admin', (int)$admin['id'], 'admin_login_first_factor_success', 'success');
+      json_response(['ok' => true, 'requires_2fa' => true, 'csrf_token' => csrf_token()]);
+    }
+
     session_regenerate_id(true);
     $_SESSION['admin_id'] = (int)$admin['id'];
     $_SESSION['admin_username'] = (string)$admin['username'];
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    record_login_attempt($pdo, 'admin_login', client_ip(), true);
+    unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_login_success', 'success');
+
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === '2fa_challenge') {
+    require_post();
+    require_csrf();
+    $pending = require_admin_2fa_pending();
+    $input = read_json_body();
+    $code = trim((string)($input['code'] ?? ''));
+
+    enforce_rate_limit($pdo, 'admin_2fa', 'admin:' . $pending['id'], 8, 900, 'Previše pokušaja. Sačekajte nekoliko minuta i pokušajte ponovo.');
+    $_SESSION['pending_admin_2fa_attempts'] = (int)($_SESSION['pending_admin_2fa_attempts'] ?? 0) + 1;
+    if ((int)$_SESSION['pending_admin_2fa_attempts'] > 8) {
+      record_login_attempt($pdo, 'admin_2fa', 'admin:' . $pending['id'], false);
+      json_response(['ok' => false, 'error' => 'Previše pokušaja. Ulogujte se ponovo.'], 429);
+    }
+
+    $row = admin_two_factor_row($pdo, (int)$pending['id']);
+    $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
+    $ok = $secret !== '' && verify_totp_code($secret, $code);
+    $usedRecovery = false;
+    if (!$ok) {
+      $ok = consume_admin_recovery_code($pdo, (int)$pending['id'], $code);
+      $usedRecovery = $ok;
+    }
+
+    record_login_attempt($pdo, 'admin_2fa', 'admin:' . $pending['id'], $ok);
+    if (!$ok) {
+      audit_event($pdo, 'admin', (int)$pending['id'], 'admin_two_factor_failed', 'failed');
+      json_response(['ok' => false, 'error' => 'Kod nije ispravan ili je istekao. Pokušajte ponovo.'], 401);
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['admin_id'] = (int)$pending['id'];
+    $_SESSION['admin_username'] = (string)$pending['username'];
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
+    $pdo->prepare('UPDATE admin_two_factor SET last_used_at = NOW(), updated_at = NOW() WHERE admin_id = ?')->execute([(int)$pending['id']]);
+    audit_event($pdo, 'admin', (int)$pending['id'], $usedRecovery ? 'admin_two_factor_recovery_login' : 'admin_two_factor_success', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
@@ -309,7 +372,7 @@ try {
   if ($action === 'logout') {
     require_post();
     require_csrf();
-    unset($_SESSION['admin_id'], $_SESSION['admin_username']);
+    unset($_SESSION['admin_id'], $_SESSION['admin_username'], $_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     json_response(['ok' => true]);
   }
 
@@ -317,9 +380,101 @@ try {
     json_response(dashboard_payload($pdo, $_GET));
   }
 
+  if ($action === '2fa_status') {
+    $admin = require_admin();
+    json_response(['ok' => true, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
+
   require_post();
   require_csrf();
   $input = read_json_body();
+
+  if ($action === '2fa_setup_start') {
+    $admin = require_admin();
+    $currentPassword = (string)($input['current_password'] ?? '');
+    if (!verify_current_admin_password($pdo, (int)$admin['id'], $currentPassword)) {
+      audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_setup_start_failed', 'failed', ['reason' => 'bad_current_password']);
+      json_response(['ok' => false, 'error' => 'Trenutna admin šifra nije tačna.'], 401);
+    }
+    $secret = generate_totp_secret();
+    $encrypted = encrypt_secret($secret);
+    $stmt = $pdo->prepare("
+      INSERT INTO admin_two_factor (admin_id, pending_secret_encrypted)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE pending_secret_encrypted = VALUES(pending_secret_encrypted), updated_at = NOW()
+    ");
+    $stmt->execute([(int)$admin['id'], $encrypted]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_setup_started', 'success');
+    json_response([
+      'ok' => true,
+      'manual_key' => $secret,
+      'otpauth_uri' => otpauth_uri('PlayWorld Admin', (string)$admin['username'], $secret),
+      'csrf_token' => csrf_token(),
+    ]);
+  }
+
+  if ($action === '2fa_setup_confirm') {
+    $admin = require_admin();
+    $code = (string)($input['code'] ?? '');
+    $row = admin_two_factor_row($pdo, (int)$admin['id']);
+    $secret = decrypt_secret((string)($row['pending_secret_encrypted'] ?? ''));
+    if ($secret === '' || !verify_totp_code($secret, $code)) {
+      audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_setup_confirm_failed', 'failed');
+      json_response(['ok' => false, 'error' => 'Kod nije ispravan ili je istekao.'], 401);
+    }
+
+    $pdo->beginTransaction();
+    $stmt = $pdo->prepare("
+      UPDATE admin_two_factor
+      SET secret_encrypted = pending_secret_encrypted,
+          pending_secret_encrypted = NULL,
+          enabled_at = COALESCE(enabled_at, NOW()),
+          disabled_at = NULL,
+          last_used_at = NOW(),
+          updated_at = NOW()
+      WHERE admin_id = ?
+    ");
+    $stmt->execute([(int)$admin['id']]);
+    $codes = generate_admin_recovery_codes($pdo, (int)$admin['id']);
+    $pdo->commit();
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_enabled', 'success');
+    json_response(['ok' => true, 'recovery_codes' => $codes, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === '2fa_regenerate_recovery') {
+    $admin = require_admin();
+    $currentPassword = (string)($input['current_password'] ?? '');
+    $code = (string)($input['code'] ?? '');
+    $row = admin_two_factor_row($pdo, (int)$admin['id']);
+    $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
+    if (!verify_current_admin_password($pdo, (int)$admin['id'], $currentPassword) || $secret === '' || !verify_totp_code($secret, $code)) {
+      audit_event($pdo, 'admin', (int)$admin['id'], 'admin_recovery_codes_regenerate_failed', 'failed');
+      json_response(['ok' => false, 'error' => 'Potvrda nije ispravna.'], 401);
+    }
+    $codes = generate_admin_recovery_codes($pdo, (int)$admin['id']);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_recovery_codes_regenerated', 'success');
+    json_response(['ok' => true, 'recovery_codes' => $codes, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === '2fa_disable') {
+    $admin = require_admin();
+    $currentPassword = (string)($input['current_password'] ?? '');
+    $code = (string)($input['code'] ?? '');
+    $row = admin_two_factor_row($pdo, (int)$admin['id']);
+    $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
+    $verifiedCode = $secret !== '' && verify_totp_code($secret, $code);
+    if (!$verifiedCode) {
+      $verifiedCode = consume_admin_recovery_code($pdo, (int)$admin['id'], $code);
+    }
+    if (!verify_current_admin_password($pdo, (int)$admin['id'], $currentPassword) || !$verifiedCode) {
+      audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_disable_failed', 'failed');
+      json_response(['ok' => false, 'error' => 'Potvrda nije ispravna.'], 401);
+    }
+    $pdo->prepare('UPDATE admin_two_factor SET secret_encrypted = NULL, pending_secret_encrypted = NULL, enabled_at = NULL, disabled_at = NOW(), updated_at = NOW() WHERE admin_id = ?')->execute([(int)$admin['id']]);
+    $pdo->prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?')->execute([(int)$admin['id']]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_disabled', 'success');
+    json_response(['ok' => true, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
 
   if ($action === 'change_password') {
     $currentPassword = (string)($input['current_password'] ?? '');
@@ -389,6 +544,7 @@ try {
 
   if ($action === 'update_reseller') {
     $id = (int)($input['id'] ?? 0);
+    $displayName = trim((string)($input['display_name'] ?? ''));
     $email = h_string($input['email'] ?? '');
     $phone = normalize_phone((string)($input['phone'] ?? ''));
     $status = h_string($input['status'] ?? 'active');
@@ -397,6 +553,9 @@ try {
 
     if ($id <= 0 || !valid_email($email)) {
       json_response(['ok' => false, 'error' => 'Neispravan reseller.'], 400);
+    }
+    if ($displayName !== '' && strlen($displayName) > 120) {
+      json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
     }
 
     $pdo->beginTransaction();
@@ -409,6 +568,10 @@ try {
 
     $fields = ['email = ?', 'status = ?', 'balance_rsd = ?'];
     $params = [$email, $status, $balance];
+    if (has_column($pdo, 'resellers', 'display_name')) {
+      $fields[] = 'display_name = ?';
+      $params[] = $displayName !== '' ? $displayName : null;
+    }
     if (has_column($pdo, 'resellers', 'phone')) {
       if ($phone !== '' && !valid_phone($phone)) {
         throw new RuntimeException('Telefon nije validan.');
@@ -450,6 +613,82 @@ try {
     }
 
     $pdo->commit();
+    json_response(dashboard_payload($pdo));
+  }
+
+  if ($action === 'create_reseller') {
+    $email = normalize_email((string)($input['email'] ?? ''));
+    $phone = normalize_phone((string)($input['phone'] ?? ''));
+    $displayName = trim((string)($input['display_name'] ?? ''));
+    $status = h_string($input['status'] ?? 'active') ?: 'active';
+    $balance = (int)($input['balance_rsd'] ?? 0);
+    $token = (string)($input['token'] ?? '');
+
+    if (!valid_email($email)) {
+      json_response(['ok' => false, 'error' => 'Unesite validan email resellera.'], 400);
+    }
+    if (is_internal_reseller_email($email)) {
+      json_response(['ok' => false, 'error' => 'Za novog resellera unesite njegov lični email, ne @playworld.rs adresu.'], 400);
+    }
+    if ($phone !== '' && !valid_phone($phone)) {
+      json_response(['ok' => false, 'error' => 'Telefon nije validan.'], 400);
+    }
+    if (strlen($token) < 12) {
+      json_response(['ok' => false, 'error' => 'Početni token mora imati najmanje 12 karaktera.'], 400);
+    }
+    if ($displayName !== '' && strlen($displayName) > 120) {
+      json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
+    }
+    $lowerToken = strtolower($token);
+    if (
+      in_array($lowerToken, ['password', '123456789012', 'playworld123', 'reseller1234'], true) ||
+      strpos($lowerToken, strtolower($email)) !== false ||
+      ($phone !== '' && strpos(preg_replace('/\D+/', '', $token), preg_replace('/\D+/', '', $phone)) !== false)
+    ) {
+      json_response(['ok' => false, 'error' => 'Početni token je previše lak za pogoditi.'], 400);
+    }
+
+    $exists = $pdo->prepare('SELECT COUNT(*) FROM resellers WHERE email = ?');
+    $exists->execute([$email]);
+    if ((int)$exists->fetchColumn() > 0) {
+      json_response(['ok' => false, 'error' => 'Reseller sa tim emailom već postoji.'], 409);
+    }
+
+    $columns = column_names($pdo, 'resellers');
+    $fields = ['email', 'token_hash', 'status', 'balance_rsd'];
+    $params = [$email, password_hash($token, PASSWORD_DEFAULT), $status, $balance];
+    if (in_array('phone', $columns, true)) {
+      $fields[] = 'phone';
+      $params[] = $phone !== '' ? $phone : null;
+    }
+    if (in_array('display_name', $columns, true)) {
+      $fields[] = 'display_name';
+      $params[] = $displayName !== '' ? $displayName : null;
+    }
+    if (in_array('profile_completed_at', $columns, true) && $phone !== '') {
+      $fields[] = 'profile_completed_at';
+      $params[] = date('Y-m-d H:i:s');
+    }
+    if (in_array('updated_at', $columns, true)) {
+      $fields[] = 'updated_at';
+      $params[] = date('Y-m-d H:i:s');
+    }
+
+    $sql = 'INSERT INTO resellers (`' . implode('`,`', $fields) . '`) VALUES (' . implode(',', array_fill(0, count($fields), '?')) . ')';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $newId = (int)$pdo->lastInsertId();
+
+    if ($balance !== 0) {
+      $tx = $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, 'ADMIN_ADJUSTMENT', ?, ?)");
+      $tx->execute([$newId, $balance, 'Initial reseller balance']);
+    }
+    audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'reseller_created', 'success', [
+      'reseller_id' => $newId,
+      'has_phone' => $phone !== '',
+      'has_display_name' => $displayName !== '',
+    ]);
+
     json_response(dashboard_payload($pdo));
   }
 

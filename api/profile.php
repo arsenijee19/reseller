@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     'display_name' => (string)($profile['display_name'] ?? ''),
     'email' => (string)$profile['email'],
     'phone' => (string)($profile['phone'] ?? ''),
-    'profile_completed' => !has_column($pdo, 'resellers', 'profile_completed_at') || (string)($profile['profile_completed_at'] ?? '') !== '',
+    'profile_completed' => profile_is_complete($pdo, $resellerId),
     'profile_completed_at' => (string)($profile['profile_completed_at'] ?? ''),
     'credential_changed_at' => (string)($profile['credential_changed_at'] ?? ''),
     'csrf_token' => csrf_token(),
@@ -46,6 +46,9 @@ $completeOnboarding = !empty($input['complete_onboarding']);
 
 if (!valid_email($email)) {
   json_response(['ok' => false, 'error' => 'Unesite validnu email adresu.'], 400);
+}
+if (is_internal_reseller_email($email)) {
+  json_response(['ok' => false, 'error' => 'Unesite Vaš lični email, ne @playworld.rs adresu.'], 400);
 }
 
 if ($displayName !== '' && strlen($displayName) > 120) {

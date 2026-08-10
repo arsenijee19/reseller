@@ -120,6 +120,7 @@
     .msg{display:none;margin:0 0 14px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap}
     .msg.ok{display:block;border-color:rgba(20,128,74,.25);background:rgba(20,128,74,.08)}
     .msg.bad{display:block;border-color:rgba(189,43,43,.25);background:rgba(189,43,43,.08)}
+    .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
     .muted{color:var(--muted);font-size:12px}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
     .hidden{display:none!important}
@@ -227,6 +228,12 @@
     .account-panel{padding:18px;margin:0 0 18px;background:linear-gradient(135deg,rgba(15,99,216,.055),rgba(16,163,127,.045))}
     .account-panel .section-head{margin-bottom:12px}
     .account-panel .form-grid{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}
+    .security-panel{margin:0 0 18px;background:linear-gradient(135deg,rgba(16,163,127,.07),rgba(15,99,216,.05))}
+    .security-panel .security-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:16px;align-items:start}
+    .security-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .setup-box{display:none;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.58)}
+    :root[data-theme="dark"] .setup-box{background:rgba(16,24,35,.58)}
+    .setup-key{justify-content:flex-start;width:100%;overflow-wrap:anywhere;white-space:normal;margin:8px 0 10px;border-radius:14px}
     label{font-size:12px;text-transform:none;letter-spacing:.01em}
     input,select,textarea{min-height:46px;border-radius:13px;padding:11px 13px;background:rgba(255,255,255,.86)}
     :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:rgba(16,24,35,.88)}
@@ -266,6 +273,7 @@
       .tabs{position:static;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:22px}
       .admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
       .account-panel .form-grid{grid-template-columns:1fr}
+      .security-panel .security-body{grid-template-columns:1fr}
       .section{padding:18px}
     }
     @media (max-width:560px){
@@ -283,6 +291,11 @@
         <p>Administracija resellera, proizvoda, cena i porudžbina.</p>
         <label for="adminPassword">Šifra</label>
         <input id="adminPassword" type="password" autocomplete="current-password" />
+        <div id="admin2faLoginBox" style="display:none">
+          <label for="admin2faLoginCode">2-step kod</label>
+          <input id="admin2faLoginCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456 ili recovery kod" />
+          <p class="muted">Unesite kod iz Authenticator aplikacije ili jedan recovery kod.</p>
+        </div>
         <div class="actions">
           <button class="btn" id="loginThemeBtn" type="button">Dark</button>
           <button class="btn primary" id="adminLoginBtn">Uloguj se</button>
@@ -323,12 +336,69 @@
         </div>
       </div>
 
+      <div class="form-panel security-panel">
+        <div class="section-head">
+          <div class="section-title">
+            <h2>Admin 2-step zaštita</h2>
+            <p>Dodatni Authenticator kod posle admin šifre. Recovery kodove sačuvajte odmah nakon aktivacije.</p>
+          </div>
+        </div>
+        <div class="security-body">
+          <div>
+            <p id="admin2faStatusText">Učitavanje statusa...</p>
+            <div class="security-actions">
+              <button class="btn good" id="startAdmin2faBtn" type="button">Aktiviraj 2FA</button>
+              <button class="btn" id="regenAdminRecoveryBtn" type="button">Novi recovery kodovi</button>
+              <button class="btn danger" id="disableAdmin2faBtn" type="button">Isključi 2FA</button>
+            </div>
+            <div class="msg" id="admin2faMsg"></div>
+            <div class="msg ok" id="adminRecoveryCodesBox" style="display:none"></div>
+          </div>
+          <div>
+            <div class="setup-box" id="admin2faSetupBox">
+              <label for="admin2faCurrentPassword">Trenutna admin šifra</label>
+              <input id="admin2faCurrentPassword" type="password" autocomplete="current-password" />
+              <p class="muted">U Authenticator aplikaciji izaberite ručni unos i unesite ovaj ključ:</p>
+              <div class="pill mono setup-key" id="admin2faManualKey"></div>
+              <a class="btn" id="admin2faOtpLink" href="#" target="_blank" rel="noopener">Otvori setup link</a>
+              <label for="admin2faSetupCode">Kod iz aplikacije</label>
+              <input id="admin2faSetupCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+              <div class="security-actions">
+                <button class="btn primary" id="confirmAdmin2faBtn" type="button">Potvrdi i uključi</button>
+              </div>
+            </div>
+            <div class="setup-box" id="admin2faManageBox">
+              <label for="admin2faManagePassword">Trenutna admin šifra</label>
+              <input id="admin2faManagePassword" type="password" autocomplete="current-password" />
+              <label for="admin2faManageCode">Kod iz aplikacije ili recovery kod</label>
+              <input id="admin2faManageCode" type="text" autocomplete="one-time-code" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="section view" id="view-resellers">
           <div class="section-head">
             <div class="section-title">
               <h2>Reselleri i balance</h2>
               <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login.</p>
+            </div>
+          </div>
+          <div class="form-panel" style="margin-bottom:16px">
+            <div class="section-head">
+              <div class="section-title">
+                <h2>Novi reseller</h2>
+                <p>Unesite lični email resellera i početni token. Reseller kasnije može promeniti kontakt podatke iz svog panela.</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div><label for="newResellerName">Ime</label><input id="newResellerName" type="text" placeholder="Ime ili naziv" /></div>
+              <div><label for="newResellerEmail">Email</label><input id="newResellerEmail" type="email" placeholder="licni@email.com" /></div>
+              <div><label for="newResellerPhone">Telefon</label><input id="newResellerPhone" type="tel" placeholder="+381..." /></div>
+              <div><label for="newResellerBalance">Početni balance</label><input id="newResellerBalance" type="number" value="0" /></div>
+              <div class="full"><label for="newResellerToken">Početni token/šifra</label><input id="newResellerToken" type="text" placeholder="Najmanje 12 karaktera" /></div>
+              <div class="form-actions"><button class="btn good" id="createResellerBtn" type="button">Dodaj resellera</button></div>
             </div>
           </div>
           <div class="table-wrap"><table id="resellersTable"></table></div>
@@ -450,7 +520,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers", productSearch:"" };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"" };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
@@ -464,10 +534,16 @@
       el.className="msg "+type;
       el.textContent=text;
       el.style.display="block";
-      el.scrollIntoView({ block:"nearest", behavior:"smooth" });
     }
     function showLoginMsg(type,text){ const el=$("loginMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
     function clearMsg(){ $("adminMsg").style.display="none"; $("loginMsg").style.display="none"; }
+    function preserveScroll(callback){
+      const x = window.scrollX;
+      const y = window.scrollY;
+      const result = callback();
+      requestAnimationFrame(() => window.scrollTo(x, y));
+      return result;
+    }
     function text(parent, tag, value, className){ const el=document.createElement(tag); if(className) el.className=className; el.textContent=value == null ? "" : String(value); parent.appendChild(el); return el; }
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
     function textarea(value){ const el=document.createElement("textarea"); el.value=value == null ? "" : String(value); return el; }
@@ -539,6 +615,55 @@
       $("adminPanel").classList.toggle("hidden", !loggedIn);
     }
 
+    function setAdmin2faLoginMode(enabled){
+      state.admin2faPending = enabled;
+      $("admin2faLoginBox").style.display = enabled ? "block" : "none";
+      $("adminLoginBtn").textContent = enabled ? "Potvrdi 2FA" : "Uloguj se";
+      if (enabled) $("admin2faLoginCode").focus();
+    }
+
+    function renderAdminTwoFactorStatus(info){
+      const enabled = !!(info && info.enabled);
+      $("admin2faStatusText").textContent = enabled
+        ? `Admin 2FA je uključen${info.last_used_at ? " - poslednja potvrda: " + info.last_used_at : ""}. Recovery kodova: ${info.recovery_codes_remaining || 0}.`
+        : "Admin 2FA nije uključen. Preporuka: aktivirajte ga zbog zaštite porudžbina, balance-a i Inventory podešavanja.";
+      $("startAdmin2faBtn").style.display = enabled ? "none" : "inline-flex";
+      $("regenAdminRecoveryBtn").style.display = enabled ? "inline-flex" : "none";
+      $("disableAdmin2faBtn").style.display = enabled ? "inline-flex" : "none";
+      $("admin2faSetupBox").style.display = "none";
+      $("admin2faManageBox").style.display = "none";
+      $("admin2faManualKey").textContent = "";
+      $("admin2faOtpLink").href = "#";
+      state.admin2faManageMode = "";
+    }
+
+    async function loadAdminTwoFactorStatus(){
+      try{
+        const j = await api("2fa_status");
+        renderAdminTwoFactorStatus(j.two_factor || {});
+      }catch(e){
+        $("admin2faStatusText").textContent = "Admin 2FA status trenutno nije dostupan.";
+      }
+    }
+
+    function showAdmin2faMsg(type, textValue){
+      const el = $("admin2faMsg");
+      el.className = "msg " + type;
+      el.textContent = textValue;
+      el.style.display = "block";
+    }
+
+    function clearAdmin2faMsg(){
+      $("admin2faMsg").style.display = "none";
+      $("adminRecoveryCodesBox").style.display = "none";
+    }
+
+    function showAdminRecoveryCodes(codes){
+      const box = $("adminRecoveryCodesBox");
+      box.style.display = "block";
+      box.textContent = "Sačuvajte ove admin recovery kodove odmah. Svaki može da se iskoristi samo jednom:\n\n" + (codes || []).join("\n");
+    }
+
     function renderTabs(){
       const box = $("tabs");
       box.textContent = "";
@@ -584,11 +709,12 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Email","Telefon","Status profila","2FA","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
         text(row.insertCell(), "span", r.id);
+        const name = input(r.display_name || "", "wide"); row.insertCell().appendChild(name);
         const email = input(r.email, "wide"); row.insertCell().appendChild(email);
         const phone = input(r.phone || "", "wide"); phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
         text(row.insertCell(), "span", r.profile_completed_at ? "završen" : "nije završen", "muted");
@@ -600,7 +726,7 @@
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
-            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
+            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
             showMsg("ok", "Reseller je ažuriran.");
             await load();
           }catch(e){
@@ -924,6 +1050,7 @@
     async function load(filters = {}){
       state.data = await api("dashboard", { query:queryFromFilters(filters) });
       render();
+      await loadAdminTwoFactorStatus();
     }
 
     function render(){
@@ -941,8 +1068,20 @@
       clearMsg();
       $("adminLoginBtn").disabled = true;
       try{
-        await api("login", { method:"POST", body:JSON.stringify({ password:$("adminPassword").value }) });
+        if (state.admin2faPending) {
+          await api("2fa_challenge", { method:"POST", body:JSON.stringify({ code:$("admin2faLoginCode").value }) });
+          setAdmin2faLoginMode(false);
+        } else {
+          const result = await api("login", { method:"POST", body:JSON.stringify({ password:$("adminPassword").value }) });
+          if (result.requires_2fa) {
+            showLoginMsg("warn", "Unesite 2-step kod iz Authenticator aplikacije ili recovery kod.");
+            setAdmin2faLoginMode(true);
+            return;
+          }
+        }
         setLoggedIn(true);
+        $("adminPassword").value = "";
+        $("admin2faLoginCode").value = "";
         await load();
       }catch(e){
         showLoginMsg("bad", e.message);
@@ -976,13 +1115,143 @@
       }
     }
 
+    async function createReseller(){
+      const btn = $("createResellerBtn");
+      const original = btn.textContent;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Dodajem...";
+        const result = await api("create_reseller", { method:"POST", body:JSON.stringify({
+          display_name:$("newResellerName").value.trim(),
+          email:$("newResellerEmail").value.trim(),
+          phone:$("newResellerPhone").value.trim(),
+          balance_rsd:$("newResellerBalance").value,
+          token:$("newResellerToken").value
+        }) });
+        state.data = result;
+        ["newResellerName","newResellerEmail","newResellerPhone","newResellerToken"].forEach((id) => $(id).value = "");
+        $("newResellerBalance").value = "0";
+        preserveScroll(() => render());
+        showMsg("ok", "Novi reseller je dodat.");
+      }catch(e){
+        showMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    async function startAdminTwoFactorSetup(){
+      clearAdmin2faMsg();
+      const box = $("admin2faSetupBox");
+      $("admin2faManageBox").style.display = "none";
+      if (box.style.display === "none" || box.style.display === "") {
+        box.style.display = "block";
+        $("admin2faCurrentPassword").focus();
+        return;
+      }
+      const btn = $("startAdmin2faBtn");
+      const original = btn.textContent;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Generišem...";
+        const j = await api("2fa_setup_start", { method:"POST", body:JSON.stringify({ current_password:$("admin2faCurrentPassword").value }) });
+        $("admin2faManualKey").textContent = j.manual_key || "";
+        $("admin2faOtpLink").href = j.otpauth_uri || "#";
+        showAdmin2faMsg("ok", "Unesite ključ u Authenticator aplikaciju, zatim upišite šestocifreni kod i potvrdite.");
+        $("admin2faSetupCode").focus();
+      }catch(e){
+        showAdmin2faMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    async function confirmAdminTwoFactorSetup(){
+      const btn = $("confirmAdmin2faBtn");
+      const original = btn.textContent;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Potvrđujem...";
+        const j = await api("2fa_setup_confirm", { method:"POST", body:JSON.stringify({ code:$("admin2faSetupCode").value }) });
+        renderAdminTwoFactorStatus(j.two_factor || {});
+        showAdminRecoveryCodes(j.recovery_codes || []);
+        showAdmin2faMsg("ok", "Admin 2FA je uključen.");
+      }catch(e){
+        showAdmin2faMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    async function regenerateAdminRecoveryCodes(){
+      clearAdmin2faMsg();
+      const box = $("admin2faManageBox");
+      $("admin2faSetupBox").style.display = "none";
+      if (state.admin2faManageMode !== "regen") {
+        state.admin2faManageMode = "regen";
+        box.style.display = "block";
+        showAdmin2faMsg("warn", "Unesite trenutnu admin šifru i kod iz aplikacije, pa kliknite ponovo.");
+        $("admin2faManagePassword").focus();
+        return;
+      }
+      const btn = $("regenAdminRecoveryBtn");
+      try{
+        btn.disabled = true;
+        const j = await api("2fa_regenerate_recovery", { method:"POST", body:JSON.stringify({
+          current_password:$("admin2faManagePassword").value,
+          code:$("admin2faManageCode").value
+        }) });
+        renderAdminTwoFactorStatus(j.two_factor || {});
+        showAdminRecoveryCodes(j.recovery_codes || []);
+      }catch(e){
+        showAdmin2faMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    async function disableAdminTwoFactor(){
+      clearAdmin2faMsg();
+      const box = $("admin2faManageBox");
+      $("admin2faSetupBox").style.display = "none";
+      if (state.admin2faManageMode !== "disable") {
+        state.admin2faManageMode = "disable";
+        box.style.display = "block";
+        showAdmin2faMsg("warn", "Za isključivanje unesite trenutnu admin šifru i kod iz aplikacije ili recovery kod, pa kliknite ponovo.");
+        $("admin2faManagePassword").focus();
+        return;
+      }
+      const btn = $("disableAdmin2faBtn");
+      try{
+        btn.disabled = true;
+        const j = await api("2fa_disable", { method:"POST", body:JSON.stringify({
+          current_password:$("admin2faManagePassword").value,
+          code:$("admin2faManageCode").value
+        }) });
+        renderAdminTwoFactorStatus(j.two_factor || {});
+        showAdmin2faMsg("ok", "Admin 2FA je isključen.");
+      }catch(e){
+        showAdmin2faMsg("bad", e.message);
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
     $("adminLoginBtn").addEventListener("click", login);
     $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("adminPassword").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
+    $("admin2faLoginCode").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
     $("productSearch").addEventListener("input", (event) => { state.productSearch = event.target.value; renderProducts(); });
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
-    $("logoutBtn").addEventListener("click", async () => { await api("logout", { method:"POST", body:JSON.stringify({}) }); setLoggedIn(false); });
+    $("logoutBtn").addEventListener("click", async () => {
+      await api("logout", { method:"POST", body:JSON.stringify({}) });
+      setAdmin2faLoginMode(false);
+      setLoggedIn(false);
+    });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("applyInventoryFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("saveInventoryConfigBtn").addEventListener("click", async () => {
@@ -997,7 +1266,7 @@
           })
         });
         showMsg("ok", "Inventory API podešavanja su sačuvana.");
-        render();
+        preserveScroll(() => render());
       }catch(e){
         showMsg("bad", e.message);
       }finally{
@@ -1005,8 +1274,30 @@
       }
     });
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
+    $("createResellerBtn").addEventListener("click", createReseller);
+    $("startAdmin2faBtn").addEventListener("click", startAdminTwoFactorSetup);
+    $("confirmAdmin2faBtn").addEventListener("click", confirmAdminTwoFactorSetup);
+    $("regenAdminRecoveryBtn").addEventListener("click", regenerateAdminRecoveryCodes);
+    $("disableAdmin2faBtn").addEventListener("click", disableAdminTwoFactor);
     ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });
+    });
+    ["newResellerName","newResellerEmail","newResellerPhone","newResellerBalance","newResellerToken"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") createReseller(); });
+    });
+    ["admin2faCurrentPassword","admin2faSetupCode"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => {
+        if(event.key !== "Enter") return;
+        if (id === "admin2faSetupCode") confirmAdminTwoFactorSetup();
+        else startAdminTwoFactorSetup();
+      });
+    });
+    ["admin2faManagePassword","admin2faManageCode"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => {
+        if(event.key !== "Enter") return;
+        if (state.admin2faManageMode === "disable") disableAdminTwoFactor();
+        else regenerateAdminRecoveryCodes();
+      });
     });
     $("createProductBtn").addEventListener("click", async () => {
       const btn = $("createProductBtn");

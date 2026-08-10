@@ -102,3 +102,26 @@ CREATE TABLE IF NOT EXISTS reseller_recovery_codes (
   PRIMARY KEY (id),
   KEY idx_recovery_reseller (reseller_id, used_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_two_factor (
+  admin_id INT UNSIGNED NOT NULL,
+  secret_encrypted TEXT NULL,
+  pending_secret_encrypted TEXT NULL,
+  enabled_at DATETIME NULL,
+  disabled_at DATETIME NULL,
+  last_used_at DATETIME NULL,
+  recovery_codes_regenerated_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_recovery_codes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  admin_id INT UNSIGNED NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  used_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_recovery (admin_id, used_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

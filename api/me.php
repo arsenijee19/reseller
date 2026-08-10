@@ -25,7 +25,7 @@ try {
     "display_name" => (string)($row["display_name"] ?? ""),
     "email" => $row["email"],
     "phone" => (string)($row["phone"] ?? ""),
-    "profile_completed" => !has_column($pdo, 'resellers', 'profile_completed_at') || (string)($row["profile_completed_at"] ?? "") !== "",
+    "profile_completed" => profile_is_complete($pdo, $rid),
     "profile_completed_at" => (string)($row["profile_completed_at"] ?? ""),
     "credential_changed_at" => (string)($row["credential_changed_at"] ?? ""),
     "security_2fa_reminded_at" => (string)($row["security_2fa_reminded_at"] ?? ""),

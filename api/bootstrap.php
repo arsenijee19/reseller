@@ -92,6 +92,19 @@ function require_2fa_pending(): array {
   ];
 }
 
+function require_admin_2fa_pending(): array {
+  start_secure_session();
+  $expires = (int)($_SESSION['pending_admin_2fa_expires_at'] ?? 0);
+  if (!isset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username']) || $expires < time()) {
+    unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
+    json_response(['ok' => false, 'error' => 'Admin 2-step sesija je istekla. Ulogujte se ponovo.'], 401);
+  }
+  return [
+    'id' => (int)$_SESSION['pending_admin_id'],
+    'username' => (string)$_SESSION['pending_admin_username'],
+  ];
+}
+
 function require_admin(): array {
   start_secure_session();
   if (!isset($_SESSION['admin_id'], $_SESSION['admin_username'])) {
@@ -109,6 +122,10 @@ function h_string($value): string {
 
 function valid_email(string $email): bool {
   return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+function is_internal_reseller_email(string $email): bool {
+  return str_ends_with(normalize_email($email), '@playworld.rs');
 }
 
 function table_columns(PDO $pdo, string $table): array {
@@ -291,6 +308,33 @@ function ensure_security_tables(PDO $pdo): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   ");
 
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS admin_two_factor (
+      admin_id INT UNSIGNED NOT NULL,
+      secret_encrypted TEXT NULL,
+      pending_secret_encrypted TEXT NULL,
+      enabled_at DATETIME NULL,
+      disabled_at DATETIME NULL,
+      last_used_at DATETIME NULL,
+      recovery_codes_regenerated_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (admin_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS admin_recovery_codes (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      admin_id INT UNSIGNED NOT NULL,
+      code_hash VARCHAR(255) NOT NULL,
+      used_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_admin_recovery (admin_id, used_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
   $done = true;
 }
 
@@ -458,11 +502,68 @@ function consume_recovery_code(PDO $pdo, int $resellerId, string $code): bool {
   return false;
 }
 
+function admin_two_factor_row(PDO $pdo, int $adminId): ?array {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->prepare('SELECT * FROM admin_two_factor WHERE admin_id = ? LIMIT 1');
+  $stmt->execute([$adminId]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  return $row ?: null;
+}
+
+function admin_two_factor_enabled(PDO $pdo, int $adminId): bool {
+  $row = admin_two_factor_row($pdo, $adminId);
+  return $row && (string)($row['enabled_at'] ?? '') !== '' && (string)($row['secret_encrypted'] ?? '') !== '';
+}
+
+function admin_recovery_code_count(PDO $pdo, int $adminId): int {
+  ensure_security_tables($pdo);
+  $stmt = $pdo->prepare('SELECT COUNT(*) FROM admin_recovery_codes WHERE admin_id = ? AND used_at IS NULL');
+  $stmt->execute([$adminId]);
+  return (int)$stmt->fetchColumn();
+}
+
+function generate_admin_recovery_codes(PDO $pdo, int $adminId): array {
+  ensure_security_tables($pdo);
+  $codes = [];
+  $pdo->prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?')->execute([$adminId]);
+  $insert = $pdo->prepare('INSERT INTO admin_recovery_codes (admin_id, code_hash) VALUES (?, ?)');
+  for ($i = 0; $i < 8; $i++) {
+    $code = strtoupper(substr(bin2hex(random_bytes(5)), 0, 5) . '-' . substr(bin2hex(random_bytes(5)), 0, 5));
+    $codes[] = $code;
+    $insert->execute([$adminId, password_hash($code, PASSWORD_DEFAULT)]);
+  }
+  $pdo->prepare('UPDATE admin_two_factor SET recovery_codes_regenerated_at = NOW(), updated_at = NOW() WHERE admin_id = ?')->execute([$adminId]);
+  return $codes;
+}
+
+function consume_admin_recovery_code(PDO $pdo, int $adminId, string $code): bool {
+  ensure_security_tables($pdo);
+  $code = strtoupper(trim($code));
+  if ($code === '') return false;
+  $stmt = $pdo->prepare('SELECT id, code_hash FROM admin_recovery_codes WHERE admin_id = ? AND used_at IS NULL ORDER BY id ASC');
+  $stmt->execute([$adminId]);
+  foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    if (password_verify($code, (string)$row['code_hash'])) {
+      $update = $pdo->prepare('UPDATE admin_recovery_codes SET used_at = NOW() WHERE id = ? AND used_at IS NULL');
+      $update->execute([(int)$row['id']]);
+      return $update->rowCount() > 0;
+    }
+  }
+  return false;
+}
+
 function verify_current_reseller_token(PDO $pdo, int $resellerId, string $token): bool {
   $stmt = $pdo->prepare('SELECT token_hash FROM resellers WHERE id = ? AND status = ? LIMIT 1');
   $stmt->execute([$resellerId, 'active']);
   $hash = (string)($stmt->fetchColumn() ?: '');
   return $hash !== '' && password_verify($token, $hash);
+}
+
+function verify_current_admin_password(PDO $pdo, int $adminId, string $password): bool {
+  $stmt = $pdo->prepare('SELECT password_hash FROM admin_users WHERE id = ? AND status = ? LIMIT 1');
+  $stmt->execute([$adminId, 'active']);
+  $hash = (string)($stmt->fetchColumn() ?: '');
+  return $hash !== '' && password_verify($password, $hash);
 }
 
 function otpauth_uri(string $issuer, string $account, string $secret): string {
@@ -474,9 +575,14 @@ function profile_is_complete(PDO $pdo, int $resellerId): bool {
   if (!has_column($pdo, 'resellers', 'profile_completed_at')) {
     return true;
   }
-  $stmt = $pdo->prepare('SELECT profile_completed_at FROM resellers WHERE id = ? LIMIT 1');
+  $stmt = $pdo->prepare('SELECT email, phone, profile_completed_at FROM resellers WHERE id = ? LIMIT 1');
   $stmt->execute([$resellerId]);
-  return (string)($stmt->fetchColumn() ?: '') !== '';
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row) return false;
+  return (string)($row['profile_completed_at'] ?? '') !== ''
+    && valid_email((string)($row['email'] ?? ''))
+    && !is_internal_reseller_email((string)($row['email'] ?? ''))
+    && (!has_column($pdo, 'resellers', 'phone') || valid_phone((string)($row['phone'] ?? '')));
 }
 
 function require_completed_profile(PDO $pdo, int $resellerId): void {

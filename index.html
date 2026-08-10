@@ -406,7 +406,7 @@
       <p>Ovde možeš promeniti kontakt podatke i pristup panelu.</p>
       <div class="settings-grid">
         <div class="full"><label for="settingsName">Ime</label><input id="settingsName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" /></div>
-        <div><label for="settingsEmail">Email</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
+        <div><label for="settingsEmail">Lični email za poruke</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
         <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
         <div class="full security-note">
           <p><strong>Bezbednost naloga</strong></p>
@@ -464,11 +464,11 @@
   <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
     <div class="modal locked">
       <h2 id="profileTitle">Dovršite podešavanja naloga</h2>
-      <p>Unesite ime, email i broj telefona resellera. Ovi podaci nam pomažu da brže proverimo porudžbine i podršku.</p>
+      <p>Unesite ime, Vaš lični email i broj telefona. Na taj email će ubuduće stizati porudžbine i verifikacioni kodovi.</p>
       <label for="profileName">Ime</label>
       <input id="profileName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" />
-      <label for="profileEmail">Email</label>
-      <input id="profileEmail" type="email" autocomplete="email" />
+      <label for="profileEmail">Lični email za buduće poruke</label>
+      <input id="profileEmail" type="email" autocomplete="email" placeholder="vas@email.com" />
       <label for="profilePhone">Telefon</label>
       <input id="profilePhone" type="tel" autocomplete="tel" placeholder="+381..." />
       <div style="display:none">
@@ -655,6 +655,13 @@
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; el.textContent = ""; el.className = "msg"; }
+    function preserveScroll(callback){
+      const x = window.scrollX;
+      const y = window.scrollY;
+      const result = callback();
+      requestAnimationFrame(() => window.scrollTo(x, y));
+      return result;
+    }
     function markField(el, stateName){
       el.classList.remove("field-error", "field-success");
       if (stateName) el.classList.add(stateName === "ok" ? "field-success" : "field-error");
@@ -687,8 +694,9 @@
       return text;
     }
     function validEmail(value){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
+    function isInternalEmail(value){ return String(value || "").trim().toLowerCase().endsWith("@playworld.rs"); }
     function hasCompleteContact(profile){
-      return validEmail(profile && profile.email) && String((profile && profile.phone) || "").trim().length > 0;
+      return validEmail(profile && profile.email) && !isInternalEmail(profile && profile.email) && String((profile && profile.phone) || "").trim().length > 0;
     }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
@@ -806,6 +814,9 @@
       profileNewToken.value = "";
       profileConfirmToken.value = "";
       profileModal.classList.add("open");
+      if (isInternalEmail(profileEmail.value)) {
+        show(profileMsg, "warn", "Unesite Vaš lični email. Interni PlayWorld email nije za prijem porudžbina i verifikacionih kodova.");
+      }
       profileEmail.focus();
     }
 
@@ -1044,6 +1055,7 @@
       try{
         const payload = profilePayload(prefix, completeOnboarding);
         if (!validEmail(payload.email)) throw new Error("Unesite validan email.");
+        if (isInternalEmail(payload.email)) throw new Error("Unesite Vaš lični email, ne @playworld.rs adresu.");
         if (!payload.phone) throw new Error("Unesite broj telefona.");
         const updated = await api("/api/profile.php", { method:"POST", body:JSON.stringify(payload) });
         state.me = Object.assign({}, state.me || {}, updated);
@@ -1609,12 +1621,14 @@
       });
     });
     productSelect.addEventListener("change", () => {
-      const wrap = productSelect.closest(".select-wrap");
-      if (!wrap) return;
-      wrap.classList.remove("is-selecting");
-      void wrap.offsetWidth;
-      wrap.classList.add("is-selecting");
-      window.setTimeout(() => wrap.classList.remove("is-selecting"), 420);
+      preserveScroll(() => {
+        const wrap = productSelect.closest(".select-wrap");
+        if (!wrap) return;
+        wrap.classList.remove("is-selecting");
+        void wrap.offsetWidth;
+        wrap.classList.add("is-selecting");
+        window.setTimeout(() => wrap.classList.remove("is-selecting"), 420);
+      });
     });
     releaseBtn.addEventListener("click", openReleaseNotes);
     themeBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
