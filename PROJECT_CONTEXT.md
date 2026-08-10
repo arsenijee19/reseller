@@ -22,7 +22,7 @@
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
-  - Admins can create new resellers from `/admin.html` with display name, personal email, phone, starting balance, and an initial token/password.
+  - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
@@ -237,7 +237,7 @@
 - Added Admin Inventory form that saves API Base URL and supplier token into ignored server-side `api/config.local.php`.
 - Refreshed Admin panel UI/UX with centered navigation, dashboard summary cards, softer visual hierarchy, updated table/form styling, and responsive spacing.
 - Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
-- Added admin-created reseller flow with personal email validation, initial token hashing, starting balance support, and optional profile data.
+- Added admin-created reseller flow with required display name/token, optional email/phone/balance, temporary internal email auto-fill, initial token hashing, and first-login personal email enforcement.
 - Added admin TOTP 2FA with pending login challenge, encrypted secret storage, hashed recovery codes, management UI, audit records, and rate limiting.
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.

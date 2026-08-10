@@ -232,6 +232,13 @@ function admin_twofa_public_status(PDO $pdo, int $adminId): array {
   ];
 }
 
+function temporary_reseller_email(string $displayName): string {
+  $base = strtolower(preg_replace('/[^a-z0-9]+/i', '', $displayName) ?: '');
+  if ($base === '') $base = 'reseller';
+  $base = substr($base, 0, 32);
+  return $base . '-' . date('YmdHis') . '-' . random_int(100, 999) . '@playworld.rs';
+}
+
 function dashboard_payload(PDO $pdo, array $filters = []): array {
   ensure_security_tables($pdo);
   $orderStatuses = [];
@@ -624,20 +631,26 @@ try {
     $balance = (int)($input['balance_rsd'] ?? 0);
     $token = (string)($input['token'] ?? '');
 
+    if ($displayName === '') {
+      json_response(['ok' => false, 'error' => 'Unesite ime resellera.'], 400);
+    }
+    if ($displayName !== '' && strlen($displayName) > 120) {
+      json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
+    }
+    if ($email === '') {
+      $email = temporary_reseller_email($displayName);
+    }
     if (!valid_email($email)) {
-      json_response(['ok' => false, 'error' => 'Unesite validan email resellera.'], 400);
+      json_response(['ok' => false, 'error' => 'Email nije validan. Ostavite prazno ili unesite lični email resellera.'], 400);
     }
     if (is_internal_reseller_email($email)) {
-      json_response(['ok' => false, 'error' => 'Za novog resellera unesite njegov lični email, ne @playworld.rs adresu.'], 400);
+      $email = temporary_reseller_email($displayName);
     }
     if ($phone !== '' && !valid_phone($phone)) {
       json_response(['ok' => false, 'error' => 'Telefon nije validan.'], 400);
     }
     if (strlen($token) < 12) {
       json_response(['ok' => false, 'error' => 'Početni token mora imati najmanje 12 karaktera.'], 400);
-    }
-    if ($displayName !== '' && strlen($displayName) > 120) {
-      json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
     }
     $lowerToken = strtolower($token);
     if (
@@ -665,7 +678,7 @@ try {
       $fields[] = 'display_name';
       $params[] = $displayName !== '' ? $displayName : null;
     }
-    if (in_array('profile_completed_at', $columns, true) && $phone !== '') {
+    if (in_array('profile_completed_at', $columns, true) && $phone !== '' && !is_internal_reseller_email($email)) {
       $fields[] = 'profile_completed_at';
       $params[] = date('Y-m-d H:i:s');
     }
