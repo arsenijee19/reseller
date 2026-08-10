@@ -125,7 +125,9 @@ function valid_email(string $email): bool {
 }
 
 function is_internal_reseller_email(string $email): bool {
-  return str_ends_with(normalize_email($email), '@playworld.rs');
+  $email = normalize_email($email);
+  $suffix = '@playworld.rs';
+  return $email !== '' && substr($email, -strlen($suffix)) === $suffix;
 }
 
 function table_columns(PDO $pdo, string $table): array {
