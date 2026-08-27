@@ -24,6 +24,7 @@
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
+  - Admin can cancel an order from the filtered Orders view through a transaction-safe, auditable reversal action.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
   - Optional admin 2-step verification is implemented using standard TOTP plus one-time recovery codes.
@@ -44,6 +45,7 @@
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
   - Admin/reseller UI avoids aggressive scroll jumps after selection/save actions.
+  - Admin order filters, active tab, table scroll positions, focused row controls, and local mutation feedback survive dashboard refreshes.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
   - Reseller verification-code responses render as modern status cards with badges and structured details instead of multiline system text.
   - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
@@ -59,6 +61,7 @@
   - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
   - Confirm live mail delivery from cPanel for `mail()`.
+  - Run `sql/2026-08-27_admin_order_reversals.sql` in production before using order cancellation if runtime schema changes are not permitted.
 - Known limitations:
   - Local database was not available in this workspace, so database-backed flows need final live/staging validation after migration.
   - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
@@ -70,6 +73,7 @@
   - Actual cPanel MySQL migration execution.
   - Live email delivery.
   - n8n webhook response in production.
+  - Authenticated browser journeys and rendered screenshot QA were not run in this environment because browser-control tools and valid admin credentials were unavailable.
 
 ## File Structure
 - `index.html` - reseller UI for login, orders, prices, balance, history, and payment notice.
@@ -98,6 +102,7 @@
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
 - `api/game_request.php` - reseller requested-game suggestion email notification.
 - `api/admin.php` - admin login/dashboard/update API.
+- `sql/2026-08-27_admin_order_reversals.sql` - auditable order cancellation metadata.
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
@@ -116,6 +121,7 @@
   - 2FA challenge attempts are separately rate-limited and audited without logging TOTP or recovery-code values.
   - Reseller credential changes require current token/password confirmation and store only `password_hash()` output.
   - TOTP secrets are encrypted at rest with AES-256-GCM using `security.encryption_key` / `SECURITY_ENCRYPTION_KEY` when configured; recovery codes are stored only as password hashes and shown once.
+  - Admin 2FA setup is a two-step UI: current password, setup-key generation, then TOTP confirmation; login remains pending until the second factor succeeds.
 - CSRF:
   - Mutating reseller/admin POST requests use `X-CSRF-Token`.
 - SQL safety:
@@ -166,9 +172,10 @@
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
   - n8n delivery can use product fields from the PHP payload, so newly added admin products do not require a hardcoded n8n map when sheet names match the product/account type.
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
-- Admin balance changes:
+  - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
+  - Admin order cancellation locks the order and reseller rows, verifies the original negative `ORDER` transaction, adds exactly one positive `ORDER_REVERSAL` transaction linked to the order when the wallet schema supports it, restores the charged amount, marks the order `canceled`, and writes an audit event. A second or concurrent reversal is rejected; legacy ENUM wallet schemas use a clearly described `ADMIN_ADJUSTMENT` fallback.
 - Product availability:
   - Migration adds `product_prices.status`; reseller-facing product and price APIs only show `status='active'` when this column exists.
   - Admin “Deaktiviraj” sets `status='inactive'` when available.
@@ -239,12 +246,17 @@
 - Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
 - Added admin-created reseller flow with required display name/token, optional email/phone/balance, temporary internal email auto-fill, initial token hashing, and first-login personal email enforcement.
 - Added admin TOTP 2FA with pending login challenge, encrypted secret storage, hashed recovery codes, management UI, audit records, and rate limiting.
+- Added explicit admin 2FA setup steps and disabled confirmation until a setup key has been generated.
+- Added transaction-safe admin order cancellation with exact balance reversal, immutable financial history, cancellation metadata, audit logging, canceled-row styling, and duplicate-reversal protection.
+- Restricted generic admin order editing to operational fields so ownership, price, identity, original wallet effect, and creation metadata cannot be changed accidentally.
+- Added explicit admin filter state plus table/page scroll, focus, active-tab, and fixed local toast preservation after mutations.
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
 - Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
+- Run `sql/2026-08-27_admin_order_reversals.sql` on the live cPanel database.
 - Configure Inventory Supplier API base URL and supplier token in ignored server-side config/env.
 - Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.
 - Validate admin login and all admin edit flows on live/staging data.
@@ -258,6 +270,7 @@
 - Git history previously contained production DB credentials and webhook URL. The latest source removes them, but the live secrets should still be rotated.
 - Runtime `CREATE TABLE IF NOT EXISTS` helpers require DB user privileges; production should still run the SQL migration explicitly.
 - 2FA has no local QR image renderer yet; use the manual key or `otpauth://` setup link.
+- Database-backed cancellation, concurrent reversal, and live admin 2FA login still require staging/production execution because no local database is configured.
 
 ## LLM Handoff Notes
 - Read first:

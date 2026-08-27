@@ -258,6 +258,14 @@
     .wide{min-width:240px}
     .compact{max-width:130px}
     .msg{border-radius:14px;padding:13px 15px}
+    .toast{position:fixed;right:24px;bottom:24px;z-index:80;max-width:min(420px,calc(100vw - 32px));padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);box-shadow:0 18px 42px rgba(18,32,51,.18);font-size:13px;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .18s var(--ease),transform .18s var(--ease)}
+    .toast.visible{opacity:1;transform:translateY(0)}
+    .toast.ok{border-color:rgba(20,128,74,.35);background:rgba(20,128,74,.12)}
+    .toast.bad{border-color:rgba(189,43,43,.35);background:rgba(189,43,43,.12)}
+    .order-canceled td{background:rgba(189,43,43,.045);color:var(--muted)}
+    .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
+    .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
+    .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
     .login{max-width:460px;margin:15vh auto 0;border-radius:24px}
     .login .section{text-align:center;padding:30px}
     .login label{text-align:left}
@@ -280,6 +288,7 @@
       .admin-summary{grid-template-columns:1fr}
       h1{font-size:24px}
       .tabs{grid-template-columns:1fr}
+      .toast{right:16px;bottom:16px}
     }
   </style>
 </head>
@@ -356,15 +365,20 @@
           </div>
           <div>
             <div class="setup-box" id="admin2faSetupBox">
+              <p class="muted">Korak 1: potvrdite trenutnu admin šifru i generišite ključ za Authenticator.</p>
               <label for="admin2faCurrentPassword">Trenutna admin šifra</label>
               <input id="admin2faCurrentPassword" type="password" autocomplete="current-password" />
+              <div class="security-actions">
+                <button class="btn primary" id="generateAdmin2faBtn" type="button">Generiši setup ključ</button>
+              </div>
               <p class="muted">U Authenticator aplikaciji izaberite ručni unos i unesite ovaj ključ:</p>
               <div class="pill mono setup-key" id="admin2faManualKey"></div>
               <a class="btn" id="admin2faOtpLink" href="#" target="_blank" rel="noopener">Otvori setup link</a>
+              <p class="muted">Korak 2: dodajte nalog u Authenticator, pa unesite trenutni šestocifreni kod.</p>
               <label for="admin2faSetupCode">Kod iz aplikacije</label>
               <input id="admin2faSetupCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
               <div class="security-actions">
-                <button class="btn primary" id="confirmAdmin2faBtn" type="button">Potvrdi i uključi</button>
+                <button class="btn primary" id="confirmAdmin2faBtn" type="button" disabled>Potvrdi i uključi</button>
               </div>
             </div>
             <div class="setup-box" id="admin2faManageBox">
@@ -517,10 +531,11 @@
       </div>
     </section>
   </main>
+  <div id="adminToast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"" };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"", filters:{} };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
@@ -535,14 +550,57 @@
       el.textContent=text;
       el.style.display="block";
     }
+    let toastTimer = null;
+    function showToast(type, message){
+      const el = $("adminToast");
+      if (!el) return;
+      clearTimeout(toastTimer);
+      el.className = "toast " + type + " visible";
+      el.textContent = message;
+      toastTimer = setTimeout(() => el.classList.remove("visible"), 4200);
+    }
     function showLoginMsg(type,text){ const el=$("loginMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
     function clearMsg(){ $("adminMsg").style.display="none"; $("loginMsg").style.display="none"; }
-    function preserveScroll(callback){
-      const x = window.scrollX;
-      const y = window.scrollY;
-      const result = callback();
-      requestAnimationFrame(() => window.scrollTo(x, y));
-      return result;
+    function captureUiState(){
+      const active = document.activeElement;
+      return {
+        x: window.scrollX,
+        y: window.scrollY,
+        tab: state.tab,
+        filters: currentFilters(),
+        tables: Array.from(document.querySelectorAll(".table-wrap")).map((wrap) => ({
+          id: wrap.querySelector("table")?.id || "",
+          left: wrap.scrollLeft,
+          top: wrap.scrollTop
+        })),
+        focusId: active && active.id ? active.id : "",
+        focusColumn: active && active.dataset ? active.dataset.column || active.dataset.field || "" : "",
+        focusRecordId: active?.closest("tr")?.dataset.recordId || ""
+      };
+    }
+    function restoreUiState(snapshot){
+      if (!snapshot) return;
+      state.tab = snapshot.tab || state.tab;
+      requestAnimationFrame(() => {
+        window.scrollTo(snapshot.x, snapshot.y);
+        (snapshot.tables || []).forEach((saved) => {
+          if (!saved.id) return;
+          const table = $(saved.id);
+          const wrap = table && table.closest(".table-wrap");
+          if (wrap) { wrap.scrollLeft = saved.left; wrap.scrollTop = saved.top; }
+        });
+        if (snapshot.focusId) $(snapshot.focusId)?.focus({ preventScroll:true });
+        if (!snapshot.focusId && snapshot.focusRecordId && snapshot.focusColumn) {
+          const row = Array.from(document.querySelectorAll("tr[data-record-id]")).find((item) => item.dataset.recordId === snapshot.focusRecordId);
+          const control = row && Array.from(row.querySelectorAll("[data-column],[data-field]")).find((item) => (item.dataset.column || item.dataset.field) === snapshot.focusColumn);
+          control?.focus({ preventScroll:true });
+        }
+      });
+    }
+    function renderWithUiState(callback){
+      const snapshot = captureUiState();
+      callback();
+      restoreUiState(snapshot);
     }
     function text(parent, tag, value, className){ const el=document.createElement(tag); if(className) el.className=className; el.textContent=value == null ? "" : String(value); parent.appendChild(el); return el; }
     function input(value, className){ const el=document.createElement("input"); el.value=value == null ? "" : String(value); if(className) el.className=className; return el; }
@@ -634,6 +692,8 @@
       $("admin2faManageBox").style.display = "none";
       $("admin2faManualKey").textContent = "";
       $("admin2faOtpLink").href = "#";
+      $("admin2faSetupCode").value = "";
+      $("confirmAdmin2faBtn").disabled = true;
       state.admin2faManageMode = "";
     }
 
@@ -713,24 +773,26 @@
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
+        row.dataset.recordId = `reseller-${r.id}`;
         text(row.insertCell(), "span", r.id);
-        const name = input(r.display_name || "", "wide"); row.insertCell().appendChild(name);
-        const email = input(r.email, "wide"); row.insertCell().appendChild(email);
-        const phone = input(r.phone || "", "wide"); phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
+        const name = input(r.display_name || "", "wide"); name.dataset.field = "display_name"; row.insertCell().appendChild(name);
+        const email = input(r.email, "wide"); email.dataset.field = "email"; row.insertCell().appendChild(email);
+        const phone = input(r.phone || "", "wide"); phone.dataset.field = "phone"; phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
         text(row.insertCell(), "span", r.profile_completed_at ? "završen" : "nije završen", "muted");
         text(row.insertCell(), "span", r.two_factor_enabled_at ? `uključen (${r.recovery_codes_remaining || 0} recovery)` : "nije uključen", "muted");
-        const status = input(r.status || "active", "compact"); row.insertCell().appendChild(status);
-        const balance = input(r.balance_rsd || 0, "compact"); balance.type = "number"; row.insertCell().appendChild(balance);
-        const token = input("", "wide"); token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
+        const status = input(r.status || "active", "compact"); status.dataset.field = "status"; row.insertCell().appendChild(status);
+        const balance = input(r.balance_rsd || 0, "compact"); balance.dataset.field = "balance_rsd"; balance.type = "number"; row.insertCell().appendChild(balance);
+        const token = input("", "wide"); token.dataset.field = "new_token"; token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
-            await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
-            showMsg("ok", "Reseller je ažuriran.");
-            await load();
+            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
+            showToast("ok", "Reseller je ažuriran.");
+            state.data = result;
+            renderWithUiState(() => render());
           }catch(e){
-            showMsg("bad", e.message);
+            showToast("bad", e.message);
           }finally{
             save.disabled = false;
           }
@@ -800,6 +862,7 @@
       }
       filteredProducts.forEach((p) => {
         const row = body.insertRow();
+        row.dataset.recordId = `product-${p.product_id}`;
         const controls = {};
         columns.forEach((c) => {
           const control = editableForColumn(c, p[c.COLUMN_NAME]);
@@ -815,11 +878,12 @@
             save.disabled = true;
             const fields = {};
             Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
-            await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:p.product_id, fields }) });
-            showMsg("ok", "Proizvod je sačuvan.");
-            await load();
+            const result = await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:p.product_id, fields }) });
+            showToast("ok", "Proizvod je sačuvan.");
+            state.data = result;
+            renderWithUiState(() => render());
           }catch(e){
-            showMsg("bad", e.message);
+            showToast("bad", e.message);
           }finally{
             save.disabled = false;
           }
@@ -828,11 +892,12 @@
         off.addEventListener("click", async () => {
           try{
             off.disabled = true;
-            await api("deactivate_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-            showMsg("ok", "Proizvod je deaktiviran.");
-            await load();
+            const result = await api("deactivate_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
+            showToast("ok", "Proizvod je deaktiviran.");
+            state.data = result;
+            renderWithUiState(() => render());
           }catch(e){
-            showMsg("bad", e.message);
+            showToast("bad", e.message);
           }finally{
             off.disabled = false;
           }
@@ -842,11 +907,12 @@
           if (!confirm("Obrisati proizvod? Deaktivacija je bezbednija ako postoje stare porudžbine.")) return;
           try{
             del.disabled = true;
-            await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-            showMsg("ok", "Proizvod je obrisan.");
-            await load();
+            const result = await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
+            showToast("ok", "Proizvod je obrisan.");
+            state.data = result;
+            renderWithUiState(() => render());
           }catch(e){
-            showMsg("bad", e.message);
+            showToast("bad", e.message);
           }finally{
             del.disabled = false;
           }
@@ -859,12 +925,18 @@
     function option(parent, value, label){ const el=document.createElement("option"); el.value=value; el.textContent=label; parent.appendChild(el); }
 
     function renderFilters(){
+      const saved = state.filters || {};
       const reseller = $("filterReseller"); reseller.textContent = ""; option(reseller, "", "Svi reselleri");
       (state.data.resellers || []).forEach((r) => option(reseller, r.id, `${r.email} (#${r.id})`));
+      reseller.value = saved.reseller_id || "";
       const status = $("filterStatus"); status.textContent = ""; option(status, "", "Svi statusi");
       (state.data.order_statuses || []).forEach((s) => option(status, s, s));
+      status.value = saved.status || "";
       const product = $("filterProduct"); product.textContent = ""; option(product, "", "Svi proizvodi");
       (state.data.products || []).forEach((p) => option(product, p.product_id, `${p.product_name} (${p.account_type})`));
+      product.value = saved.product_id || "";
+      $("filterFrom").value = saved.date_from || "";
+      $("filterTo").value = saved.date_to || "";
     }
 
     function renderOrders(){
@@ -879,10 +951,16 @@
       const body = table.createTBody();
       (state.data.orders || []).forEach((o) => {
         const row = body.insertRow();
+        row.dataset.recordId = `order-${o.id}`;
+        const isCanceled = String(o.canceled_at || "") !== ""
+          || ["canceled", "cancelled"].includes(String(o.status || "").toLowerCase());
+        if (isCanceled) row.classList.add("order-canceled");
         display.forEach((name) => text(row.insertCell(), "span", name === "price_rsd" ? money(o[name]) : o[name]));
         const controls = {};
         extra.forEach((c) => {
           const control = editableForColumn(c, o[c.COLUMN_NAME]);
+          control.dataset.column = c.COLUMN_NAME;
+          if (c.COLUMN_NAME === "status" && isCanceled) control.disabled = true;
           controls[c.COLUMN_NAME] = control;
           row.insertCell().appendChild(control);
         });
@@ -892,11 +970,12 @@
             save.disabled = true;
             const fields = {};
             Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
-            await api("update_order", { method:"POST", body:JSON.stringify({ id:o.id, fields, filters:currentFilters() }) });
-            showMsg("ok", "Porudžbina je ažurirana.");
-            await load(currentFilters());
+            const result = await api("update_order", { method:"POST", body:JSON.stringify({ id:o.id, fields, filters:currentFilters() }) });
+            showToast("ok", `Porudžbina #${o.id} je ažurirana.`);
+            state.data = result;
+            renderWithUiState(() => render());
           }catch(e){
-            showMsg("bad", e.message);
+            showToast("bad", e.message);
           }finally{
             save.disabled = false;
           }
@@ -904,6 +983,41 @@
         const actionBox = document.createElement("div");
         actionBox.className = "table-actions";
         actionBox.appendChild(save);
+        if (isCanceled) {
+          const badge = document.createElement("span");
+          badge.className = "status-badge canceled";
+          badge.textContent = "Poništena";
+          actionBox.appendChild(badge);
+        } else {
+          const cancel = document.createElement("button");
+          cancel.className = "btn danger";
+          cancel.textContent = "Poništi";
+          cancel.addEventListener("click", async () => {
+            const reseller = (state.data.resellers || []).find((item) => Number(item.id) === Number(o.reseller_id));
+            const currentBalance = reseller ? Number(reseller.balance_rsd) : NaN;
+            const refund = Number(o.price_rsd);
+            const afterBalance = Number.isFinite(currentBalance) && Number.isFinite(refund) ? currentBalance + refund : null;
+            const balanceText = afterBalance === null
+              ? "Balance će biti vraćen za iznos porudžbine."
+              : `Balance: ${money(currentBalance)} RSD → ${money(afterBalance)} RSD.`;
+            const productText = `${o.product_name || o.product_id}${o.account_type ? ` (${o.account_type})` : ""}`;
+            const confirmed = confirm(`Poništiti porudžbinu #${o.id} — ${productText} — ${money(refund)} RSD?\n${balanceText}\n\nPorudžbina se neće brisati iz evidencije, već će biti označena kao poništena.`);
+            if (!confirmed) return;
+            try {
+              cancel.disabled = true;
+              cancel.textContent = "Poništavam...";
+              const result = await api("cancel_order", { method:"POST", body:JSON.stringify({ id:o.id, filters:currentFilters() }) });
+              showToast("ok", `Porudžbina #${o.id} je poništena. ${money(refund)} RSD vraćeno reselleru.`);
+              state.data = result;
+              renderWithUiState(() => render());
+            } catch (e) {
+              showToast("bad", e.message);
+              cancel.disabled = false;
+              cancel.textContent = "Poništi";
+            }
+          });
+          actionBox.appendChild(cancel);
+        }
         row.insertCell().appendChild(actionBox);
       });
     }
@@ -946,18 +1060,20 @@
       }
 
       const reseller = $("inventoryFilterReseller");
-      const currentReseller = reseller.value;
       reseller.textContent = "";
       option(reseller, "", "Svi reselleri");
       (state.data.resellers || []).forEach((r) => option(reseller, r.id, `${r.email} (#${r.id})`));
-      if (currentReseller) reseller.value = currentReseller;
+      reseller.value = state.filters.inventory_reseller_id || "";
 
       const result = $("inventoryFilterResult");
-      const selectedResult = result.value;
       result.textContent = "";
       option(result, "", "Svi rezultati");
       [...new Set((state.data.inventory_requests || []).map((r) => r.result).filter(Boolean))].sort().forEach((value) => option(result, value, value));
-      if (selectedResult) result.value = selectedResult;
+      result.value = state.filters.inventory_result || "";
+      $("inventoryFilterAccount").value = state.filters.inventory_account_email || "";
+      $("inventoryFilterHttp").value = state.filters.inventory_http_status || "";
+      $("inventoryFilterFrom").value = state.filters.inventory_from || "";
+      $("inventoryFilterTo").value = state.filters.inventory_to || "";
 
       const table = $("inventoryTable");
       table.textContent = "";
@@ -1026,7 +1142,7 @@
     }
 
     function currentFilters(){
-      return {
+      const filters = {
         reseller_id:$("filterReseller").value,
         status:$("filterStatus").value,
         product_id:$("filterProduct").value,
@@ -1039,6 +1155,8 @@
         inventory_from:$("inventoryFilterFrom") ? $("inventoryFilterFrom").value : "",
         inventory_to:$("inventoryFilterTo") ? $("inventoryFilterTo").value : ""
       };
+      state.filters = Object.assign({}, state.filters, filters);
+      return state.filters;
     }
 
     function queryFromFilters(filters){
@@ -1047,10 +1165,14 @@
       return params.toString() ? "&" + params.toString() : "";
     }
 
-    async function load(filters = {}){
-      state.data = await api("dashboard", { query:queryFromFilters(filters) });
+    async function load(filters = null){
+      const nextFilters = filters || currentFilters();
+      state.filters = Object.assign({}, state.filters, nextFilters);
+      const snapshot = captureUiState();
+      state.data = await api("dashboard", { query:queryFromFilters(state.filters) });
       render();
       await loadAdminTwoFactorStatus();
+      restoreUiState(snapshot);
     }
 
     function render(){
@@ -1131,26 +1253,28 @@
         state.data = result;
         ["newResellerName","newResellerEmail","newResellerPhone","newResellerToken"].forEach((id) => $(id).value = "");
         $("newResellerBalance").value = "0";
-        preserveScroll(() => render());
-        showMsg("ok", "Novi reseller je dodat.");
+        renderWithUiState(() => render());
+        showToast("ok", "Novi reseller je dodat.");
       }catch(e){
-        showMsg("bad", e.message);
+        showToast("bad", e.message);
       }finally{
         btn.disabled = false;
         btn.textContent = original;
       }
     }
 
-    async function startAdminTwoFactorSetup(){
+    function startAdminTwoFactorSetup(){
       clearAdmin2faMsg();
       const box = $("admin2faSetupBox");
       $("admin2faManageBox").style.display = "none";
-      if (box.style.display === "none" || box.style.display === "") {
-        box.style.display = "block";
-        $("admin2faCurrentPassword").focus();
-        return;
-      }
-      const btn = $("startAdmin2faBtn");
+      box.style.display = "block";
+      state.admin2faManageMode = "";
+      $("admin2faCurrentPassword").focus();
+    }
+
+    async function generateAdminTwoFactorSetup(){
+      clearAdmin2faMsg();
+      const btn = $("generateAdmin2faBtn");
       const original = btn.textContent;
       try{
         btn.disabled = true;
@@ -1158,6 +1282,7 @@
         const j = await api("2fa_setup_start", { method:"POST", body:JSON.stringify({ current_password:$("admin2faCurrentPassword").value }) });
         $("admin2faManualKey").textContent = j.manual_key || "";
         $("admin2faOtpLink").href = j.otpauth_uri || "#";
+        $("confirmAdmin2faBtn").disabled = false;
         showAdmin2faMsg("ok", "Unesite ključ u Authenticator aplikaciju, zatim upišite šestocifreni kod i potvrdite.");
         $("admin2faSetupCode").focus();
       }catch(e){
@@ -1193,7 +1318,7 @@
       if (state.admin2faManageMode !== "regen") {
         state.admin2faManageMode = "regen";
         box.style.display = "block";
-        showAdmin2faMsg("warn", "Unesite trenutnu admin šifru i kod iz aplikacije, pa kliknite ponovo.");
+        showAdmin2faMsg("warn", "Unesite trenutnu admin šifru i kod iz aplikacije, pa potvrdite akciju.");
         $("admin2faManagePassword").focus();
         return;
       }
@@ -1220,7 +1345,7 @@
       if (state.admin2faManageMode !== "disable") {
         state.admin2faManageMode = "disable";
         box.style.display = "block";
-        showAdmin2faMsg("warn", "Za isključivanje unesite trenutnu admin šifru i kod iz aplikacije ili recovery kod, pa kliknite ponovo.");
+        showAdmin2faMsg("warn", "Za isključivanje unesite trenutnu admin šifru i kod iz aplikacije ili recovery kod, pa potvrdite akciju.");
         $("admin2faManagePassword").focus();
         return;
       }
@@ -1265,8 +1390,8 @@
             supplier_token:$("inventoryTokenInput").value
           })
         });
-        showMsg("ok", "Inventory API podešavanja su sačuvana.");
-        preserveScroll(() => render());
+        showToast("ok", "Inventory API podešavanja su sačuvana.");
+        renderWithUiState(() => render());
       }catch(e){
         showMsg("bad", e.message);
       }finally{
@@ -1276,6 +1401,7 @@
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
     $("createResellerBtn").addEventListener("click", createReseller);
     $("startAdmin2faBtn").addEventListener("click", startAdminTwoFactorSetup);
+    $("generateAdmin2faBtn").addEventListener("click", generateAdminTwoFactorSetup);
     $("confirmAdmin2faBtn").addEventListener("click", confirmAdminTwoFactorSetup);
     $("regenAdminRecoveryBtn").addEventListener("click", regenerateAdminRecoveryCodes);
     $("disableAdmin2faBtn").addEventListener("click", disableAdminTwoFactor);
@@ -1289,7 +1415,7 @@
       $(id).addEventListener("keydown", (event) => {
         if(event.key !== "Enter") return;
         if (id === "admin2faSetupCode") confirmAdminTwoFactorSetup();
-        else startAdminTwoFactorSetup();
+        else generateAdminTwoFactorSetup();
       });
     });
     ["admin2faManagePassword","admin2faManageCode"].forEach((id) => {
@@ -1306,11 +1432,12 @@
         btn.textContent = "Dodajem...";
         const fields = {};
         document.querySelectorAll("#newProductForm [data-column]").forEach((el) => fields[el.dataset.column] = el.value.trim());
-        await api("save_product", { method:"POST", body:JSON.stringify({ mode:"create", fields }) });
-        showMsg("ok", "Proizvod je dodat.");
-        await load();
+        const result = await api("save_product", { method:"POST", body:JSON.stringify({ mode:"create", fields }) });
+        showToast("ok", "Proizvod je dodat.");
+        state.data = result;
+        renderWithUiState(() => render());
       }catch(e){
-        showMsg("bad", e.message);
+        showToast("bad", e.message);
       }finally{
         btn.disabled = false;
         btn.textContent = "Dodaj proizvod";

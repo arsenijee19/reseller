@@ -28,6 +28,12 @@
 - Profile update/completion.
 - Reseller credential change.
 - 2FA setup, enable, disable, and recovery-code regeneration.
+- Admin order cancellation/reversal with order, reseller, amount, and reason metadata.
+
+## Admin 2FA Setup
+- The admin flow is explicit: open activation, verify the current password, generate the setup key, confirm the live Authenticator code, then save the recovery codes.
+- Setup secrets are held encrypted as pending data until the TOTP confirmation succeeds; recovery codes are generated in the same database transaction as activation.
+- Admin login uses a temporary pre-auth session until the TOTP or one-time recovery code succeeds.
 
 ## Secrets Handling
 - Plaintext reseller tokens are never stored.

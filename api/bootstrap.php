@@ -340,6 +340,36 @@ function ensure_security_tables(PDO $pdo): void {
   $done = true;
 }
 
+function ensure_order_cancellation_columns(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+
+  foreach ([
+    'canceled_at DATETIME NULL',
+    'canceled_by_admin_id INT UNSIGNED NULL',
+    'cancellation_reason VARCHAR(500) NULL',
+  ] as $definition) {
+    $column = strtok($definition, ' ');
+    if ($column && !has_column($pdo, 'orders', $column)) {
+      $pdo->exec("ALTER TABLE orders ADD COLUMN {$definition}");
+    }
+  }
+
+  $done = true;
+}
+
+function order_reversal_transaction_type(PDO $pdo): string {
+  $stmt = $pdo->prepare("SELECT DATA_TYPE, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'wallet_transactions' AND COLUMN_NAME = 'type' LIMIT 1");
+  $stmt->execute();
+  $column = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+  $type = strtolower((string)($column['DATA_TYPE'] ?? ''));
+  $definition = strtolower((string)($column['COLUMN_TYPE'] ?? ''));
+  if ($type === 'enum' && strpos($definition, 'order_reversal') === false) {
+    return 'ADMIN_ADJUSTMENT';
+  }
+  return 'ORDER_REVERSAL';
+}
+
 function audit_event(PDO $pdo, string $actorType, ?int $actorId, string $eventType, string $result, array $metadata = []): void {
   ensure_security_tables($pdo);
   $stmt = $pdo->prepare("
@@ -379,7 +409,16 @@ function security_encryption_key(): string {
   return hash('sha256', $fallback !== '|' ? $fallback : __DIR__, true);
 }
 
+function encryption_available(): bool {
+  if (!function_exists('openssl_encrypt') || !function_exists('openssl_decrypt')) return false;
+  $methods = array_map('strtolower', openssl_get_cipher_methods());
+  return in_array('aes-256-gcm', $methods, true);
+}
+
 function encrypt_secret(string $plaintext): string {
+  if (!encryption_available()) {
+    throw new RuntimeException('Server nema podršku za AES-256-GCM enkripciju potrebnu za 2-step verifikaciju.');
+  }
   $iv = random_bytes(12);
   $tag = '';
   $ciphertext = openssl_encrypt($plaintext, 'aes-256-gcm', security_encryption_key(), OPENSSL_RAW_DATA, $iv, $tag);
@@ -391,6 +430,7 @@ function encrypt_secret(string $plaintext): string {
 
 function decrypt_secret(?string $encoded): string {
   if (!$encoded) return '';
+  if (!encryption_available()) return '';
   $raw = base64_decode($encoded, true);
   if ($raw === false || strlen($raw) < 29) return '';
   $iv = substr($raw, 0, 12);

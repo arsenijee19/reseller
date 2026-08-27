@@ -375,6 +375,7 @@ try {
   }
 
   require_admin();
+  ensure_order_cancellation_columns($pdo);
 
   if ($action === 'logout') {
     require_post();
@@ -794,7 +795,10 @@ try {
     $fields = is_array($input['fields'] ?? null) ? $input['fields'] : [];
     if ($id <= 0) json_response(['ok' => false, 'error' => 'Nedostaje porudžbina.'], 400);
 
-    $allowed = array_diff(column_names($pdo, 'orders'), ['id']);
+    $allowed = array_intersect(
+      ['status', 'admin_notes', 'reseller_notes', 'reseller_paid', 'reseller_paid_at', 'delivery_payload'],
+      column_names($pdo, 'orders')
+    );
     $clean = [];
     foreach ($fields as $key => $value) {
       if (in_array($key, $allowed, true)) {
@@ -802,6 +806,17 @@ try {
       }
     }
     if (!$clean) json_response(['ok' => false, 'error' => 'Nema polja za izmenu.'], 400);
+
+    $current = $pdo->prepare('SELECT status, canceled_at FROM orders WHERE id = ? LIMIT 1');
+    $current->execute([$id]);
+    $currentOrder = $current->fetch(PDO::FETCH_ASSOC);
+    if (!$currentOrder) json_response(['ok' => false, 'error' => 'Porudžbina nije pronađena.'], 404);
+
+    $isCanceled = (string)($currentOrder['canceled_at'] ?? '') !== ''
+      || in_array(strtolower((string)($currentOrder['status'] ?? '')), ['canceled', 'cancelled'], true);
+    if ($isCanceled && array_key_exists('status', $clean) && !in_array(strtolower((string)$clean['status']), ['canceled', 'cancelled'], true)) {
+      json_response(['ok' => false, 'error' => 'Poništena porudžbina ne može ponovo da postane aktivna.'], 409);
+    }
 
     $sets = [];
     $params = [];
@@ -816,11 +831,92 @@ try {
     $stmt = $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = ?');
     $stmt->execute($params);
 
+    audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'order_updated', 'success', [
+      'order_id' => $id,
+      'fields' => array_keys($clean),
+    ]);
     json_response(dashboard_payload($pdo, $input['filters'] ?? []));
+  }
+
+  if ($action === 'cancel_order') {
+    $id = (int)($input['id'] ?? 0);
+    $reason = trim((string)($input['reason'] ?? ''));
+    if ($id <= 0) json_response(['ok' => false, 'error' => 'Nedostaje porudžbina.'], 400);
+    if (strlen($reason) > 500) json_response(['ok' => false, 'error' => 'Razlog je predugačak.'], 400);
+
+    $adminId = (int)($_SESSION['admin_id'] ?? 0);
+    $pdo->beginTransaction();
+
+    $orderStmt = $pdo->prepare('SELECT id, reseller_id, product_id, price_rsd, status, canceled_at FROM orders WHERE id = ? FOR UPDATE');
+    $orderStmt->execute([$id]);
+    $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) {
+      $pdo->rollBack();
+      json_response(['ok' => false, 'error' => 'Porudžbina nije pronađena.'], 404);
+    }
+
+    $isCanceled = (string)($order['canceled_at'] ?? '') !== ''
+      || in_array(strtolower((string)($order['status'] ?? '')), ['canceled', 'cancelled'], true);
+    if ($isCanceled) {
+      $pdo->rollBack();
+      json_response(['ok' => false, 'error' => 'Ova porudžbina je već poništena i novac je već vraćen.'], 409);
+    }
+
+    if (!has_column($pdo, 'wallet_transactions', 'related_order_id')) {
+      throw new RuntimeException('Nije moguće bezbedno poništiti porudžbinu: wallet veza sa porudžbinom ne postoji.');
+    }
+
+    $resellerStmt = $pdo->prepare('SELECT id, balance_rsd FROM resellers WHERE id = ? FOR UPDATE');
+    $resellerStmt->execute([(int)$order['reseller_id']]);
+    $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$reseller) throw new RuntimeException('Reseller porudžbine nije pronađen.');
+
+    $chargeStmt = $pdo->prepare("SELECT id, amount_rsd FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = 'ORDER' ORDER BY id ASC LIMIT 1 FOR UPDATE");
+    $chargeStmt->execute([(int)$order['reseller_id'], $id]);
+    $charge = $chargeStmt->fetch(PDO::FETCH_ASSOC);
+    $chargedAmount = (int)($charge['amount_rsd'] ?? 0);
+    $orderPrice = (int)$order['price_rsd'];
+    if (!$charge || $chargedAmount >= 0 || abs($chargedAmount) !== $orderPrice) {
+      throw new RuntimeException('Nije moguće bezbedno poništiti porudžbinu: originalno zaduženje nije jednoznačno.');
+    }
+
+    $reversalType = order_reversal_transaction_type($pdo);
+    $reversalStmt = $pdo->prepare('SELECT id FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = ? LIMIT 1 FOR UPDATE');
+    $reversalStmt->execute([(int)$order['reseller_id'], $id, $reversalType]);
+    if ($reversalStmt->fetchColumn()) {
+      $pdo->rollBack();
+      json_response(['ok' => false, 'error' => 'Ova porudžbina je već finansijski poništena.'], 409);
+    }
+
+    $refund = abs($chargedAmount);
+    $newBalance = (int)$reseller['balance_rsd'] + $refund;
+    $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$newBalance, (int)$order['reseller_id']]);
+
+    $description = 'Order reversal #' . $id . ($reason !== '' ? ': ' . $reason : '');
+    $wallet = $pdo->prepare('INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description, related_order_id) VALUES (?, ?, ?, ?, ?)');
+    $wallet->execute([(int)$order['reseller_id'], $reversalType, $refund, $description, $id]);
+
+    $orderUpdate = $pdo->prepare('UPDATE orders SET status = ?, canceled_at = NOW(), canceled_by_admin_id = ?, cancellation_reason = ?, updated_at = NOW() WHERE id = ?');
+    $orderUpdate->execute(['canceled', $adminId, $reason !== '' ? $reason : null, $id]);
+    audit_event($pdo, 'admin', $adminId, 'order_canceled', 'success', [
+      'order_id' => $id,
+      'reseller_id' => (int)$order['reseller_id'],
+      'refund_rsd' => $refund,
+      'reason_provided' => $reason !== '',
+    ]);
+    $pdo->commit();
+
+    $payload = dashboard_payload($pdo, $input['filters'] ?? []);
+    $payload['cancellation'] = [
+      'order_id' => $id,
+      'refund_rsd' => $refund,
+      'balance_rsd' => $newBalance,
+    ];
+    json_response($payload);
   }
 
   json_response(['ok' => false, 'error' => 'Unknown action'], 404);
 } catch (Throwable $e) {
   if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
-  json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+  json_response(['ok' => false, 'error' => public_error_detail($e)], 500);
 }
