@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
+require_same_origin();
+require_json_content_type();
+
 require_csrf();
 $reseller = require_reseller();
 $input = read_json_body();

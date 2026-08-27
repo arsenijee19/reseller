@@ -33,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
+require_json_content_type();
+
 require_csrf();
 
 $input = read_json_body();
@@ -148,5 +150,5 @@ try {
   ]);
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
-  json_response(['ok' => false, 'error' => safe_public_error($e->getMessage()) ?: 'Greška pri čuvanju profila.'], 500);
+  json_response(['ok' => false, 'error' => 'Greška pri čuvanju profila.'], 500);
 }

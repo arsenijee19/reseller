@@ -12,9 +12,12 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
   echo json_encode(["ok"=>false,"error"=>"Method not allowed"]); exit;
 }
 
+require_same_origin();
+require_json_content_type();
+
 require_csrf();
 
-$input = json_decode(file_get_contents("php://input"), true) ?: [];
+$input = read_json_body();
 $product_id = trim((string)($input["product_id"] ?? ""));
 
 if ($product_id === "") {
@@ -196,5 +199,5 @@ try {
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
   http_response_code(500);
-  echo json_encode(["ok"=>false,"error"=>$e->getMessage()]);
+  echo json_encode(["ok"=>false,"error"=>"Porudžbina trenutno nije mogla da se obradi."]);
 }

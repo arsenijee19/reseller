@@ -47,7 +47,6 @@ function app_config_status(): array {
 
 function public_error_detail(Throwable $e): string {
   $message = $e->getMessage();
-  $safeMessage = preg_replace('/[^\p{L}\p{N}\s_\-:.,#()[\]\/]/u', '', $message) ?: 'bez detalja';
 
   if ($e instanceof PDOException) {
     if (strpos($message, '[1045]') !== false) return 'MySQL odbija pristup. Proveri DB user/password i privilegije.';
@@ -61,20 +60,9 @@ function public_error_detail(Throwable $e): string {
     return 'Jedan aktivan reseller ima prazan ili neispravan token_hash u bazi.';
   }
 
-  if ($e instanceof ParseError) {
-    return 'PHP ne može da pročita jedan config/code fajl. Detalj: ' . $safeMessage;
-  }
-
-  if (strpos($message, 'Database configuration is missing') !== false) {
-    $status = app_config_status();
-    $missing = [];
-    foreach ($status as $key => $ok) {
-      if (!$ok) $missing[] = $key;
-    }
-    return 'DB konfiguracija nije kompletna: ' . implode(', ', $missing);
-  }
-
-  return 'Neočekivana server greška u login toku (' . get_class($e) . '): ' . $safeMessage;
+  if ($e instanceof ParseError) return 'Server konfiguracija trenutno nije validna.';
+  if (strpos($message, 'Database configuration is missing') !== false) return 'Server baza trenutno nije pravilno podešena.';
+  return 'Server trenutno nije mogao da obradi zahtev.';
 }
 
 function config_value(string $path, $default = null) {

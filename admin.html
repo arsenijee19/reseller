@@ -229,11 +229,16 @@
     .account-panel .section-head{margin-bottom:12px}
     .account-panel .form-grid{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}
     .security-panel{margin:0 0 18px;background:linear-gradient(135deg,rgba(16,163,127,.07),rgba(15,99,216,.05))}
+    .passkey-panel{margin:0 0 18px;background:linear-gradient(135deg,rgba(15,99,216,.055),rgba(16,163,127,.06))}
     .security-panel .security-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:16px;align-items:start}
     .security-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     .setup-box{display:none;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.58)}
     :root[data-theme="dark"] .setup-box{background:rgba(16,24,35,.58)}
     .setup-key{justify-content:flex-start;width:100%;overflow-wrap:anywhere;white-space:normal;margin:8px 0 10px;border-radius:14px}
+    .passkey-list{display:grid;gap:8px;margin-top:14px}
+    .passkey-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.58)}
+    .passkey-row strong,.passkey-row span{display:block}
+    .passkey-row span{color:var(--muted);font-size:12px;margin-top:3px}
     label{font-size:12px;text-transform:none;letter-spacing:.01em}
     input,select,textarea{min-height:46px;border-radius:13px;padding:11px 13px;background:rgba(255,255,255,.86)}
     :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:rgba(16,24,35,.88)}
@@ -304,9 +309,11 @@
           <label for="admin2faLoginCode">2-step kod</label>
           <input id="admin2faLoginCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456 ili recovery kod" />
           <p class="muted">Unesite kod iz Authenticator aplikacije ili jedan recovery kod.</p>
+          <button class="btn" id="admin2faBackBtn" type="button">Nazad</button>
         </div>
         <div class="actions">
           <button class="btn" id="loginThemeBtn" type="button">Dark</button>
+          <button class="btn" id="adminPasskeyLoginBtn" type="button">Prijavi se Passkey-em</button>
           <button class="btn primary" id="adminLoginBtn">Uloguj se</button>
         </div>
         <div class="msg" id="loginMsg"></div>
@@ -389,6 +396,34 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="form-panel passkey-panel">
+        <div class="section-head">
+          <div class="section-title">
+            <h2>Passkey prijava vlasnika</h2>
+            <p>Passkey je dodatna biometrijska ili sigurnosna prijava ovog admin naloga. Privatni ključ ostaje na uređaju.</p>
+          </div>
+        </div>
+        <div id="passkeyStatusText" class="muted">Učitavanje passkey statusa...</div>
+        <div class="security-actions">
+          <button class="btn good" id="registerPasskeyBtn" type="button">Dodaj Passkey</button>
+        </div>
+        <div class="setup-box" id="passkeyRegistrationBox">
+          <p class="muted">Za dodavanje novog ključa potvrdite trenutnu admin šifru. Ako je admin 2FA uključen, unesite i trenutni 2-step kod.</p>
+          <label for="passkeyCurrentPassword">Trenutna admin šifra</label>
+          <input id="passkeyCurrentPassword" type="password" autocomplete="current-password" />
+          <label for="passkeyTwoFactorCode">Trenutni 2-step kod, ako je uključen</label>
+          <input id="passkeyTwoFactorCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+          <label for="passkeyLabel">Naziv uređaja</label>
+          <input id="passkeyLabel" type="text" maxlength="120" placeholder="Telefon, laptop..." />
+          <div class="security-actions">
+            <button class="btn primary" id="confirmPasskeyBtn" type="button">Nastavi na uređaj</button>
+            <button class="btn" id="cancelPasskeyBtn" type="button">Otkaži</button>
+          </div>
+        </div>
+        <div id="passkeyList" class="passkey-list"></div>
+        <div class="msg" id="passkeyMsg"></div>
       </div>
 
       <div class="panel">
@@ -535,7 +570,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"", filters:{} };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"", adminTwoFactorEnabled:false, filters:{} };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
@@ -676,12 +711,15 @@
     function setAdmin2faLoginMode(enabled){
       state.admin2faPending = enabled;
       $("admin2faLoginBox").style.display = enabled ? "block" : "none";
+      $("adminPasskeyLoginBtn").style.display = enabled ? "none" : "inline-flex";
+      $("admin2faBackBtn").style.display = enabled ? "inline-flex" : "none";
       $("adminLoginBtn").textContent = enabled ? "Potvrdi 2FA" : "Uloguj se";
       if (enabled) $("admin2faLoginCode").focus();
     }
 
     function renderAdminTwoFactorStatus(info){
       const enabled = !!(info && info.enabled);
+      state.adminTwoFactorEnabled = enabled;
       $("admin2faStatusText").textContent = enabled
         ? `Admin 2FA je uključen${info.last_used_at ? " - poslednja potvrda: " + info.last_used_at : ""}. Recovery kodova: ${info.recovery_codes_remaining || 0}.`
         : "Admin 2FA nije uključen. Preporuka: aktivirajte ga zbog zaštite porudžbina, balance-a i Inventory podešavanja.";
@@ -704,6 +742,109 @@
       }catch(e){
         $("admin2faStatusText").textContent = "Admin 2FA status trenutno nije dostupan.";
       }
+    }
+
+    function showPasskeyMsg(type, message){
+      const el = $("passkeyMsg");
+      el.className = "msg " + type;
+      el.textContent = message;
+      el.style.display = "block";
+    }
+    function b64urlToBytes(value){
+      const encoded = String(value || "");
+      const raw = atob(encoded.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - encoded.length % 4) % 4));
+      return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+    }
+    function bytesToB64url(value){
+      let raw = "";
+      new Uint8Array(value).forEach((byte) => raw += String.fromCharCode(byte));
+      return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+    function prepareCreationOptions(options){
+      const prepared = Object.assign({}, options, { challenge:b64urlToBytes(options.challenge) });
+      if (prepared.user) prepared.user = Object.assign({}, prepared.user, { id:b64urlToBytes(prepared.user.id) });
+      if (Array.isArray(prepared.excludeCredentials)) prepared.excludeCredentials = prepared.excludeCredentials.map((item) => Object.assign({}, item, { id:b64urlToBytes(item.id) }));
+      return prepared;
+    }
+    function prepareRequestOptions(options){
+      const prepared = Object.assign({}, options, { challenge:b64urlToBytes(options.challenge) });
+      if (Array.isArray(prepared.allowCredentials)) prepared.allowCredentials = prepared.allowCredentials.map((item) => Object.assign({}, item, { id:b64urlToBytes(item.id) }));
+      return prepared;
+    }
+    function credentialToJson(credential){
+      const response = credential.response;
+      const output = { id:credential.id, rawId:bytesToB64url(credential.rawId), type:credential.type, response:{} };
+      ["clientDataJSON","authenticatorData","signature","attestationObject","userHandle"].forEach((key) => {
+        if (response[key]) output.response[key] = bytesToB64url(response[key]);
+      });
+      if (typeof response.getTransports === "function") output.response.transports = response.getTransports();
+      return JSON.stringify(output);
+    }
+    function renderPasskeys(passkeys){
+      const list = $("passkeyList");
+      list.textContent = "";
+      (passkeys || []).forEach((item) => {
+        const row = document.createElement("div"); row.className = "passkey-row";
+        const details = document.createElement("div");
+        text(details, "strong", item.label || "Passkey");
+        text(details, "span", "Dodat: " + (item.created_at || "-") + (item.last_used_at ? " | poslednje korišćen: " + item.last_used_at : ""));
+        const remove = document.createElement("button"); remove.className = "btn danger"; remove.type = "button"; remove.textContent = "Ukloni";
+        remove.addEventListener("click", () => removePasskey(item.id, item.label));
+        row.append(details, remove); list.appendChild(row);
+      });
+    }
+    async function loadPasskeys(){
+      try{
+        const result = await api("passkey_status");
+        const passkeys = result.passkeys || [];
+        $("passkeyStatusText").textContent = passkeys.length
+          ? `Aktivno passkey ključeva: ${passkeys.length}. Lozinka i admin 2FA ostaju dostupni kao rezervni način prijave.`
+          : "Nema dodatih passkey ključeva. Preporučujemo da dodate bar jedan pouzdan uređaj.";
+        renderPasskeys(passkeys);
+      }catch(e){ $("passkeyStatusText").textContent = "Passkey status trenutno nije dostupan."; }
+    }
+    function startPasskeyRegistration(){
+      $("passkeyRegistrationBox").style.display = "block";
+      $("passkeyMsg").style.display = "none";
+      $("passkeyCurrentPassword").focus();
+    }
+    async function confirmPasskeyRegistration(){
+      const button = $("confirmPasskeyBtn");
+      try{
+        if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Ovaj browser ne podržava passkey prijavu.");
+        button.disabled = true; button.textContent = "Čekam uređaj...";
+        const options = await api("passkey_registration_options", { method:"POST", body:JSON.stringify({ current_password:$("passkeyCurrentPassword").value, two_factor_code:$("passkeyTwoFactorCode").value }) });
+        const credential = await navigator.credentials.create({ publicKey:prepareCreationOptions(options.public_key) });
+        if (!credential) throw new Error("Registracija passkey ključa je otkazana.");
+        await api("passkey_registration_verify", { method:"POST", body:JSON.stringify({ credential_json:credentialToJson(credential), label:$("passkeyLabel").value.trim() || "Passkey" }) });
+        $("passkeyRegistrationBox").style.display = "none";
+        ["passkeyCurrentPassword","passkeyTwoFactorCode","passkeyLabel"].forEach((id) => $(id).value = "");
+        showPasskeyMsg("ok", "Passkey je uspešno dodat."); await loadPasskeys();
+      }catch(e){ showPasskeyMsg("bad", e.message); }
+      finally{ button.disabled = false; button.textContent = "Nastavi na uređaj"; }
+    }
+    async function removePasskey(id, label){
+      if (!window.confirm(`Ukloniti passkey "${label || "Passkey"}"?`)) return;
+      const currentPassword = window.prompt("Unesite trenutnu admin šifru:");
+      if (currentPassword === null) return;
+      const twoFactorCode = state.adminTwoFactorEnabled ? window.prompt("Unesite trenutni 2-step kod:") : "";
+      try{
+        await api("passkey_remove", { method:"POST", body:JSON.stringify({ id, current_password:currentPassword, two_factor_code:twoFactorCode || "" }) });
+        showPasskeyMsg("ok", "Passkey je uklonjen."); await loadPasskeys();
+      }catch(e){ showPasskeyMsg("bad", e.message); }
+    }
+    async function loginWithPasskey(){
+      const button = $("adminPasskeyLoginBtn");
+      try{
+        if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("Ovaj browser ne podržava passkey prijavu.");
+        button.disabled = true; button.textContent = "Čekam uređaj...";
+        const options = await api("passkey_login_options", { method:"POST", body:JSON.stringify({}) });
+        const credential = await navigator.credentials.get({ publicKey:prepareRequestOptions(options.public_key) });
+        if (!credential) throw new Error("Passkey prijava je otkazana.");
+        await api("passkey_login_verify", { method:"POST", body:JSON.stringify({ credential_json:credentialToJson(credential) }) });
+        setLoggedIn(true); await load();
+      }catch(e){ showLoginMsg("bad", e.message); }
+      finally{ button.disabled = false; button.textContent = "Prijavi se Passkey-em"; }
     }
 
     function showAdmin2faMsg(type, textValue){
@@ -787,6 +928,7 @@
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
+            await ensureAdminStepUp();
             const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
             showToast("ok", "Reseller je ažuriran.");
             state.data = result;
@@ -1006,6 +1148,7 @@
             try {
               cancel.disabled = true;
               cancel.textContent = "Poništavam...";
+              await ensureAdminStepUp();
               const result = await api("cancel_order", { method:"POST", body:JSON.stringify({ id:o.id, filters:currentFilters() }) });
               showToast("ok", `Porudžbina #${o.id} je poništena. ${money(refund)} RSD vraćeno reselleru.`);
               state.data = result;
@@ -1127,6 +1270,14 @@
       }
     }
 
+    async function ensureAdminStepUp(){
+      const currentPassword = window.prompt("Za ovu kritičnu akciju unesite trenutnu admin šifru:");
+      if (currentPassword === null) throw new Error("Akcija je otkazana.");
+      const twoFactorCode = state.adminTwoFactorEnabled ? window.prompt("Unesite novi 2-step kod:") : "";
+      if (state.adminTwoFactorEnabled && twoFactorCode === null) throw new Error("Akcija je otkazana.");
+      await api("admin_reauth", { method:"POST", body:JSON.stringify({ current_password:currentPassword, two_factor_code:twoFactorCode || "" }) });
+    }
+
     function renderSchema(){
       const box = $("schemaBox");
       box.textContent = "";
@@ -1172,6 +1323,7 @@
       state.data = await api("dashboard", { query:queryFromFilters(state.filters) });
       render();
       await loadAdminTwoFactorStatus();
+      await loadPasskeys();
       restoreUiState(snapshot);
     }
 
@@ -1212,6 +1364,19 @@
       }
     }
 
+    async function cancelAdminTwoFactorLogin(){
+      const button = $("admin2faBackBtn");
+      button.disabled = true;
+      try{
+        const result = await api("2fa_cancel", { method:"POST", body:JSON.stringify({}) });
+        if (result.csrf_token) state.csrf = result.csrf_token;
+        setAdmin2faLoginMode(false);
+        $("adminPassword").value = ""; $("admin2faLoginCode").value = "";
+        showLoginMsg("warn", "Prijava je poništena. Unesite šifru ponovo kada budete spremni.");
+      }catch(e){ showLoginMsg("bad", e.message); }
+      finally{ button.disabled = false; }
+    }
+
     async function changeAdminPassword(){
       const btn = $("changeAdminPasswordBtn");
       const currentPassword = $("currentAdminPassword").value;
@@ -1243,6 +1408,7 @@
       try{
         btn.disabled = true;
         btn.textContent = "Dodajem...";
+        await ensureAdminStepUp();
         const result = await api("create_reseller", { method:"POST", body:JSON.stringify({
           display_name:$("newResellerName").value.trim(),
           email:$("newResellerEmail").value.trim(),
@@ -1366,6 +1532,8 @@
     }
 
     $("adminLoginBtn").addEventListener("click", login);
+    $("adminPasskeyLoginBtn").addEventListener("click", loginWithPasskey);
+    $("admin2faBackBtn").addEventListener("click", cancelAdminTwoFactorLogin);
     $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("adminPassword").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
@@ -1383,6 +1551,7 @@
       const btn = $("saveInventoryConfigBtn");
       btn.disabled = true;
       try{
+        await ensureAdminStepUp();
         state.data = await api("save_inventory_config", {
           method:"POST",
           body:JSON.stringify({
@@ -1405,6 +1574,9 @@
     $("confirmAdmin2faBtn").addEventListener("click", confirmAdminTwoFactorSetup);
     $("regenAdminRecoveryBtn").addEventListener("click", regenerateAdminRecoveryCodes);
     $("disableAdmin2faBtn").addEventListener("click", disableAdminTwoFactor);
+    $("registerPasskeyBtn").addEventListener("click", startPasskeyRegistration);
+    $("confirmPasskeyBtn").addEventListener("click", confirmPasskeyRegistration);
+    $("cancelPasskeyBtn").addEventListener("click", () => { $("passkeyRegistrationBox").style.display = "none"; });
     ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });
     });

@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/webauthn.php';
 
-start_secure_session();
+start_secure_session('admin');
 
 $action = h_string($_GET['action'] ?? '');
 $method = $_SERVER['REQUEST_METHOD'];
@@ -11,6 +12,25 @@ $method = $_SERVER['REQUEST_METHOD'];
 function require_post(): void {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
+  }
+  require_same_origin();
+  require_json_content_type();
+}
+
+function require_admin_passkey_step_up(PDO $pdo, array $admin, array $input): void {
+  $adminId = (int)$admin['id'];
+  if (!verify_current_admin_password($pdo, $adminId, (string)($input['current_password'] ?? ''))) {
+    audit_event($pdo, 'admin', $adminId, 'admin_passkey_step_up_failed', 'failed', ['reason' => 'bad_password']);
+    json_response(['ok' => false, 'error' => 'Trenutna admin šifra nije tačna.'], 401);
+  }
+  if (admin_two_factor_enabled($pdo, $adminId)) {
+    $row = admin_two_factor_row($pdo, $adminId);
+    $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
+    $valid = $secret !== '' && verify_and_consume_totp($pdo, 'admin_two_factor', 'admin_id', $adminId, $secret, (string)($input['two_factor_code'] ?? ''));
+    if (!$valid) {
+      audit_event($pdo, 'admin', $adminId, 'admin_passkey_step_up_failed', 'failed', ['reason' => 'bad_2fa']);
+      json_response(['ok' => false, 'error' => 'Za ovu bezbednosnu akciju potreban je važeći 2-step kod.'], 401);
+    }
   }
 }
 
@@ -315,6 +335,7 @@ try {
     record_login_attempt($pdo, 'admin_login', client_ip(), true);
     if (admin_two_factor_enabled($pdo, (int)$admin['id'])) {
       session_regenerate_id(true);
+      $_SESSION = [];
       $_SESSION['pending_admin_id'] = (int)$admin['id'];
       $_SESSION['pending_admin_username'] = (string)$admin['username'];
       $_SESSION['pending_admin_2fa_expires_at'] = time() + 300;
@@ -325,8 +346,10 @@ try {
     }
 
     session_regenerate_id(true);
+    $_SESSION = [];
     $_SESSION['admin_id'] = (int)$admin['id'];
     $_SESSION['admin_username'] = (string)$admin['username'];
+    $_SESSION['admin_step_up_until'] = time() + 900;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_login_success', 'success');
@@ -350,7 +373,7 @@ try {
 
     $row = admin_two_factor_row($pdo, (int)$pending['id']);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    $ok = $secret !== '' && verify_totp_code($secret, $code);
+    $ok = $secret !== '' && verify_and_consume_totp($pdo, 'admin_two_factor', 'admin_id', (int)$pending['id'], $secret, $code);
     $usedRecovery = false;
     if (!$ok) {
       $ok = consume_admin_recovery_code($pdo, (int)$pending['id'], $code);
@@ -364,13 +387,76 @@ try {
     }
 
     session_regenerate_id(true);
+    $_SESSION = [];
     $_SESSION['admin_id'] = (int)$pending['id'];
     $_SESSION['admin_username'] = (string)$pending['username'];
+    $_SESSION['admin_step_up_until'] = time() + 900;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     $pdo->prepare('UPDATE admin_two_factor SET last_used_at = NOW(), updated_at = NOW() WHERE admin_id = ?')->execute([(int)$pending['id']]);
     audit_event($pdo, 'admin', (int)$pending['id'], $usedRecovery ? 'admin_two_factor_recovery_login' : 'admin_two_factor_success', 'success');
 
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === '2fa_cancel') {
+    require_post();
+    require_csrf();
+    unset($_SESSION['admin_id'], $_SESSION['admin_username'], $_SESSION['admin_step_up_until'], $_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
+    session_regenerate_id(true);
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'passkey_login_options') {
+    require_post();
+    enforce_rate_limit($pdo, 'admin_passkey_options', client_ip(), 20, 900, 'Previše pokušaja. Sačekajte nekoliko minuta i pokušajte ponovo.');
+    $challenge = webauthn_new_challenge();
+    $options = webauthn_request_options($challenge);
+    webauthn_store_challenge($pdo, 'login', $challenge, $options);
+    json_response(['ok' => true, 'public_key' => webauthn_json_options($options)]);
+  }
+
+  if ($action === 'passkey_login_verify') {
+    require_post();
+    $input = read_json_body();
+    $responseJson = (string)($input['credential_json'] ?? '');
+    if ($responseJson === '' || strlen($responseJson) > MAX_JSON_BODY_BYTES) {
+      json_response(['ok' => false, 'error' => 'Passkey prijava nije validna.'], 400);
+    }
+    enforce_rate_limit($pdo, 'admin_passkey_login', client_ip(), 10, 900, 'Previše pokušaja prijave. Sačekajte nekoliko minuta i pokušajte ponovo.');
+    $challengeKey = webauthn_response_challenge_key($responseJson);
+    $challenge = webauthn_take_challenge($pdo, 'login', $challengeKey);
+    if (!$challenge) json_response(['ok' => false, 'error' => 'Passkey zahtev je istekao. Pokušajte ponovo.'], 401);
+
+    $decoded = json_decode($responseJson, true, 32, JSON_THROW_ON_ERROR);
+    $credentialId = trim((string)($decoded['id'] ?? ''));
+    $stmt = $pdo->prepare('SELECT * FROM owner_passkeys WHERE credential_id = ? AND revoked_at IS NULL LIMIT 1');
+    $stmt->execute([$credentialId]);
+    $stored = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$stored) {
+      record_login_attempt($pdo, 'admin_passkey_login', client_ip(), false);
+      json_response(['ok' => false, 'error' => 'Passkey prijava nije uspela.'], 401);
+    }
+    $record = webauthn_load_credential_record((string)$stored['credential_record_json']);
+    $options = webauthn_serializer()->deserialize((string)$challenge['options_json'], Webauthn\PublicKeyCredentialRequestOptions::class, 'json');
+    if (!$options instanceof Webauthn\PublicKeyCredentialRequestOptions) throw new RuntimeException('Passkey opcije nisu validne.');
+    $record = webauthn_validate_assertion($responseJson, $record, $options);
+    $pdo->prepare('UPDATE owner_passkeys SET credential_record_json = ?, sign_count = ?, last_used_at = NOW() WHERE id = ? AND revoked_at IS NULL')
+      ->execute([webauthn_serializer()->serialize($record, 'json'), $record->counter, (int)$stored['id']]);
+    $adminStmt = $pdo->prepare("SELECT id, username FROM admin_users WHERE id = ? AND status = 'active' LIMIT 1");
+    $adminStmt->execute([(int)$stored['admin_id']]);
+    $admin = $adminStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$admin) json_response(['ok' => false, 'error' => 'Passkey prijava nije uspela.'], 401);
+    record_login_attempt($pdo, 'admin_passkey_login', client_ip(), true);
+    session_regenerate_id(true);
+    $_SESSION = [];
+    $_SESSION['admin_id'] = (int)$admin['id'];
+    $_SESSION['admin_username'] = (string)$admin['username'];
+    $_SESSION['admin_step_up_until'] = time() + 900;
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_passkey_login_success', 'success', ['passkey_id' => (int)$stored['id']]);
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
 
@@ -380,7 +466,7 @@ try {
   if ($action === 'logout') {
     require_post();
     require_csrf();
-    unset($_SESSION['admin_id'], $_SESSION['admin_username'], $_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
+    unset($_SESSION['admin_id'], $_SESSION['admin_username'], $_SESSION['admin_step_up_until'], $_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     json_response(['ok' => true]);
   }
 
@@ -391,6 +477,24 @@ try {
   if ($action === '2fa_status') {
     $admin = require_admin();
     json_response(['ok' => true, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'passkey_status') {
+    $admin = require_admin();
+    $stmt = $pdo->prepare('SELECT id, label, created_at, last_used_at FROM owner_passkeys WHERE admin_id = ? AND revoked_at IS NULL ORDER BY created_at ASC, id ASC');
+    $stmt->execute([(int)$admin['id']]);
+    json_response(['ok' => true, 'passkeys' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'admin_reauth') {
+    $admin = require_admin();
+    require_post();
+    require_csrf();
+    $input = read_json_body();
+    require_admin_passkey_step_up($pdo, $admin, $input);
+    $_SESSION['admin_step_up_until'] = time() + 900;
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_step_up_success', 'success');
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
 
   require_post();
@@ -455,7 +559,7 @@ try {
     $code = (string)($input['code'] ?? '');
     $row = admin_two_factor_row($pdo, (int)$admin['id']);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    if (!verify_current_admin_password($pdo, (int)$admin['id'], $currentPassword) || $secret === '' || !verify_totp_code($secret, $code)) {
+    if (!verify_current_admin_password($pdo, (int)$admin['id'], $currentPassword) || $secret === '' || !verify_and_consume_totp($pdo, 'admin_two_factor', 'admin_id', (int)$admin['id'], $secret, $code)) {
       audit_event($pdo, 'admin', (int)$admin['id'], 'admin_recovery_codes_regenerate_failed', 'failed');
       json_response(['ok' => false, 'error' => 'Potvrda nije ispravna.'], 401);
     }
@@ -470,7 +574,7 @@ try {
     $code = (string)($input['code'] ?? '');
     $row = admin_two_factor_row($pdo, (int)$admin['id']);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    $verifiedCode = $secret !== '' && verify_totp_code($secret, $code);
+    $verifiedCode = $secret !== '' && verify_and_consume_totp($pdo, 'admin_two_factor', 'admin_id', (int)$admin['id'], $secret, $code);
     if (!$verifiedCode) {
       $verifiedCode = consume_admin_recovery_code($pdo, (int)$admin['id'], $code);
     }
@@ -482,6 +586,53 @@ try {
     $pdo->prepare('DELETE FROM admin_recovery_codes WHERE admin_id = ?')->execute([(int)$admin['id']]);
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_two_factor_disabled', 'success');
     json_response(['ok' => true, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'passkey_registration_options') {
+    $admin = require_admin();
+    require_admin_passkey_step_up($pdo, $admin, $input);
+    $stmt = $pdo->prepare('SELECT credential_id FROM owner_passkeys WHERE admin_id = ? AND revoked_at IS NULL');
+    $stmt->execute([(int)$admin['id']]);
+    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $binaryIds = array_map(static function ($id): string {
+      $value = base64_decode(strtr((string)$id, '-_', '+/') . str_repeat('=', (4 - strlen((string)$id) % 4) % 4), true);
+      return is_string($value) ? $value : '';
+    }, $ids);
+    $challenge = webauthn_new_challenge();
+    $options = webauthn_creation_options($admin, $challenge, array_filter($binaryIds));
+    webauthn_store_challenge($pdo, 'registration', $challenge, $options);
+    json_response(['ok' => true, 'public_key' => webauthn_json_options($options), 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'passkey_registration_verify') {
+    $admin = require_admin();
+    $responseJson = (string)($input['credential_json'] ?? '');
+    if ($responseJson === '' || strlen($responseJson) > MAX_JSON_BODY_BYTES) json_response(['ok' => false, 'error' => 'Passkey registracija nije validna.'], 400);
+    $challengeKey = webauthn_response_challenge_key($responseJson);
+    $challenge = webauthn_take_challenge($pdo, 'registration', $challengeKey);
+    if (!$challenge) json_response(['ok' => false, 'error' => 'Passkey zahtev je istekao. Pokrenite registraciju ponovo.'], 401);
+    $options = webauthn_serializer()->deserialize((string)$challenge['options_json'], Webauthn\PublicKeyCredentialCreationOptions::class, 'json');
+    if (!$options instanceof Webauthn\PublicKeyCredentialCreationOptions) throw new RuntimeException('Passkey opcije nisu validne.');
+    $record = webauthn_validate_registration($responseJson, $options);
+    $credentialId = rtrim(strtr(base64_encode($record->publicKeyCredentialId), '+/', '-_'), '=');
+    $label = trim((string)($input['label'] ?? 'Passkey'));
+    $label = substr($label !== '' ? $label : 'Passkey', 0, 120);
+    $pdo->prepare('INSERT INTO owner_passkeys (admin_id, credential_id, credential_record_json, label, sign_count) VALUES (?, ?, ?, ?, ?)')
+      ->execute([(int)$admin['id'], $credentialId, webauthn_serializer()->serialize($record, 'json'), $label, $record->counter]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_passkey_registered', 'success', ['passkey_id' => (int)$pdo->lastInsertId()]);
+    json_response(['ok' => true, 'passkeys' => [], 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'passkey_remove') {
+    $admin = require_admin();
+    require_admin_passkey_step_up($pdo, $admin, $input);
+    $id = (int)($input['id'] ?? 0);
+    if ($id <= 0) json_response(['ok' => false, 'error' => 'Passkey nije pronađen.'], 404);
+    $stmt = $pdo->prepare('UPDATE owner_passkeys SET revoked_at = NOW() WHERE id = ? AND admin_id = ? AND revoked_at IS NULL');
+    $stmt->execute([$id, (int)$admin['id']]);
+    if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Passkey nije pronađen.'], 404);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'admin_passkey_revoked', 'success', ['passkey_id' => $id]);
+    json_response(['ok' => true, 'csrf_token' => csrf_token()]);
   }
 
   if ($action === 'change_password') {
@@ -520,6 +671,7 @@ try {
   }
 
   if ($action === 'save_inventory_config') {
+    require_recent_admin_step_up();
     $apiBase = rtrim(h_string($input['api_base'] ?? ''), '/');
     $supplierToken = trim((string)($input['supplier_token'] ?? ''));
 
@@ -551,6 +703,7 @@ try {
   }
 
   if ($action === 'update_reseller') {
+    require_recent_admin_step_up();
     $id = (int)($input['id'] ?? 0);
     $displayName = trim((string)($input['display_name'] ?? ''));
     $email = h_string($input['email'] ?? '');
@@ -839,6 +992,7 @@ try {
   }
 
   if ($action === 'cancel_order') {
+    require_recent_admin_step_up();
     $id = (int)($input['id'] ?? 0);
     $reason = trim((string)($input['reason'] ?? ''));
     if ($id <= 0) json_response(['ok' => false, 'error' => 'Nedostaje porudžbina.'], 400);

@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
+require_same_origin();
+require_json_content_type();
+
 require_csrf();
 $reseller = require_reseller();
 
@@ -262,5 +265,5 @@ try {
   if (isset($pdo)) {
     release_inventory_lock($pdo, $lockName, $lockAcquired);
   }
-  json_response(['ok' => false, 'error' => safe_public_error($e->getMessage()) ?: 'Greška pri slanju zahteva za kod.'], 500);
+  json_response(['ok' => false, 'error' => 'Greška pri slanju zahteva za kod.'], 500);
 }

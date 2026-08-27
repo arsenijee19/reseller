@@ -9,6 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
+require_same_origin();
+
 $_SESSION = [];
 
 if (ini_get('session.use_cookies')) {

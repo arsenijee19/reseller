@@ -67,6 +67,8 @@
   - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
   - Inventory health testing is intentionally not implemented because no safe non-consuming health endpoint is known.
   - Active sessions, trusted devices, and forced admin 2FA reset by another admin are not implemented.
+  - Cloudflare/WAF/DDoS protection is not provided by this repository and remains a hosting/edge responsibility.
+  - WebAuthn requires PHP 8.2+ and Composer dependencies deployed under root `vendor/`.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -102,7 +104,12 @@
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
 - `api/game_request.php` - reseller requested-game suggestion email notification.
 - `api/admin.php` - admin login/dashboard/update API.
+- `api/webauthn.php` - WebAuthn option creation, serializer, server-side ceremony validation, and challenge storage helpers.
 - `sql/2026-08-27_admin_order_reversals.sql` - auditable order cancellation metadata.
+- `sql/2026-08-27_owner_passkeys.sql` - owner WebAuthn challenge and credential tables.
+- `SECURITY_AUDIT.md` - implemented controls, residual risks, and verification limits.
+- `OWNER_SECURITY_RUNBOOK.md` - production setup, 2FA/passkey operations, incident response, and acceptance steps.
+- `EDGE_SECURITY_HARDENING.md` - Cloudflare/hosting WAF, rate-limit, and DDoS requirements.
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
@@ -115,13 +122,14 @@
   - Resellers authenticate with token/password verified against `resellers.token_hash`.
   - Resellers with enabled 2FA enter a temporary pre-auth session after the first factor and receive full panel access only after TOTP/recovery-code verification.
   - Admin authenticates with `admin_users.password_hash`; if admin 2FA is enabled, password verification creates a short pending 2FA session before full admin access.
-  - Sessions use HTTP-only cookies and `SameSite=Lax`; secure cookies are enabled when HTTPS is detected.
-  - Reseller/admin sessions expire after 60 minutes of inactivity.
+  - Admin and reseller use separate HTTP-only cookies with `SameSite=Strict`; secure cookies are enabled when HTTPS is detected. Sessions expire after 60 minutes idle or 8 hours absolute.
   - Login attempts are rate-limited using `login_attempts`; audit entries are stored in `security_audit_events`.
   - 2FA challenge attempts are separately rate-limited and audited without logging TOTP or recovery-code values.
   - Reseller credential changes require current token/password confirmation and store only `password_hash()` output.
   - TOTP secrets are encrypted at rest with AES-256-GCM using `security.encryption_key` / `SECURITY_ENCRYPTION_KEY` when configured; recovery codes are stored only as password hashes and shown once.
   - Admin 2FA setup is a two-step UI: current password, setup-key generation, then TOTP confirmation; login remains pending until the second factor succeeds.
+  - Owner passkey login uses browser WebAuthn/FIDO2 with `web-auth/webauthn-lib`; no localStorage substitute or private key is used. Registration requires current password and, when enabled, TOTP step-up.
+  - Pending admin 2FA can be canceled only through a CSRF-protected POST that clears pending state and rotates the session ID.
 - CSRF:
   - Mutating reseller/admin POST requests use `X-CSRF-Token`.
 - SQL safety:
@@ -257,6 +265,9 @@
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
 - Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
 - Run `sql/2026-08-27_admin_order_reversals.sql` on the live cPanel database.
+- Run `sql/2026-08-27_owner_passkeys.sql` on the live cPanel database and configure the explicit WebAuthn origin/RP ID.
+- Verify cPanel PHP 8.2+ plus `pdo_mysql`, `curl`, `openssl`, and `json` before enabling passkey login.
+- Execute the owner passkey browser acceptance journey from `OWNER_SECURITY_RUNBOOK.md`.
 - Configure Inventory Supplier API base URL and supplier token in ignored server-side config/env.
 - Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.
 - Validate admin login and all admin edit flows on live/staging data.

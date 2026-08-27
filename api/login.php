@@ -9,7 +9,10 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
   echo json_encode(["ok"=>false,"error"=>"Method not allowed"]); exit;
 }
 
-$input = json_decode(file_get_contents("php://input"), true);
+require_same_origin();
+require_json_content_type();
+
+$input = read_json_body();
 $token = trim((string)($input["token"] ?? ""));
 
 if ($token === "") {
@@ -78,6 +81,6 @@ try {
   http_response_code(500);
   echo json_encode([
     "ok" => false,
-    "error" => "Server trenutno ne može da proveri login. " . public_error_detail($e)
+    "error" => "Server trenutno ne može da proveri login. Pokušajte ponovo kasnije."
   ], JSON_UNESCAPED_UNICODE);
 }

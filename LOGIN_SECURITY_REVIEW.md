@@ -3,7 +3,7 @@
 ## Previous Login Flow
 - Resellers authenticated with a single reseller token verified against `resellers.token_hash`.
 - Successful login created a full reseller session immediately.
-- Sessions used HTTP-only cookies with `SameSite=Lax` and secure cookies when HTTPS is detected.
+- Sessions use separate HTTP-only cookies for admin and reseller, with `SameSite=Strict`, secure cookies on HTTPS, a 60-minute idle timeout, and an 8-hour absolute timeout.
 - CSRF tokens protected mutating reseller/admin requests.
 
 ## Risks Addressed
@@ -34,6 +34,14 @@
 - The admin flow is explicit: open activation, verify the current password, generate the setup key, confirm the live Authenticator code, then save the recovery codes.
 - Setup secrets are held encrypted as pending data until the TOTP confirmation succeeds; recovery codes are generated in the same database transaction as activation.
 - Admin login uses a temporary pre-auth session until the TOTP or one-time recovery code succeeds.
+
+## Owner Passkeys
+
+- Owner passkeys use the browser WebAuthn API and `web-auth/webauthn-lib` 5.3.5; no localStorage or custom cryptography is used.
+- Registration is authenticated, CSRF-protected and requires current admin password plus TOTP when admin 2FA is enabled.
+- Login challenges are single-use, expire after 60 seconds, are bound to the admin session, and do not send the unauthenticated browser a credential ID list.
+- The server validates the configured origin, RP ID hash, challenge, user verification, signature, credential ID and sign counter. Credential records contain only public key material and are revocable.
+- Production requires PHP 8.2+, the Composer dependencies under `vendor/`, HTTPS, explicit `security.origin` and `security.webauthn` configuration, and the owner passkey acceptance journey.
 
 ## Secrets Handling
 - Plaintext reseller tokens are never stored.

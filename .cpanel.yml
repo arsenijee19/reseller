@@ -4,7 +4,9 @@ deployment:
     - export DEPLOYPATH=/home/psigrersrs/reseller.psigre.rs/
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/mkdir -p $DEPLOYPATH/api
+    - /bin/mkdir -p $DEPLOYPATH/vendor
     - /bin/mkdir -p $DEPLOYPATH/sql
     - /bin/cp -f index.html admin.html .htaccess $DEPLOYPATH/
     - /bin/cp -f api/*.php api/.htaccess $DEPLOYPATH/api/
+    - /bin/cp -R -f vendor/. $DEPLOYPATH/vendor/
     - /bin/cp -f sql/*.sql $DEPLOYPATH/sql/

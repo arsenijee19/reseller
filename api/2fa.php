@@ -25,6 +25,8 @@ function require_post_2fa(): void {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
   }
+  require_same_origin();
+  require_json_content_type();
 }
 
 try {
@@ -44,7 +46,7 @@ try {
 
     $row = two_factor_row($pdo, (int)$pending['id']);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    $ok = $secret !== '' && verify_totp_code($secret, $code);
+    $ok = $secret !== '' && verify_and_consume_totp($pdo, 'reseller_two_factor', 'reseller_id', (int)$pending['id'], $secret, $code);
     $usedRecovery = false;
     if (!$ok) {
       $ok = consume_recovery_code($pdo, (int)$pending['id'], $code);
@@ -134,7 +136,7 @@ try {
     $code = (string)($input['code'] ?? '');
     $row = two_factor_row($pdo, $resellerId);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    if (!verify_current_reseller_token($pdo, $resellerId, $currentToken) || $secret === '' || !verify_totp_code($secret, $code)) {
+    if (!verify_current_reseller_token($pdo, $resellerId, $currentToken) || $secret === '' || !verify_and_consume_totp($pdo, 'reseller_two_factor', 'reseller_id', $resellerId, $secret, $code)) {
       audit_event($pdo, 'reseller', $resellerId, 'recovery_codes_regenerate_failed', 'failed');
       json_response(['ok' => false, 'error' => 'Potvrda nije ispravna.'], 401);
     }
@@ -148,7 +150,7 @@ try {
     $code = (string)($input['code'] ?? '');
     $row = two_factor_row($pdo, $resellerId);
     $secret = decrypt_secret((string)($row['secret_encrypted'] ?? ''));
-    $verifiedCode = $secret !== '' && verify_totp_code($secret, $code);
+    $verifiedCode = $secret !== '' && verify_and_consume_totp($pdo, 'reseller_two_factor', 'reseller_id', $resellerId, $secret, $code);
     if (!$verifiedCode) {
       $verifiedCode = consume_recovery_code($pdo, $resellerId, $code);
     }
@@ -165,5 +167,5 @@ try {
   json_response(['ok' => false, 'error' => 'Unknown action'], 404);
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
-  json_response(['ok' => false, 'error' => safe_public_error($e->getMessage()) ?: '2-step verifikacija trenutno nije dostupna.'], 500);
+  json_response(['ok' => false, 'error' => '2-step verifikacija trenutno nije dostupna.'], 500);
 }

@@ -18,6 +18,12 @@ return [
   ],
   'security' => [
     'encryption_key' => 'GENERATE_LONG_RANDOM_VALUE_DO_NOT_COMMIT_REAL_KEY',
+    'origin' => 'https://reseller.psigre.rs',
+    'webauthn' => [
+      'rp_id' => 'reseller.psigre.rs',
+      'origin' => 'https://reseller.psigre.rs',
+      'rp_name' => 'PlayWorld.rs Admin',
+    ],
   ],
   'mail' => [
     'from' => 'no-reply@example.com',

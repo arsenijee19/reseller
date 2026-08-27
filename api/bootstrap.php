@@ -3,52 +3,98 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
+$autoload = __DIR__ . '/../vendor/autoload.php';
+if (!is_file($autoload)) $autoload = __DIR__ . '/vendor/autoload.php';
+if (is_file($autoload)) require_once $autoload;
+
 const SESSION_LIFETIME_SECONDS = 3600;
+const SESSION_ABSOLUTE_LIFETIME_SECONDS = 28800;
+const MAX_JSON_BODY_BYTES = 65536;
 
 function json_response(array $payload, int $status = 200): void {
   http_response_code($status);
   header('Content-Type: application/json; charset=utf-8');
+  header('Cache-Control: no-store, max-age=0');
+  header('Pragma: no-cache');
+  header('X-Content-Type-Options: nosniff');
   echo json_encode($payload, JSON_UNESCAPED_UNICODE);
   exit;
 }
 
 function read_json_body(): array {
-  $input = json_decode(file_get_contents('php://input'), true);
+  $length = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+  if ($length > MAX_JSON_BODY_BYTES) {
+    json_response(['ok' => false, 'error' => 'Zahtev je prevelik.'], 413);
+  }
+  $raw = file_get_contents('php://input');
+  if ($raw === false || strlen($raw) > MAX_JSON_BODY_BYTES) {
+    json_response(['ok' => false, 'error' => 'Zahtev je prevelik.'], 413);
+  }
+  try {
+    $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+  } catch (JsonException $e) {
+    json_response(['ok' => false, 'error' => 'Zahtev nije validan JSON.'], 400);
+  }
   return is_array($input) ? $input : [];
 }
 
-function start_secure_session(): void {
+function start_secure_session(string $scope = 'reseller'): void {
   if (session_status() === PHP_SESSION_ACTIVE) return;
 
-  ini_set('session.gc_maxlifetime', (string)SESSION_LIFETIME_SECONDS);
+  $scope = $scope === 'admin' ? 'admin' : 'reseller';
+  session_name($scope === 'admin' ? 'PWRSADMINSESSID' : 'PWRSRESELLERSESSID');
+  ini_set('session.gc_maxlifetime', (string)SESSION_ABSOLUTE_LIFETIME_SECONDS);
 
   $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
   session_set_cookie_params([
-    'lifetime' => SESSION_LIFETIME_SECONDS,
+    'lifetime' => SESSION_ABSOLUTE_LIFETIME_SECONDS,
     'httponly' => true,
     'secure' => $secure,
-    'samesite' => 'Lax',
+    'samesite' => 'Strict',
     'path' => '/',
   ]);
   session_start();
 
   if (ini_get('session.use_cookies') && session_id() !== '') {
     setcookie(session_name(), session_id(), [
-      'expires' => time() + SESSION_LIFETIME_SECONDS,
+      'expires' => time() + SESSION_ABSOLUTE_LIFETIME_SECONDS,
       'path' => '/',
       'secure' => $secure,
       'httponly' => true,
-      'samesite' => 'Lax',
+      'samesite' => 'Strict',
     ]);
   }
 
   $now = time();
+  $createdAt = (int)($_SESSION['created_at'] ?? 0);
   $lastActivity = (int)($_SESSION['last_activity'] ?? 0);
-  if ($lastActivity > 0 && ($now - $lastActivity) > SESSION_LIFETIME_SECONDS) {
+  if (($createdAt > 0 && ($now - $createdAt) > SESSION_ABSOLUTE_LIFETIME_SECONDS)
+    || ($lastActivity > 0 && ($now - $lastActivity) > SESSION_LIFETIME_SECONDS)) {
     $_SESSION = [];
     session_regenerate_id(true);
+    $createdAt = $now;
   }
+  $_SESSION['created_at'] = $createdAt ?: $now;
   $_SESSION['last_activity'] = $now;
+}
+
+function require_same_origin(): void {
+  $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+  $expected = rtrim((string)config_value('security.origin', 'https://reseller.psigre.rs'), '/');
+  if ($origin !== '' && rtrim($origin, '/') !== $expected) {
+    json_response(['ok' => false, 'error' => 'Nedozvoljen izvor zahteva.'], 403);
+  }
+  $fetchSite = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')));
+  if (in_array($fetchSite, ['cross-site', 'same-site'], true) && $fetchSite === 'cross-site') {
+    json_response(['ok' => false, 'error' => 'Nedozvoljen izvor zahteva.'], 403);
+  }
+}
+
+function require_json_content_type(): void {
+  $contentType = strtolower(trim((string)($_SERVER['CONTENT_TYPE'] ?? '')));
+  if ($contentType !== '' && strpos($contentType, 'application/json') !== 0) {
+    json_response(['ok' => false, 'error' => 'Content-Type mora biti application/json.'], 415);
+  }
 }
 
 function csrf_token(): string {
@@ -61,6 +107,7 @@ function csrf_token(): string {
 
 function require_csrf(): void {
   start_secure_session();
+  require_same_origin();
   $sent = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
   $known = (string)($_SESSION['csrf_token'] ?? '');
   if ($known === '' || $sent === '' || !hash_equals($known, $sent)) {
@@ -114,6 +161,12 @@ function require_admin(): array {
     'id' => (int)$_SESSION['admin_id'],
     'username' => (string)$_SESSION['admin_username'],
   ];
+}
+
+function require_recent_admin_step_up(): void {
+  if ((int)($_SESSION['admin_step_up_until'] ?? 0) < time()) {
+    json_response(['ok' => false, 'error' => 'Potrebna je sveža owner potvrda pre ove akcije.'], 428);
+  }
 }
 
 function h_string($value): string {
@@ -337,6 +390,50 @@ function ensure_security_tables(PDO $pdo): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   ");
 
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS owner_webauthn_challenges (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      session_id_hash CHAR(64) NOT NULL,
+      ceremony VARCHAR(24) NOT NULL,
+      challenge VARCHAR(255) NOT NULL,
+      options_json MEDIUMTEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_owner_webauthn_challenge (challenge),
+      KEY idx_owner_webauthn_challenge_session (session_id_hash, ceremony, used_at, expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS owner_passkeys (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      admin_id INT UNSIGNED NOT NULL,
+      credential_id VARCHAR(1024) NOT NULL,
+      credential_record_json MEDIUMTEXT NOT NULL,
+      label VARCHAR(120) NOT NULL DEFAULT 'Passkey',
+      sign_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME NULL,
+      revoked_at DATETIME NULL,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_owner_passkey_credential (credential_id),
+      KEY idx_owner_passkey_admin (admin_id, revoked_at, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
+
+  foreach ([
+    ['reseller_two_factor', 'last_totp_step BIGINT NULL'],
+    ['admin_two_factor', 'last_totp_step BIGINT NULL'],
+    ['owner_webauthn_challenges', 'options_json MEDIUMTEXT NOT NULL'],
+  ] as [$table, $definition]) {
+    $column = strtok($definition, ' ');
+    if ($column && !has_column($pdo, $table, $column)) {
+      $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$definition}");
+    }
+  }
+
   $done = true;
 }
 
@@ -492,6 +589,39 @@ function verify_totp_code(string $secret, string $code, int $window = 1): bool {
     if (hash_equals(hotp_code($secret, $counter + $i), $code)) return true;
   }
   return false;
+}
+
+function matching_totp_counter(string $secret, string $code, int $window = 1): ?int {
+  $code = preg_replace('/\s+/', '', $code) ?: '';
+  if (!preg_match('/^\d{6}$/', $code)) return null;
+  $counter = (int)floor(time() / 30);
+  for ($i = -$window; $i <= $window; $i++) {
+    $candidate = $counter + $i;
+    if ($candidate >= 0 && hash_equals(hotp_code($secret, $candidate), $code)) return $candidate;
+  }
+  return null;
+}
+
+function verify_and_consume_totp(PDO $pdo, string $table, string $idColumn, int $id, string $secret, string $code): bool {
+  $counter = matching_totp_counter($secret, $code);
+  if ($counter === null) return false;
+  $pdo->beginTransaction();
+  try {
+    $stmt = $pdo->prepare("SELECT last_totp_step FROM {$table} WHERE {$idColumn} = ? FOR UPDATE");
+    $stmt->execute([$id]);
+    $last = $stmt->fetchColumn();
+    if ($last !== false && $last !== null && (int)$last === $counter) {
+      $pdo->rollBack();
+      return false;
+    }
+    $update = $pdo->prepare("UPDATE {$table} SET last_totp_step = ?, updated_at = NOW() WHERE {$idColumn} = ?");
+    $update->execute([$counter, $id]);
+    $pdo->commit();
+    return true;
+  } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    throw $e;
+  }
 }
 
 function two_factor_row(PDO $pdo, int $resellerId): ?array {
@@ -695,6 +825,21 @@ function app_today(): string {
 }
 
 function post_json(string $url, array $payload, int $timeoutSeconds = 12, array $extraHeaders = []): array {
+  $parts = parse_url($url);
+  $host = strtolower((string)($parts['host'] ?? ''));
+  if (($parts['scheme'] ?? '') !== 'https' || $host === '' || isset($parts['user'], $parts['pass']) || in_array($host, ['localhost', 'localhost.localdomain'], true)) {
+    throw new RuntimeException('Outbound webhook mora koristiti HTTPS i validan javni host.');
+  }
+  if (filter_var($host, FILTER_VALIDATE_IP) !== false && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+    throw new RuntimeException('Outbound webhook ne može koristiti privatnu IP adresu.');
+  }
+  $resolvedIps = filter_var($host, FILTER_VALIDATE_IP) !== false ? [$host] : (gethostbynamel($host) ?: []);
+  if (!$resolvedIps) throw new RuntimeException('Outbound webhook host nije moguće razrešiti.');
+  foreach ($resolvedIps as $resolvedIp) {
+    if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+      throw new RuntimeException('Outbound webhook host razrešava se na privatnu IP adresu.');
+    }
+  }
   $ch = curl_init($url);
   $headers = array_merge(["Content-Type: application/json"], $extraHeaders);
   curl_setopt_array($ch, [
@@ -704,6 +849,9 @@ function post_json(string $url, array $payload, int $timeoutSeconds = 12, array 
     CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
     CURLOPT_CONNECTTIMEOUT => $timeoutSeconds,
     CURLOPT_TIMEOUT => $timeoutSeconds,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
   ]);
   $start = microtime(true);
   $body = curl_exec($ch);

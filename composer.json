@@ -1,0 +1,6 @@
+{
+    "license": "proprietary",
+    "require": {
+        "web-auth/webauthn-lib": "5.3.5"
+    }
+}

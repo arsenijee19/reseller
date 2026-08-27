@@ -3,14 +3,18 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 
-start_secure_session();
+start_secure_session('admin');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
+require_same_origin();
+require_json_content_type();
+
 require_admin();
 require_csrf();
+require_recent_admin_step_up();
 
 $input = read_json_body();
 $email = h_string($input['email'] ?? '');
@@ -47,5 +51,5 @@ try {
   json_response(['ok' => true, 'new_balance' => $newBal]);
 } catch (Throwable $e) {
   if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
-  json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+  json_response(['ok' => false, 'error' => 'Admin topup trenutno nije mogao da se obradi.'], 500);
 }
