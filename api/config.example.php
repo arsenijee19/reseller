@@ -26,9 +26,9 @@ return [
     ],
   ],
   'mail' => [
-    'from' => 'no-reply@example.com',
-    'order_to' => 'admin@example.com',
-    'payment_notice_to' => 'admin@example.com',
+    'from' => 'no-reply@playworld.rs',
+    'order_to' => 'arsenijee19@gmail.com,support@licenca.rs',
+    'payment_notice_to' => 'arsenijee19@gmail.com,support@licenca.rs',
   ],
   'integrations' => [
     'n8n_webhook' => '',

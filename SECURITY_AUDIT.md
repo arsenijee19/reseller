@@ -1,6 +1,6 @@
 # Security Audit
 
-Datum pregleda: 27.08.2026.
+Datum pregleda: 10.09.2026.
 
 ## Scope
 
@@ -19,6 +19,9 @@ Datum pregleda: 27.08.2026.
 - Frontend za DB/user vrednosti koristi DOM `textContent`/property API umesto HTML interpolacije.
 - Outbound webhook/Inventory pozivi ne prate redirect, koriste HTTPS i blokiraju očigledne privatne/localhost adrese. Supplier token ostaje server-side.
 - Root i API `.htaccess` dodaju `nosniff`, `DENY`, `no-referrer`, Permissions-Policy, HSTS i CSP; blokirani su SQL/docs/log/dot/private config fajlovi.
+- Order and wallet records are committed before external side effects. Email and n8n outcomes are stored separately in `order_delivery_events`, while reseller “Uplatio sam” clicks are stored in `payment_notice_requests` and visible to the admin.
+- Notification recipients are validated and normalized. The order/payment flows include `arsenijee19@gmail.com` and `support@licenca.rs` as safe runtime defaults without storing credentials or tokens in source.
+- Admin resend actions require the existing recent owner step-up confirmation and are audit logged.
 
 ## Findings and Residual Risk
 
@@ -31,6 +34,8 @@ Datum pregleda: 27.08.2026.
 
 - WebAuthn browser acceptance nije fizički izvršen jer u ovom okruženju nisu dostupni browser-control alati ni validna owner sesija. Kod koristi stvarnu biblioteku i browser API, ali production acceptance ostaje obavezan.
 - `mail()` i n8n su fire-and-forget integracije; aplikacija beleži rezultat gde je moguće, ali ne može garantovati isporuku bez staging/live provere.
+- Historical orders created before the observability migration have no retroactive email/n8n result. `mail()` returning `true` means only that the local MTA accepted the message, not that Gmail or support received it.
+- Live deployment drift was observed during the incident check: the public HTML still matched commit `522e495`, while the repository had newer security code at `a8f7f20`. cPanel must deploy the current commit before these reliability changes are effective.
 - CSP dozvoljava `unsafe-inline` zato što je postojeći panel single-file inline HTML/JS. Nema `unsafe-eval`; dugoročno izdvojiti skripte u zasebne fajlove radi strožeg CSP-a.
 
 ### Low
@@ -47,3 +52,4 @@ Datum pregleda: 27.08.2026.
 - Deterministički HOTP/TOTP testovi, uključujući odbijanje nevažećeg koda.
 - `git diff --check`.
 - Nije izvršena DB migracija, stvarni browser passkey ceremony, live email, n8n ili production Inventory poziv.
+- Live read-only checks completed: HTTPS site and public endpoints responded; unauthenticated API calls were rejected; `api/config.local.php` was not publicly readable. No production credentials or authenticated sessions were used.

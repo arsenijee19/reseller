@@ -57,6 +57,11 @@ function update_order_delivery_state(PDO $pdo, int $orderId, string $status, arr
 }
 
 $pdo = db();
+try {
+  ensure_order_observability_tables($pdo);
+} catch (Throwable $ignored) {
+  // Order creation must remain available even if a legacy DB user cannot create the observability tables.
+}
 require_completed_profile($pdo, $reseller_id);
 $profile = reseller_profile($pdo, $reseller_id);
 if ($profile) {
@@ -85,7 +90,20 @@ try {
   }
 
   $price = (int)$p["price"];
+  if ($price <= 0) {
+    throw new RuntimeException("Proizvod trenutno nema validnu cenu.", 422);
+  }
   $desc  = "Order: ".$p["product_name"]." / ".$p["account_type"];
+
+  $balanceStmt = $pdo->prepare("SELECT balance_rsd FROM resellers WHERE id=? FOR UPDATE");
+  $balanceStmt->execute([$reseller_id]);
+  $currentBalance = $balanceStmt->fetchColumn();
+  if ($currentBalance === false) {
+    throw new RuntimeException("Nalog nije pronađen.", 404);
+  }
+  if ((int)$currentBalance < $price) {
+    throw new RuntimeException("Nemate dovoljno sredstava za izabrani proizvod.", 422);
+  }
 
   // 2) request_id
   $request_id = bin2hex(random_bytes(16));
@@ -108,8 +126,11 @@ try {
   $wt->execute([$reseller_id, -$price, $desc, $orderDbId]);
 
   // 5) Update balansa
-  $up = $pdo->prepare("UPDATE resellers SET balance_rsd = balance_rsd - ? WHERE id=?");
-  $up->execute([$price, $reseller_id]);
+  $up = $pdo->prepare("UPDATE resellers SET balance_rsd = balance_rsd - ? WHERE id=? AND balance_rsd >= ?");
+  $up->execute([$price, $reseller_id, $price]);
+  if ($up->rowCount() !== 1) {
+    throw new RuntimeException("Balance se promenio tokom poručivanja. Osvežite stranicu i pokušajte ponovo.", 409);
+  }
 
   // 6) Novi balans
   $b = $pdo->prepare("SELECT balance_rsd FROM resellers WHERE id=?");
@@ -118,39 +139,34 @@ try {
 
   $pdo->commit();
 
-  // ===============================
-  // SLANJE EMAIL NOTIFIKACIJE
-  // ===============================
+  $orderEmail = order_notification([
+    'product_id' => $product_id,
+    'product_name' => (string)$p['product_name'],
+    'account_type' => (string)$p['account_type'],
+    'price_rsd' => $price,
+    'reseller_id' => $reseller_id,
+    'reseller_email' => $reseller_email,
+    'reseller_name' => $reseller_name,
+    'reseller_phone' => $reseller_phone,
+    'buyer_email' => $customer_email,
+  ]);
+  $orderEmailRecipients = $orderEmail['recipients'];
 
-  $to = (string)config_value('mail.order_to', '');
-  $subject = "Nova reseller porudzbina - " . $p["product_name"];
-
-  $message = "Nova reseller porudzbina\n";
-  $message .= "========================\n\n";
-  $message .= "Proizvod: " . $p["product_name"] . "\n";
-  $message .= "Tip naloga: " . $p["account_type"] . "\n";
-  $message .= "Cena: " . $price . " RSD\n\n";
-
-  $message .= "Reseller\n";
-  if ($reseller_name !== "") {
-    $message .= "Ime: " . $reseller_name . "\n";
-  }
-  $message .= "Email: " . $reseller_email . "\n";
-  if ($reseller_phone !== "") {
-    $message .= "Telefon: " . $reseller_phone . "\n";
-  }
-  $message .= "ID: " . $reseller_id . "\n\n";
-
-  $message .= "Isporuka\n";
-  $message .= "Email resellera: " . $customer_email . "\n\n";
-  $message .= "Vreme: " . gmdate("Y-m-d H:i:s") . " UTC\n";
-
-  $from = (string)config_value('mail.from', 'no-reply@localhost');
-  $headers = "From: {$from}\r\n";
-  $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
-  if ($to !== '') {
-    @mail($to, $subject, $message, $headers);
+  $mailResult = ['ok' => false, 'recipients' => $orderEmailRecipients, 'error' => 'Email nije obrađen.'];
+  try {
+    $mailResult = send_text_notification_email($orderEmailRecipients, $orderEmail['subject'], $orderEmail['message']);
+    record_order_delivery_event($pdo, $orderDbId, 'email', $mailResult['ok'] ? 'sent' : 'failed', [
+      'recipients' => $mailResult['recipients'],
+      'error' => $mailResult['error'],
+    ]);
+  } catch (Throwable $ignored) {
+    // The database order is authoritative; email failure is retained as a delivery event when possible.
+    try {
+      record_order_delivery_event($pdo, $orderDbId, 'email', 'failed', [
+        'recipients' => $orderEmailRecipients,
+        'error' => 'Email servis je bacio grešku.',
+      ]);
+    } catch (Throwable $ignoredEvent) {}
   }
 
   // ===============================
@@ -173,24 +189,38 @@ try {
   ];
 
   $webhookUrl = (string)config_value('integrations.n8n_webhook', '');
-  $n8n = $webhookUrl !== ''
-    ? post_json($webhookUrl, $payload)
-    : ["ok" => false, "code" => 0, "err" => "Webhook not configured", "body" => null];
+  try {
+    $n8n = $webhookUrl !== ''
+      ? post_json($webhookUrl, $payload)
+      : ["ok" => false, "code" => 0, "err" => "Webhook not configured", "body" => null];
+  } catch (Throwable $e) {
+    $n8n = ["ok" => false, "code" => 0, "err" => safe_public_error($e->getMessage()), "body" => null];
+  }
 
-  update_order_delivery_state($pdo, $orderDbId, $n8n["ok"] ? 'delivered' : 'delivery_failed', [
-    'request_id' => $request_id,
-    'n8n_ok' => $n8n["ok"],
-    'n8n_code' => $n8n["code"],
-    'n8n_error' => $n8n["err"],
-    'n8n_body' => is_string($n8n["body"]) ? substr($n8n["body"], 0, 2000) : null,
-    'updated_at' => gmdate('c'),
-  ], $n8n["ok"] ? '' : 'Automatska isporuka nije potvrđena. Proveriti n8n execution i stock.');
+  try {
+    record_order_delivery_event($pdo, $orderDbId, 'n8n', $n8n["ok"] ? 'accepted' : 'failed', [
+      'http_status' => $n8n["code"],
+      'error' => $n8n["err"],
+      'payload' => $payload,
+    ]);
+    update_order_delivery_state($pdo, $orderDbId, $n8n["ok"] ? 'delivered' : 'delivery_failed', [
+      'request_id' => $request_id,
+      'n8n_ok' => $n8n["ok"],
+      'n8n_code' => $n8n["code"],
+      'n8n_error' => $n8n["err"],
+      'n8n_body' => is_string($n8n["body"]) ? substr($n8n["body"], 0, 2000) : null,
+      'updated_at' => gmdate('c'),
+    ], '');
+  } catch (Throwable $ignored) {
+    // A notification/status write must never turn a committed order into a false client error.
+  }
 
   echo json_encode([
     "ok"=>true,
     "request_id"=>$request_id,
     "charged_rsd"=>$price,
     "balance_rsd"=>$newBal,
+    "email_ok"=>$mailResult["ok"],
     "n8n_ok"=>$n8n["ok"],
     "n8n_code"=>$n8n["code"],
     "delivery_status"=>$n8n["ok"] ? "delivered" : "delivery_failed"
@@ -198,6 +228,11 @@ try {
 
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
-  http_response_code(500);
-  echo json_encode(["ok"=>false,"error"=>"Porudžbina trenutno nije mogla da se obradi."]);
+  $status = (int)$e->getCode();
+  if ($status < 400 || $status > 499) $status = 500;
+  http_response_code($status);
+  $message = $status === 422 || $status === 404 || $status === 409
+    ? $e->getMessage()
+    : "Porudžbina trenutno nije mogla da se obradi.";
+  echo json_encode(["ok"=>false,"error"=>$message], JSON_UNESCAPED_UNICODE);
 }

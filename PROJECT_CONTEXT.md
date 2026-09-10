@@ -30,7 +30,8 @@
   - Optional admin 2-step verification is implemented using standard TOTP plus one-time recovery codes.
   - Admin order view includes reseller-owned notes and internal paid markers when those columns exist.
   - Admin product table includes client-side search across product fields.
-  - Reseller “Uplatio sam” button sends an email notification to the configured admin email.
+  - Reseller “Uplatio sam” button records a durable notice and sends an email notification to the configured/default admin recipients.
+  - Reseller payment-notice clicks are durably stored in `payment_notice_requests`, shown in Admin → Uplate, and can be resent from the admin panel.
   - Reseller “Zatraži igru” button opens a popup and emails the requested game suggestion to the admin.
   - Reseller order flow shows a confirmation dialog with product, account type, reseller delivery email, and price before sending the order request/webhook.
   - Reseller order submission shows a lightweight progress bar while the backend creates the order.
@@ -50,6 +51,7 @@
   - Reseller verification-code responses render as modern status cards with badges and structured details instead of multiline system text.
   - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
   - Expired session/CSRF errors are shown as user-friendly refresh-and-login-again messages.
+  - Every committed order records separate email and n8n delivery events in `order_delivery_events`; failed order emails can be resent from Admin → Porudžbine.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
@@ -62,6 +64,7 @@
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
   - Confirm live mail delivery from cPanel for `mail()`.
   - Run `sql/2026-08-27_admin_order_reversals.sql` in production before using order cancellation if runtime schema changes are not permitted.
+  - Deploy the current GitHub commit to cPanel; the publicly checked live HTML still matched the older `522e495` deployment, so the reliability changes are not live until cPanel Git deployment runs.
 - Known limitations:
   - Local database was not available in this workspace, so database-backed flows need final live/staging validation after migration.
   - Private database credentials belong only in ignored `api/config.local.php` or environment variables; do not duplicate them in docs or UI.
@@ -69,6 +72,8 @@
   - Active sessions, trusted devices, and forced admin 2FA reset by another admin are not implemented.
   - Cloudflare/WAF/DDoS protection is not provided by this repository and remains a hosting/edge responsibility.
   - WebAuthn requires PHP 8.2+ and Composer dependencies deployed under root `vendor/`.
+  - Historical orders created before `order_delivery_events` existed cannot reveal whether their old email or n8n call was accepted; only the original `orders` and wallet records remain.
+  - The repository has no public checkout, card-payment, Stripe, or MerchantPro endpoint. A financial order can only be created by an authenticated reseller with sufficient wallet balance; external bank/card payments must be reconciled separately.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -107,9 +112,11 @@
 - `api/webauthn.php` - WebAuthn option creation, serializer, server-side ceremony validation, and challenge storage helpers.
 - `sql/2026-08-27_admin_order_reversals.sql` - auditable order cancellation metadata.
 - `sql/2026-08-27_owner_passkeys.sql` - owner WebAuthn challenge and credential tables.
+- `sql/2026-09-10_order_reliability.sql` - durable order email/n8n delivery events and reseller payment-notice history.
 - `SECURITY_AUDIT.md` - implemented controls, residual risks, and verification limits.
 - `OWNER_SECURITY_RUNBOOK.md` - production setup, 2FA/passkey operations, incident response, and acceptance steps.
 - `EDGE_SECURITY_HARDENING.md` - Cloudflare/hosting WAF, rate-limit, and DDoS requirements.
+- `ORDER_NOTIFICATION_INCIDENT_RUNBOOK.md` - step-by-step production investigation and reconciliation checklist for missing order/payment notifications.
 - `api/topup.php` - admin-session-protected balance top-up endpoint.
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
@@ -138,9 +145,10 @@
   - Updated frontend uses `textContent`/DOM APIs for DB-rendered values instead of injecting user data as HTML.
 - Integrations:
   - `api/order.php` sends order emails and posts to the configured n8n webhook.
+  - Order and wallet writes commit before email/n8n side effects. A failed email/webhook no longer converts a committed order into a false server error; the result is recorded for admin review/retry.
   - n8n receives `request_id`, `order_db_id`, `reseller_email`, `reseller_name`, `reseller_phone`, `product_id`, `product_name`, `account_type`, `price_rsd`, `currency`, `customer_email` populated from reseller email, and timestamp.
   - Updated local n8n workflow export `/Users/arsoplayworld/Downloads/reseller.json` includes Telegram notifications for received orders and completed deliveries, with product, account type, and price included in the message.
-  - `api/payment_notice.php` emails the configured payment notice recipient.
+  - `api/payment_notice.php` first records the reseller payment notice and then emails both `arsenijee19@gmail.com` and `support@licenca.rs` plus any configured recipients. Email acceptance is tracked separately from the durable admin record.
   - `api/verification_code.php` posts to `PWRS_INVENTORY_API_BASE` `/api/supplier/v1/2fa/email-code-requests` using a server-side supplier bearer token.
   - Inventory Supplier API token is never exposed to browser JavaScript, admin users, reseller users, docs, or audit logs.
   - `api/missing_game.php` posts a `reseller_missing_game` event to the configured n8n webhook for downstream Telegram/support handling.
@@ -160,6 +168,8 @@
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
   - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
   - Run `sql/2026-08-09_account_security_inventory.sql` in phpMyAdmin for account onboarding, Inventory API audit, and missing-game reports.
+  - Run `sql/2026-09-10_order_reliability.sql` in phpMyAdmin. It uses `CREATE TABLE IF NOT EXISTS` and does not delete existing data.
+  - In private `api/config.local.php`, keep `mail.from` on a real domain mailbox accepted by cPanel. `mail.order_to` and `mail.payment_notice_to` may be comma-separated; the application always includes `arsenijee19@gmail.com` and `support@licenca.rs` as fallback recipients.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
   - Local syntax check: `for f in api/*.php; do php -l "$f"; done`
@@ -178,6 +188,7 @@
   - Wallet transaction type `ORDER` is inserted with negative amount.
   - Reseller balance is decreased by product price.
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
+  - `order_delivery_events` stores one current email event and one current n8n event per order, including status, attempts, HTTP code, recipients, and sanitized error text. This is operational observability, not a replacement for the financial order/wallet records.
   - n8n delivery can use product fields from the PHP payload, so newly added admin products do not require a hardcoded n8n map when sheet names match the product/account type.
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
   - Admin balance changes:
@@ -206,7 +217,8 @@
 - Admin password:
   - Initial admin username and password hash are configured in ignored `api/config.local.php`.
   - If `admin_users` is empty, `api/admin.php` seeds the first admin from the private config.
-  - Change it later by updating `admin_users.password_hash` with a new `password_hash()` value or by adding an admin password-change flow.
+  - Change it later from Admin → Bezbednost; the API verifies the current password and stores only a new `password_hash()` value.
+  - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
 - Initial live project snapshot was committed and pushed to GitHub before modifications.
@@ -260,6 +272,9 @@
 - Added explicit admin filter state plus table/page scroll, focus, active-tab, and fixed local toast preservation after mutations.
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
+- Added durable order notification observability: database-backed payment notices, separate email/n8n delivery status, admin history, and protected resend actions.
+- Hardened order charging with a locked balance read and conditional non-negative balance update, while keeping notification failures after the financial commit.
+- Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
 ## Current Priorities
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
@@ -272,6 +287,7 @@
 - Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.
 - Validate admin login and all admin edit flows on live/staging data.
 - Confirm `mail()` delivery for order and payment-notice emails.
+- Deploy the current reliability commit to cPanel, run `sql/2026-09-10_order_reliability.sql`, then perform one controlled reseller order and one “Uplatio sam” test while watching Admin → Porudžbine/Uplate, cPanel mail logs, and n8n execution history.
 - Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
@@ -282,6 +298,7 @@
 - Runtime `CREATE TABLE IF NOT EXISTS` helpers require DB user privileges; production should still run the SQL migration explicitly.
 - 2FA has no local QR image renderer yet; use the manual key or `otpauth://` setup link.
 - Database-backed cancellation, concurrent reversal, and live admin 2FA login still require staging/production execution because no local database is configured.
+- `mail()` returning `true` only means the local MTA accepted a message; SPF/DKIM/DMARC, mailbox filtering, cPanel Exim logs, and recipient delivery still need a live check.
 
 ## LLM Handoff Notes
 - Read first:
@@ -305,6 +322,7 @@
 - Fragile areas:
   - Database schema may differ slightly from inferred columns; admin API reads `INFORMATION_SCHEMA` to reduce hardcoding.
   - n8n webhook and email side effects happen after DB commit in `api/order.php`.
+  - The new reliability tables must be migrated before the admin Uplate tab can show historical “Uplatio sam” clicks; runtime creation is only a compatibility fallback.
   - `api/verification_code.php` intentionally does not retry 502 responses with a new idempotency key.
   - `api/missing_game.php` uses the existing n8n webhook because no direct Telegram integration exists in this repo.
 - Project-specific conventions:

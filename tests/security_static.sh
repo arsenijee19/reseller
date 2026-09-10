@@ -22,6 +22,10 @@ rg -q "passkey_login_verify|passkey_registration_verify|passkey_remove" api/admi
 rg -q "owner_webauthn_challenges|owner_passkeys" sql/2026-08-27_owner_passkeys.sql
 rg -q "Content-Security-Policy" .htaccess
 rg -q "Strict-Transport-Security" .htaccess
+rg -q "order_delivery_events" api/bootstrap.php api/order.php api/admin.php sql/2026-09-10_order_reliability.sql
+rg -q "payment_notice_requests" api/bootstrap.php api/payment_notice.php api/admin.php sql/2026-09-10_order_reliability.sql
+rg -q "arsenijee19@gmail.com" api/bootstrap.php api/payment_notice.php api/order.php
+rg -q "support@licenca.rs" api/bootstrap.php api/payment_notice.php api/order.php
 test -f vendor/autoload.php
 test -f vendor/.htaccess
 echo "security-static-ok"

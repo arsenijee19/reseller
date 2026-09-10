@@ -1510,8 +1510,8 @@
       paidBtn.disabled = true;
       paidBtn.textContent = "Šaljem...";
       try{
-        await api("/api/payment_notice.php", { method:"POST", body:JSON.stringify({}) });
-        show(paidMsg, "ok", "Obaveštenje je poslato adminu. Proverićemo uplatu i ažurirati balance.");
+        const result = await api("/api/payment_notice.php", { method:"POST", body:JSON.stringify({}) });
+        show(paidMsg, result.mail_sent ? "ok" : "warn", result.message || "Obaveštenje je evidentirano. Proverićemo uplatu i ažurirati balance.");
       }catch(e){
         show(paidMsg, "bad", e.message);
       }finally{

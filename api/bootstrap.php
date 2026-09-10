@@ -202,6 +202,12 @@ function has_column(PDO $pdo, string $table, string $column): bool {
   return in_array($column, column_names($pdo, $table), true);
 }
 
+function table_exists(PDO $pdo, string $table): bool {
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+  $stmt->execute([$table]);
+  return (int)$stmt->fetchColumn() > 0;
+}
+
 function normalize_email(string $email): string {
   return strtolower(trim($email));
 }
@@ -451,6 +457,54 @@ function ensure_order_cancellation_columns(PDO $pdo): void {
       $pdo->exec("ALTER TABLE orders ADD COLUMN {$definition}");
     }
   }
+
+  $done = true;
+}
+
+function ensure_order_observability_tables(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+
+  $pdo->exec(<<<'SQL'
+    CREATE TABLE IF NOT EXISTS order_delivery_events (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      order_id INT UNSIGNED NOT NULL,
+      event_type VARCHAR(40) NOT NULL,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      recipients VARCHAR(1000) NULL,
+      http_status INT NULL,
+      attempts INT UNSIGNED NOT NULL DEFAULT 0,
+      error_message VARCHAR(500) NULL,
+      payload_json MEDIUMTEXT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_order_delivery_event (order_id, event_type),
+      KEY idx_order_delivery_status (status, updated_at),
+      KEY idx_order_delivery_order (order_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL
+  );
+
+  $pdo->exec(<<<'SQL'
+    CREATE TABLE IF NOT EXISTS payment_notice_requests (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      reseller_id INT UNSIGNED NOT NULL,
+      reseller_email VARCHAR(255) NOT NULL,
+      balance_rsd INT NOT NULL DEFAULT 0,
+      clicked_at DATETIME NOT NULL,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      recipients VARCHAR(1000) NULL,
+      attempts INT UNSIGNED NOT NULL DEFAULT 0,
+      error_message VARCHAR(500) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_payment_notice_status (status, created_at),
+      KEY idx_payment_notice_reseller (reseller_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL
+  );
 
   $done = true;
 }
@@ -822,6 +876,111 @@ function app_today(): string {
   } catch (Throwable $e) {
     return date('Y-m-d');
   }
+}
+
+function notification_recipients(string $path, array $defaults = []): array {
+  $configured = config_value($path, '');
+  $values = is_array($configured)
+    ? $configured
+    : preg_split('/[\s,;]+/', trim((string)$configured), -1, PREG_SPLIT_NO_EMPTY);
+  $recipients = [];
+
+  foreach (array_merge($defaults, $values ?: []) as $value) {
+    $email = normalize_email((string)$value);
+    if ($email !== '' && valid_email($email) && !in_array($email, $recipients, true)) {
+      $recipients[] = $email;
+    }
+  }
+  return $recipients;
+}
+
+function notification_from_address(): string {
+  $from = normalize_email((string)config_value('mail.from', 'no-reply@reseller.psigre.rs'));
+  return valid_email($from) ? $from : 'no-reply@reseller.psigre.rs';
+}
+
+function order_notification(array $order): array {
+  $productName = h_string($order['product_name'] ?? $order['product_id'] ?? 'Proizvod');
+  $accountType = h_string($order['account_type'] ?? '');
+  $price = (int)($order['price_rsd'] ?? 0);
+  $resellerEmail = normalize_email((string)($order['reseller_email'] ?? ''));
+  $customerEmail = normalize_email((string)($order['buyer_email'] ?? $order['customer_email'] ?? $resellerEmail));
+  $resellerName = h_string($order['reseller_name'] ?? $order['display_name'] ?? '');
+  $resellerPhone = h_string($order['reseller_phone'] ?? $order['phone'] ?? '');
+
+  $message = "Nova reseller porudzbina\n";
+  $message .= "========================\n\n";
+  $message .= "Proizvod: " . $productName . "\n";
+  $message .= "Tip naloga: " . $accountType . "\n";
+  $message .= "Cena: " . $price . " RSD\n\n";
+  $message .= "Reseller\n";
+  if ($resellerName !== '') $message .= "Ime: " . $resellerName . "\n";
+  $message .= "Email: " . $resellerEmail . "\n";
+  if ($resellerPhone !== '') $message .= "Telefon: " . $resellerPhone . "\n";
+  if (!empty($order['reseller_id'])) $message .= "ID: " . (int)$order['reseller_id'] . "\n";
+  $message .= "\nIsporuka\n";
+  $message .= "Email resellera: " . $customerEmail . "\n\n";
+  $message .= "Vreme: " . gmdate('Y-m-d H:i:s') . " UTC\n";
+
+  return [
+    'subject' => 'Nova reseller porudzbina - ' . $productName,
+    'message' => $message,
+    'recipients' => notification_recipients('mail.order_to', [
+      'arsenijee19@gmail.com',
+      'support@licenca.rs',
+    ]),
+  ];
+}
+
+function send_text_notification_email(array $recipients, string $subject, string $message): array {
+  $subject = trim((string)(preg_replace('/[\r\n]+/', ' ', $subject) ?: 'PlayWorld obaveštenje'));
+  $headers = "From: " . notification_from_address() . "\r\n";
+  $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+  $headers .= "X-Mailer: PlayWorld Reseller Portal\r\n";
+  $sent = [];
+  $failed = [];
+
+  foreach ($recipients as $recipient) {
+    if (@mail($recipient, $subject, $message, $headers)) {
+      $sent[] = $recipient;
+    } else {
+      $failed[] = $recipient;
+    }
+  }
+
+  return [
+    'ok' => count($recipients) > 0 && count($failed) === 0,
+    'recipients' => $recipients,
+    'sent' => $sent,
+    'failed' => $failed,
+    'error' => $failed
+      ? 'Mail server nije prihvatio: ' . implode(', ', $failed)
+      : ($recipients ? '' : 'Nema podešenih primalaca.'),
+  ];
+}
+
+function record_order_delivery_event(PDO $pdo, int $orderId, string $eventType, string $status, array $details = []): void {
+  if ($orderId <= 0 || !table_exists($pdo, 'order_delivery_events')) return;
+
+  $recipients = is_array($details['recipients'] ?? null)
+    ? implode(', ', array_map('strval', $details['recipients']))
+    : h_string($details['recipients'] ?? '');
+  $httpStatus = isset($details['http_status']) ? (int)$details['http_status'] : null;
+  $error = safe_public_error(h_string($details['error'] ?? ''));
+  $payload = isset($details['payload']) ? json_encode($details['payload'], JSON_UNESCAPED_UNICODE) : null;
+  $attempts = max(1, (int)($details['attempts'] ?? 1));
+
+  $existing = $pdo->prepare('SELECT id FROM order_delivery_events WHERE order_id = ? AND event_type = ? LIMIT 1');
+  $existing->execute([$orderId, $eventType]);
+  $eventId = $existing->fetchColumn();
+  if ($eventId) {
+    $stmt = $pdo->prepare('UPDATE order_delivery_events SET status = ?, recipients = ?, http_status = ?, attempts = attempts + ?, error_message = ?, payload_json = ?, updated_at = NOW() WHERE id = ?');
+    $stmt->execute([$status, $recipients ?: null, $httpStatus, $attempts, $error ?: null, $payload, (int)$eventId]);
+    return;
+  }
+
+  $stmt = $pdo->prepare('INSERT INTO order_delivery_events (order_id, event_type, status, recipients, http_status, attempts, error_message, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  $stmt->execute([$orderId, $eventType, $status, $recipients ?: null, $httpStatus, $attempts, $error ?: null, $payload]);
 }
 
 function post_json(string $url, array $payload, int $timeoutSeconds = 12, array $extraHeaders = []): array {

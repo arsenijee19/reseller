@@ -502,6 +502,16 @@
           <div class="table-wrap" style="margin-top:14px"><table id="ordersTable"></table></div>
         </div>
 
+        <div class="section view hidden" id="view-payment_notices">
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Obaveštenja o uplatama</h2>
+              <p>Svaki klik na „Uplatio sam“ ostaje sačuvan, čak i kada email servis ne prihvati poruku.</p>
+            </div>
+          </div>
+          <div class="table-wrap"><table id="paymentNoticesTable"></table></div>
+        </div>
+
         <div class="section view hidden" id="view-inventory">
           <div class="section-head">
             <div class="section-title">
@@ -575,6 +585,7 @@
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
       ["orders","Porudžbine"],
+      ["payment_notices","Uplate"],
       ["inventory","Inventory"],
       ["database","Baza"]
     ];
@@ -1085,6 +1096,7 @@
       renderFilters();
       const editable = (state.data.schema.orders || []).filter((c) => !["id"].includes(c.COLUMN_NAME));
       const display = ["id","reseller_email","product_id","buyer_email","price_rsd","created_at"].filter((name) => editable.some((c) => c.COLUMN_NAME === name) || name === "id");
+      display.push("notification_email_status", "notification_n8n_status");
       const extra = editable.filter((c) => ["status","reseller_paid","reseller_paid_at","reseller_notes","admin_notes","delivery_payload"].includes(c.COLUMN_NAME));
       const table = $("ordersTable");
       table.textContent = "";
@@ -1097,7 +1109,10 @@
         const isCanceled = String(o.canceled_at || "") !== ""
           || ["canceled", "cancelled"].includes(String(o.status || "").toLowerCase());
         if (isCanceled) row.classList.add("order-canceled");
-        display.forEach((name) => text(row.insertCell(), "span", name === "price_rsd" ? money(o[name]) : o[name]));
+        display.forEach((name) => {
+          const value = name === "price_rsd" ? money(o[name]) : (o[name] || (name.startsWith("notification_") ? "nema zapisa" : ""));
+          text(row.insertCell(), "span", value);
+        });
         const controls = {};
         extra.forEach((c) => {
           const control = editableForColumn(c, o[c.COLUMN_NAME]);
@@ -1125,6 +1140,27 @@
         const actionBox = document.createElement("div");
         actionBox.className = "table-actions";
         actionBox.appendChild(save);
+        if (String(o.notification_email_status || "") !== "sent") {
+          const resendEmail = document.createElement("button");
+          resendEmail.className = "btn";
+          resendEmail.type = "button";
+          resendEmail.textContent = "Ponovi email";
+          resendEmail.addEventListener("click", async () => {
+            try{
+              resendEmail.disabled = true;
+              resendEmail.textContent = "Šaljem...";
+              await ensureAdminStepUp();
+              state.data = await api("resend_order_email", { method:"POST", body:JSON.stringify({ id:o.id, filters:currentFilters() }) });
+              renderWithUiState(() => render());
+              showToast("ok", state.data.notification?.sent ? `Email za porudžbinu #${o.id} je poslat.` : `Email za porudžbinu #${o.id} ponovo nije prihvaćen.`);
+            }catch(e){
+              showToast("bad", e.message);
+              resendEmail.disabled = false;
+              resendEmail.textContent = "Ponovi email";
+            }
+          });
+          actionBox.appendChild(resendEmail);
+        }
         if (isCanceled) {
           const badge = document.createElement("span");
           badge.className = "status-badge canceled";
@@ -1163,6 +1199,53 @@
         }
         row.insertCell().appendChild(actionBox);
       });
+    }
+
+    function renderPaymentNotices(){
+      const table = $("paymentNoticesTable");
+      if (!table) return;
+      table.textContent = "";
+      const columns = ["id","reseller_id","reseller_name","reseller_email","balance_rsd","clicked_at","status","attempts","recipients","error_message"];
+      const head = table.createTHead().insertRow();
+      [...columns, "Akcija"].forEach((name) => text(head.insertCell(), "strong", name));
+      const body = table.createTBody();
+      (state.data.payment_notices || []).forEach((notice) => {
+        const row = body.insertRow();
+        row.dataset.recordId = `payment-notice-${notice.id}`;
+        columns.forEach((name) => text(row.insertCell(), "span", name === "balance_rsd" ? money(notice[name]) : notice[name]));
+        const action = document.createElement("div");
+        action.className = "table-actions";
+        if (String(notice.status || "") !== "sent") {
+          const resend = document.createElement("button");
+          resend.className = "btn primary";
+          resend.type = "button";
+          resend.textContent = "Pošalji ponovo";
+          resend.addEventListener("click", async () => {
+            try{
+              resend.disabled = true;
+              resend.textContent = "Šaljem...";
+              await ensureAdminStepUp();
+              state.data = await api("resend_payment_notice", { method:"POST", body:JSON.stringify({ id:notice.id, filters:currentFilters() }) });
+              renderWithUiState(() => render());
+              showToast("ok", state.data.notification?.sent ? "Obaveštenje je ponovo poslato." : "Email ponovo nije prihvaćen; zapis je sačuvan.");
+            }catch(e){
+              showToast("bad", e.message);
+              resend.disabled = false;
+              resend.textContent = "Pošalji ponovo";
+            }
+          });
+          action.appendChild(resend);
+        } else {
+          text(action, "span", "Poslato", "muted");
+        }
+        row.insertCell().appendChild(action);
+      });
+      if (!(state.data.payment_notices || []).length) {
+        const row = body.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = columns.length + 1;
+        text(cell, "span", "Nema zabeleženih obaveštenja o uplati.", "muted");
+      }
     }
 
     function renderInventory(){
@@ -1334,6 +1417,7 @@
       renderResellers();
       renderProducts();
       renderOrders();
+      renderPaymentNotices();
       renderInventory();
       renderSchema();
     }

@@ -54,6 +54,15 @@ function fetch_products(PDO $pdo): array {
 }
 
 function fetch_orders(PDO $pdo, array $filters): array {
+  try {
+    ensure_order_observability_tables($pdo);
+  } catch (Throwable $ignored) {
+    // Legacy DB users may not have CREATE privileges; the core order view must still load.
+  }
+  $hasDeliveryEvents = false;
+  try {
+    $hasDeliveryEvents = table_exists($pdo, 'order_delivery_events');
+  } catch (Throwable $ignored) {}
   $where = [];
   $params = [];
 
@@ -78,11 +87,45 @@ function fetch_orders(PDO $pdo, array $filters): array {
     $params[] = h_string($filters['date_to']);
   }
 
+  $notificationSelect = $hasDeliveryEvents
+    ? "oe.email_status AS notification_email_status,
+      oe.email_attempts AS notification_email_attempts,
+      oe.email_error AS notification_email_error,
+      oe.n8n_status AS notification_n8n_status,
+      oe.n8n_attempts AS notification_n8n_attempts,
+      oe.n8n_http_status AS notification_n8n_http_status,
+      oe.n8n_error AS notification_n8n_error"
+    : "NULL AS notification_email_status,
+      NULL AS notification_email_attempts,
+      NULL AS notification_email_error,
+      NULL AS notification_n8n_status,
+      NULL AS notification_n8n_attempts,
+      NULL AS notification_n8n_http_status,
+      NULL AS notification_n8n_error";
+
   $sql = "
-    SELECT o.*, pp.product_name, pp.account_type
+    SELECT o.*, pp.product_name, pp.account_type,
+      {$notificationSelect}
     FROM orders o
     LEFT JOIN product_prices pp ON pp.product_id = o.product_id
   ";
+  if ($hasDeliveryEvents) {
+    $sql .= "
+      LEFT JOIN (
+        SELECT
+          order_id,
+          MAX(CASE WHEN event_type = 'email' THEN status END) AS email_status,
+          MAX(CASE WHEN event_type = 'email' THEN attempts END) AS email_attempts,
+          MAX(CASE WHEN event_type = 'email' THEN error_message END) AS email_error,
+          MAX(CASE WHEN event_type = 'n8n' THEN status END) AS n8n_status,
+          MAX(CASE WHEN event_type = 'n8n' THEN attempts END) AS n8n_attempts,
+          MAX(CASE WHEN event_type = 'n8n' THEN http_status END) AS n8n_http_status,
+          MAX(CASE WHEN event_type = 'n8n' THEN error_message END) AS n8n_error
+        FROM order_delivery_events
+        GROUP BY order_id
+      ) oe ON oe.order_id = o.id
+    ";
+  }
   if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
   }
@@ -90,6 +133,25 @@ function fetch_orders(PDO $pdo, array $filters): array {
 
   $stmt = $pdo->prepare($sql);
   $stmt->execute($params);
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function fetch_payment_notices(PDO $pdo): array {
+  try {
+    ensure_order_observability_tables($pdo);
+  } catch (Throwable $ignored) {}
+  try {
+    if (!table_exists($pdo, 'payment_notice_requests')) return [];
+  } catch (Throwable $ignored) {
+    return [];
+  }
+  $stmt = $pdo->query("
+    SELECT p.*, r.display_name AS reseller_name, r.email AS current_reseller_email
+    FROM payment_notice_requests p
+    LEFT JOIN resellers r ON r.id = p.reseller_id
+    ORDER BY p.created_at DESC, p.id DESC
+    LIMIT 250
+  ");
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -261,6 +323,11 @@ function temporary_reseller_email(string $displayName): string {
 
 function dashboard_payload(PDO $pdo, array $filters = []): array {
   ensure_security_tables($pdo);
+  try {
+    ensure_order_observability_tables($pdo);
+  } catch (Throwable $ignored) {
+    // Keep legacy installations usable until the explicit reliability migration is run.
+  }
   $orderStatuses = [];
   if (has_column($pdo, 'orders', 'status')) {
     $orderStatuses = $pdo->query("SELECT DISTINCT status FROM orders WHERE status IS NOT NULL AND status <> '' ORDER BY status")->fetchAll(PDO::FETCH_COLUMN);
@@ -276,10 +343,13 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
       'inventory_api_requests' => table_columns($pdo, 'inventory_api_requests'),
       'missing_game_reports' => table_columns($pdo, 'missing_game_reports'),
       'security_audit_events' => table_columns($pdo, 'security_audit_events'),
+      'order_delivery_events' => table_columns($pdo, 'order_delivery_events'),
+      'payment_notice_requests' => table_columns($pdo, 'payment_notice_requests'),
     ],
     'resellers' => fetch_resellers($pdo),
     'products' => fetch_products($pdo),
     'orders' => fetch_orders($pdo, $filters),
+    'payment_notices' => fetch_payment_notices($pdo),
     'inventory_config' => inventory_config_payload($pdo),
     'inventory_requests' => fetch_inventory_requests($pdo, $filters),
     'missing_game_reports' => fetch_missing_game_reports($pdo),
@@ -668,6 +738,83 @@ try {
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_password_changed', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'resend_payment_notice') {
+    require_recent_admin_step_up();
+    $noticeId = (int)($input['id'] ?? 0);
+    if ($noticeId <= 0) json_response(['ok' => false, 'error' => 'Nedostaje uplata.'], 400);
+
+    $stmt = $pdo->prepare('SELECT * FROM payment_notice_requests WHERE id = ? LIMIT 1');
+    $stmt->execute([$noticeId]);
+    $notice = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$notice) json_response(['ok' => false, 'error' => 'Obaveštenje o uplati nije pronađeno.'], 404);
+
+    $recipients = notification_recipients('mail.payment_notice_to', [
+      'arsenijee19@gmail.com',
+      'support@licenca.rs',
+    ]);
+    $subject = 'Reseller je označio uplatu';
+    $message = "Reseller je kliknuo dugme \"Uplatio sam\" i označio da je izvršio uplatu.\n\n";
+    $message .= 'Reseller ID: ' . (int)$notice['reseller_id'] . "\n";
+    $message .= 'Reseller Email: ' . (string)$notice['reseller_email'] . "\n";
+    $message .= 'Balance u trenutku klika: ' . (int)$notice['balance_rsd'] . " RSD\n";
+    $message .= 'Vreme klika: ' . (string)$notice['clicked_at'] . " UTC\n\n";
+    $message .= "Potrebno je proveriti uplatu i po potrebi ažurirati balance u admin panelu.\n";
+
+    $result = send_text_notification_email($recipients, $subject, $message);
+    $update = $pdo->prepare('UPDATE payment_notice_requests SET status = ?, recipients = ?, attempts = attempts + 1, error_message = ?, updated_at = NOW() WHERE id = ?');
+    $update->execute([
+      $result['ok'] ? 'sent' : 'failed',
+      implode(', ', $recipients),
+      $result['ok'] ? null : safe_public_error((string)$result['error']),
+      $noticeId,
+    ]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'payment_notice_resent', $result['ok'] ? 'success' : 'notification_failed', [
+      'notice_id' => $noticeId,
+      'notification_sent' => $result['ok'],
+    ]);
+
+    $payload = dashboard_payload($pdo, $input['filters'] ?? []);
+    $payload['notification'] = ['sent' => $result['ok'], 'notice_id' => $noticeId];
+    json_response($payload);
+  }
+
+  if ($action === 'resend_order_email') {
+    require_recent_admin_step_up();
+    $orderId = (int)($input['id'] ?? 0);
+    if ($orderId <= 0) json_response(['ok' => false, 'error' => 'Nedostaje porudžbina.'], 400);
+
+    $stmt = $pdo->prepare("
+      SELECT o.*, pp.product_name, pp.account_type, r.display_name AS reseller_name, r.phone AS reseller_phone
+      FROM orders o
+      LEFT JOIN product_prices pp ON pp.product_id = o.product_id
+      LEFT JOIN resellers r ON r.id = o.reseller_id
+      WHERE o.id = ?
+      LIMIT 1
+    ");
+    $stmt->execute([$orderId]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) json_response(['ok' => false, 'error' => 'Porudžbina nije pronađena.'], 404);
+
+    $notification = order_notification($order);
+    $result = send_text_notification_email($notification['recipients'], $notification['subject'], $notification['message']);
+    try {
+      record_order_delivery_event($pdo, $orderId, 'email', $result['ok'] ? 'sent' : 'failed', [
+        'recipients' => $result['recipients'],
+        'error' => $result['ok'] ? '' : $result['error'],
+      ]);
+    } catch (Throwable $ignored) {}
+    try {
+      audit_event($pdo, 'admin', (int)$admin['id'], 'order_email_resent', $result['ok'] ? 'success' : 'notification_failed', [
+        'order_id' => $orderId,
+        'notification_sent' => $result['ok'],
+      ]);
+    } catch (Throwable $ignored) {}
+
+    $payload = dashboard_payload($pdo, $input['filters'] ?? []);
+    $payload['notification'] = ['sent' => $result['ok'], 'order_id' => $orderId];
+    json_response($payload);
   }
 
   if ($action === 'save_inventory_config') {
