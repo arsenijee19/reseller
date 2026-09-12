@@ -27,7 +27,7 @@ Datum pregleda: 10.09.2026.
 
 ### High
 
-- Produkciona baza, migracije, cPanel PHP verzija, PHP ekstenzije, mail i n8n izvršenje nisu dostupni za proveru iz ovog okruženja. Pre korišćenja passkey-a mora se primeniti `sql/2026-08-27_owner_passkeys.sql`, proveriti PHP >= 8.2, `ext-openssl`, `ext-json`, `ext-pdo_mysql`, `ext-curl` i HTTPS origin.
+- Produkciona baza, migracije, cPanel PHP verzija, PHP ekstenzije, mail i n8n izvršenje nisu dostupni za proveru iz ovog okruženja. Pre korišćenja passkey-a mora se primeniti `sql/2026-08-27_owner_passkeys.sql`, proveriti PHP >= 8.4.1, `ext-openssl`, `ext-json`, `ext-pdo_mysql`, `ext-curl` i HTTPS origin. Password + TOTP login ne učitava Composer dependency.
 - DDoS zaštita/WAF nije implementirana u aplikaciji. To mora da obezbedi hosting ili Cloudflare prema `EDGE_SECURITY_HARDENING.md`.
 
 ### Medium

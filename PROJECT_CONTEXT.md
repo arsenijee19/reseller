@@ -71,7 +71,7 @@
   - Inventory health testing is intentionally not implemented because no safe non-consuming health endpoint is known.
   - Active sessions, trusted devices, and forced admin 2FA reset by another admin are not implemented.
   - Cloudflare/WAF/DDoS protection is not provided by this repository and remains a hosting/edge responsibility.
-  - WebAuthn requires PHP 8.2+ and Composer dependencies deployed under root `vendor/`.
+  - WebAuthn requires PHP 8.4.1+ and Composer dependencies deployed under root `vendor/`; ordinary password/TOTP login does not load that dependency.
   - Historical orders created before `order_delivery_events` existed cannot reveal whether their old email or n8n call was accepted; only the original `orders` and wallet records remain.
   - The repository has no public checkout, card-payment, Stripe, or MerchantPro endpoint. A financial order can only be created by an authenticated reseller with sufficient wallet balance; external bank/card payments must be reconciled separately.
 - Known bugs:
@@ -281,7 +281,7 @@
 - Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
 - Run `sql/2026-08-27_admin_order_reversals.sql` on the live cPanel database.
 - Run `sql/2026-08-27_owner_passkeys.sql` on the live cPanel database and configure the explicit WebAuthn origin/RP ID.
-- Verify cPanel PHP 8.2+ plus `pdo_mysql`, `curl`, `openssl`, and `json` before enabling passkey login.
+- Verify cPanel PHP 8.4.1+ plus `pdo_mysql`, `curl`, `openssl`, and `json` before enabling passkey login.
 - Execute the owner passkey browser acceptance journey from `OWNER_SECURITY_RUNBOOK.md`.
 - Configure Inventory Supplier API base URL and supplier token in ignored server-side config/env.
 - Update/verify n8n Telegram workflow handling for `event=reseller_missing_game`.

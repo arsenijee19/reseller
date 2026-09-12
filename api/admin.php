@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
-require_once __DIR__ . '/webauthn.php';
 
 start_secure_session('admin');
 
@@ -32,6 +31,13 @@ function require_admin_passkey_step_up(PDO $pdo, array $admin, array $input): vo
       json_response(['ok' => false, 'error' => 'Za ovu bezbednosnu akciju potreban je važeći 2-step kod.'], 401);
     }
   }
+}
+
+function require_webauthn_runtime(): void {
+  if (PHP_VERSION_ID < 80401) {
+    json_response(['ok' => false, 'error' => 'Passkey prijava zahteva PHP 8.4.1 ili noviji. Password + 2-step prijava je i dalje dostupna.'], 503);
+  }
+  require_once __DIR__ . '/webauthn.php';
 }
 
 function fetch_resellers(PDO $pdo): array {
@@ -479,6 +485,7 @@ try {
   }
 
   if ($action === 'passkey_login_options') {
+    require_webauthn_runtime();
     require_post();
     enforce_rate_limit($pdo, 'admin_passkey_options', client_ip(), 20, 900, 'Previše pokušaja. Sačekajte nekoliko minuta i pokušajte ponovo.');
     $challenge = webauthn_new_challenge();
@@ -488,6 +495,7 @@ try {
   }
 
   if ($action === 'passkey_login_verify') {
+    require_webauthn_runtime();
     require_post();
     $input = read_json_body();
     $responseJson = (string)($input['credential_json'] ?? '');
@@ -659,6 +667,7 @@ try {
   }
 
   if ($action === 'passkey_registration_options') {
+    require_webauthn_runtime();
     $admin = require_admin();
     require_admin_passkey_step_up($pdo, $admin, $input);
     $stmt = $pdo->prepare('SELECT credential_id FROM owner_passkeys WHERE admin_id = ? AND revoked_at IS NULL');
@@ -675,6 +684,7 @@ try {
   }
 
   if ($action === 'passkey_registration_verify') {
+    require_webauthn_runtime();
     $admin = require_admin();
     $responseJson = (string)($input['credential_json'] ?? '');
     if ($responseJson === '' || strlen($responseJson) > MAX_JSON_BODY_BYTES) json_response(['ok' => false, 'error' => 'Passkey registracija nije validna.'], 400);

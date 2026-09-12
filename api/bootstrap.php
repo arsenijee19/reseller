@@ -3,10 +3,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-$autoload = __DIR__ . '/../vendor/autoload.php';
-if (!is_file($autoload)) $autoload = __DIR__ . '/vendor/autoload.php';
-if (is_file($autoload)) require_once $autoload;
-
 const SESSION_LIFETIME_SECONDS = 3600;
 const SESSION_ABSOLUTE_LIFETIME_SECONDS = 28800;
 const MAX_JSON_BODY_BYTES = 65536;

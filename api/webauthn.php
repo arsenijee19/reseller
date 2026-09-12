@@ -1,6 +1,17 @@
 <?php
 declare(strict_types=1);
 
+if (PHP_VERSION_ID < 80401) {
+  throw new RuntimeException('Passkey zahteva PHP 8.4.1 ili noviji.');
+}
+
+$autoload = __DIR__ . '/../vendor/autoload.php';
+if (!is_file($autoload)) $autoload = __DIR__ . '/vendor/autoload.php';
+if (!is_file($autoload)) {
+  throw new RuntimeException('WebAuthn dependency nije instaliran.');
+}
+require_once $autoload;
+
 use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AttestationStatement\NoneAttestationStatementSupport;
 use Webauthn\AuthenticatorSelectionCriteria;

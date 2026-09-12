@@ -19,6 +19,8 @@ fi
 rg -q "PWRSADMINSESSID" api/bootstrap.php
 rg -q "PWRSRESELLERSESSID" api/bootstrap.php
 rg -q "passkey_login_verify|passkey_registration_verify|passkey_remove" api/admin.php
+rg -q "require_webauthn_runtime" api/admin.php
+rg -q "PHP_VERSION_ID < 80401" api/admin.php api/webauthn.php
 rg -q "owner_webauthn_challenges|owner_passkeys" sql/2026-08-27_owner_passkeys.sql
 rg -q "Content-Security-Policy" .htaccess
 rg -q "Strict-Transport-Security" .htaccess

@@ -2,7 +2,7 @@
 
 ## 1. Production prerequisites
 
-1. U cPanel MultiPHP Manager proverite da `reseller.psigre.rs` koristi PHP 8.2 ili noviji.
+1. U cPanel MultiPHP Manager proverite da `reseller.psigre.rs` koristi PHP 8.4.1 ili noviji ako želite Passkey. Password + TOTP fallback ne učitava WebAuthn dependency.
 2. Proverite ekstenzije `pdo_mysql`, `curl`, `openssl` i `json`.
 3. U `api/config.local.php` dodajte u `security`:
 
