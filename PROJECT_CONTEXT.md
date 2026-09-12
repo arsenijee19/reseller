@@ -73,7 +73,7 @@
   - Cloudflare/WAF/DDoS protection is not provided by this repository and remains a hosting/edge responsibility.
   - WebAuthn requires PHP 8.4.1+ and Composer dependencies deployed under root `vendor/`; ordinary password/TOTP login does not load that dependency.
   - Historical orders created before `order_delivery_events` existed cannot reveal whether their old email or n8n call was accepted; only the original `orders` and wallet records remain.
-  - The repository has no public checkout, card-payment, Stripe, or MerchantPro endpoint. A financial order can only be created by an authenticated reseller with sufficient wallet balance; external bank/card payments must be reconciled separately.
+- The repository has no public checkout, card-payment, Stripe, or MerchantPro endpoint. A financial order can only be created by an authenticated reseller; the wallet balance is allowed to become negative and external bank/card payments must be reconciled separately.
 - Known bugs:
   - Unknown.
 - Untested areas:
@@ -273,7 +273,7 @@
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
 - Added durable order notification observability: database-backed payment notices, separate email/n8n delivery status, admin history, and protected resend actions.
-- Hardened order charging with a locked balance read and conditional non-negative balance update, while keeping notification failures after the financial commit.
+- Hardened order charging with a locked balance read and atomic balance update; reseller balances may go negative, while notification failures remain separate from the financial commit.
 - Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
 ## Current Priorities

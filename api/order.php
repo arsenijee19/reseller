@@ -101,9 +101,6 @@ try {
   if ($currentBalance === false) {
     throw new RuntimeException("Nalog nije pronađen.", 404);
   }
-  if ((int)$currentBalance < $price) {
-    throw new RuntimeException("Nemate dovoljno sredstava za izabrani proizvod.", 422);
-  }
 
   // 2) request_id
   $request_id = bin2hex(random_bytes(16));
@@ -126,8 +123,8 @@ try {
   $wt->execute([$reseller_id, -$price, $desc, $orderDbId]);
 
   // 5) Update balansa
-  $up = $pdo->prepare("UPDATE resellers SET balance_rsd = balance_rsd - ? WHERE id=? AND balance_rsd >= ?");
-  $up->execute([$price, $reseller_id, $price]);
+  $up = $pdo->prepare("UPDATE resellers SET balance_rsd = balance_rsd - ? WHERE id=?");
+  $up->execute([$price, $reseller_id]);
   if ($up->rowCount() !== 1) {
     throw new RuntimeException("Balance se promenio tokom poručivanja. Osvežite stranicu i pokušajte ponovo.", 409);
   }

@@ -5,7 +5,7 @@ Use this checklist when a reseller says that an order or “Uplatio sam” notic
 ## What this application accepts
 
 - There is no public card checkout, Stripe, MerchantPro, or anonymous order endpoint in this repository.
-- A financial order requires a valid reseller session, an active product, and enough reseller balance.
+- A financial order requires a valid reseller session and an active product. Reseller balance may become negative after an order.
 - “Uplatio sam” is only an informational notice. It does not verify a bank transfer and does not add balance.
 
 ## 1. Preserve the evidence
