@@ -270,6 +270,8 @@
 - Added transaction-safe admin order cancellation with exact balance reversal, immutable financial history, cancellation metadata, audit logging, canceled-row styling, and duplicate-reversal protection.
 - Restricted generic admin order editing to operational fields so ownership, price, identity, original wallet effect, and creation metadata cannot be changed accidentally.
 - Added explicit admin filter state plus table/page scroll, focus, active-tab, and fixed local toast preservation after mutations.
+- Replaced visible browser password prompts for critical admin actions with a masked password modal that also supports admin 2-step codes.
+- Reduced admin initial rendering work by rendering only the active tab and loading admin 2FA/passkey status requests in parallel.
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
 - Added durable order notification observability: database-backed payment notices, separate email/n8n delivery status, admin history, and protected resend actions.

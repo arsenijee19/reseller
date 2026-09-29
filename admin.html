@@ -124,6 +124,13 @@
     .muted{color:var(--muted);font-size:12px}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
     .hidden{display:none!important}
+    .admin-modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,13,20,.62);backdrop-filter:blur(10px);z-index:50;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s var(--ease),visibility 0s linear .18s}
+    .admin-modal-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .18s var(--ease),visibility 0s}
+    .admin-modal{width:min(430px,100%);padding:20px;border:1px solid rgba(23,105,224,.18);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--soft));box-shadow:0 24px 80px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:transform .2s var(--ease),opacity .18s var(--ease)}
+    .admin-modal-backdrop.open .admin-modal{transform:translateY(0) scale(1);opacity:1}
+    .admin-modal h2{margin-bottom:7px}
+    .admin-modal .actions{justify-content:flex-end;margin-top:16px}
+    .admin-modal .msg{margin-top:12px;margin-bottom:0}
     @media (max-width:860px){
       .shell{padding:16px 12px 34px}
       .topbar{align-items:stretch;flex-direction:column}
@@ -576,6 +583,23 @@
       </div>
     </section>
   </main>
+  <div class="admin-modal-backdrop" id="adminReauthModal" role="dialog" aria-modal="true" aria-labelledby="adminReauthTitle">
+    <div class="admin-modal">
+      <h2 id="adminReauthTitle">Potvrda admin akcije</h2>
+      <p id="adminReauthDescription">Za ovu kritičnu akciju unesite trenutnu admin šifru.</p>
+      <label for="adminReauthPassword">Trenutna admin šifra</label>
+      <input id="adminReauthPassword" type="password" autocomplete="current-password" />
+      <div id="adminReauthTwoFactorField" class="hidden">
+        <label for="adminReauthTwoFactor">Trenutni 2-step kod</label>
+        <input id="adminReauthTwoFactor" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+      </div>
+      <div class="actions">
+        <button class="btn" id="adminReauthCancelBtn" type="button">Otkaži</button>
+        <button class="btn primary" id="adminReauthConfirmBtn" type="button">Potvrdi</button>
+      </div>
+      <div class="msg bad" id="adminReauthMsg"></div>
+    </div>
+  </div>
   <div id="adminToast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -836,10 +860,9 @@
     }
     async function removePasskey(id, label){
       if (!window.confirm(`Ukloniti passkey "${label || "Passkey"}"?`)) return;
-      const currentPassword = window.prompt("Unesite trenutnu admin šifru:");
-      if (currentPassword === null) return;
-      const twoFactorCode = state.adminTwoFactorEnabled ? window.prompt("Unesite trenutni 2-step kod:") : "";
       try{
+        const credentials = await requestAdminCredentials("Za uklanjanje passkey ključa unesite trenutnu admin šifru.");
+        const { currentPassword, twoFactorCode } = credentials;
         await api("passkey_remove", { method:"POST", body:JSON.stringify({ id, current_password:currentPassword, two_factor_code:twoFactorCode || "" }) });
         showPasskeyMsg("ok", "Passkey je uklonjen."); await loadPasskeys();
       }catch(e){ showPasskeyMsg("bad", e.message); }
@@ -1353,11 +1376,54 @@
       }
     }
 
+    function closeAdminCredentials(cancelled = true){
+      const pending = state.adminCredentialsPrompt;
+      if (!pending) return;
+      state.adminCredentialsPrompt = null;
+      $("adminReauthModal").classList.remove("open");
+      $("adminReauthPassword").value = "";
+      $("adminReauthTwoFactor").value = "";
+      $("adminReauthMsg").style.display = "none";
+      if (cancelled) pending.reject(new Error("Akcija je otkazana."));
+      else pending.resolve(pending.credentials);
+    }
+
+    function submitAdminCredentials(){
+      const password = $("adminReauthPassword").value;
+      const code = $("adminReauthTwoFactor").value.trim();
+      const message = $("adminReauthMsg");
+      if (!password) {
+        message.textContent = "Unesite trenutnu admin šifru.";
+        message.style.display = "block";
+        $("adminReauthPassword").focus();
+        return;
+      }
+      if (state.adminTwoFactorEnabled && !code) {
+        message.textContent = "Unesite trenutni 2-step kod.";
+        message.style.display = "block";
+        $("adminReauthTwoFactor").focus();
+        return;
+      }
+      const pending = state.adminCredentialsPrompt;
+      if (!pending) return;
+      pending.credentials = { currentPassword:password, twoFactorCode:code };
+      closeAdminCredentials(false);
+    }
+
+    function requestAdminCredentials(description){
+      if (state.adminCredentialsPrompt) return Promise.reject(new Error("Druga potvrda je već otvorena."));
+      return new Promise((resolve, reject) => {
+        state.adminCredentialsPrompt = { resolve, reject, credentials:null };
+        $("adminReauthDescription").textContent = description || "Za ovu kritičnu akciju unesite trenutnu admin šifru.";
+        $("adminReauthTwoFactorField").classList.toggle("hidden", !state.adminTwoFactorEnabled);
+        $("adminReauthMsg").style.display = "none";
+        $("adminReauthModal").classList.add("open");
+        $("adminReauthPassword").focus();
+      });
+    }
+
     async function ensureAdminStepUp(){
-      const currentPassword = window.prompt("Za ovu kritičnu akciju unesite trenutnu admin šifru:");
-      if (currentPassword === null) throw new Error("Akcija je otkazana.");
-      const twoFactorCode = state.adminTwoFactorEnabled ? window.prompt("Unesite novi 2-step kod:") : "";
-      if (state.adminTwoFactorEnabled && twoFactorCode === null) throw new Error("Akcija je otkazana.");
+      const { currentPassword, twoFactorCode } = await requestAdminCredentials();
       await api("admin_reauth", { method:"POST", body:JSON.stringify({ current_password:currentPassword, two_factor_code:twoFactorCode || "" }) });
     }
 
@@ -1405,8 +1471,7 @@
       const snapshot = captureUiState();
       state.data = await api("dashboard", { query:queryFromFilters(state.filters) });
       render();
-      await loadAdminTwoFactorStatus();
-      await loadPasskeys();
+      await Promise.all([loadAdminTwoFactorStatus(), loadPasskeys()]);
       restoreUiState(snapshot);
     }
 
@@ -1414,12 +1479,12 @@
       renderTabs();
       if (!state.data) return;
       renderSummary();
-      renderResellers();
-      renderProducts();
-      renderOrders();
-      renderPaymentNotices();
-      renderInventory();
-      renderSchema();
+      if (state.tab === "resellers") renderResellers();
+      if (state.tab === "products") renderProducts();
+      if (state.tab === "orders") renderOrders();
+      if (state.tab === "payment_notices") renderPaymentNotices();
+      if (state.tab === "inventory") renderInventory();
+      if (state.tab === "database") renderSchema();
     }
 
     async function login(){
@@ -1615,6 +1680,17 @@
       }
     }
 
+    $("adminReauthConfirmBtn").addEventListener("click", submitAdminCredentials);
+    $("adminReauthCancelBtn").addEventListener("click", () => closeAdminCredentials(true));
+    $("adminReauthModal").addEventListener("click", (event) => {
+      if (event.target === $("adminReauthModal")) closeAdminCredentials(true);
+    });
+    ["adminReauthPassword", "adminReauthTwoFactor"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter") submitAdminCredentials();
+        if (event.key === "Escape") closeAdminCredentials(true);
+      });
+    });
     $("adminLoginBtn").addEventListener("click", login);
     $("adminPasskeyLoginBtn").addEventListener("click", loginWithPasskey);
     $("admin2faBackBtn").addEventListener("click", cancelAdminTwoFactorLogin);
