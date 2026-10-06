@@ -21,6 +21,7 @@
   - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
+  - Successful n8n automatic delivery can append its login email to the exact reseller order notes through a short-lived per-order HMAC callback; retries are idempotent and existing notes are preserved.
   - Order creation avoids per-request schema creation on its critical path, commits the order and wallet charge first, then flushes JSON before email/n8n work; PHP-FPM uses `fastcgi_finish_request()` and other PHP handlers attempt a content-length/connection-close flush.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
@@ -72,7 +73,7 @@
   - Shared `apply_wallet_transaction()` now performs row-locked balance changes and records snapshots; admin manual transactions, reseller admin balance edits, admin top-ups, reseller orders, and Telegram balance actions share it.
   - Telegram payment confirmations require a manually entered amount if absent from the notice; balance actions use five-minute pending records, unique idempotency keys, optional high-value Admin TOTP, and reversal transactions rather than deletion.
 - Partially implemented functionality:
-  - Order delivery automation is still delegated to the existing n8n webhook.
+  - Order delivery automation is still delegated to the existing n8n webhook; import the updated workflow export to activate automatic order-note updates.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
   - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
   - 2FA setup currently provides a manual Authenticator key and `otpauth://` setup link instead of a locally rendered QR image, because no reviewed local QR generator dependency exists in this no-build project.
@@ -129,6 +130,8 @@
 - `api/orders.php?all=1` - complete order history for the authenticated reseller.
 - `api/transactions.php` - authenticated reseller's wallet history with admin descriptions and related order notes.
 - `api/order_notes.php` - reseller-owned internal notes update endpoint for existing orders.
+- `api/auto_delivery_note.php` - signed n8n callback that records the login email after successful automatic delivery.
+- `api/auto_delivery_note_helpers.php` - deterministic delivery signature payload and idempotent notes append helpers.
 - `api/order_paid.php` - reseller-owned internal paid/unpaid marker endpoint for existing orders.
 - `api/order_paid_all.php` - reseller-owned bulk endpoint for marking all previous orders as internally paid.
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
@@ -153,6 +156,7 @@
 - `telegram-bot/bot.py` - isolated HTTPS Telegram webhook and outbox worker; standard library only.
 - `telegram-bot/compose.yaml` - dedicated hardened Docker service named `reseller-tg-bot`, bound to TCP 8443.
 - `TELEGRAM_BOT_RUNBOOK.md` - BotFather, cPanel migration, self-signed TLS, webhook and acceptance checklist.
+- `AUTO_DELIVERY_NOTES_RUNBOOK.md` - deployment and n8n import checklist for automatic delivery email notes.
 - `tests/test_telegram_bot.py` - amount and command parser unit tests.
 
 ## Architecture & Technical Decisions

@@ -246,6 +246,19 @@ try {
     "ts" => gmdate("c")
   ];
 
+  // A short-lived capability lets the trusted n8n delivery branch attach its
+  // login email to this exact order without exposing a reusable API secret.
+  $callbackIssuedAt = time();
+  $callbackFields = [$orderDbId, $reseller_id, $request_id, $callbackIssuedAt];
+  $callbackMessage = implode("\n", $callbackFields);
+  $payload['delivery_callback'] = [
+    'order_id' => $orderDbId,
+    'reseller_id' => $reseller_id,
+    'request_id' => $request_id,
+    'issued_at' => $callbackIssuedAt,
+    'signature' => hash_hmac('sha256', $callbackMessage, security_encryption_key()),
+  ];
+
   $webhookUrl = (string)config_value('integrations.n8n_webhook', '');
   try {
     $n8n = $webhookUrl !== ''
