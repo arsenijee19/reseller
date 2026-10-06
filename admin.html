@@ -445,8 +445,18 @@
     .product-price-change button{padding:0;border:0;background:none;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
     #view-settings .security-panel,#view-settings .passkey-panel{margin-top:14px}
     #view-settings .telegram-settings-panel{margin-top:14px}
-    .telegram-notification-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:18px 0}
-    .telegram-notification-options label{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface,#fff)}
+    .telegram-chat-form{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto;align-items:end;gap:14px;margin-top:16px}
+    .telegram-chat-form label,.telegram-thresholds label,.telegram-token-field label{margin:0 0 7px}
+    .telegram-chat-submit .btn{min-width:190px}
+    .telegram-thresholds{display:grid;grid-template-columns:repeat(2,minmax(220px,360px));gap:14px;margin-top:18px}
+    .telegram-notification-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+    .telegram-notification-options label{display:flex;align-items:center;gap:10px;min-width:0;min-height:48px;margin:0;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:13px;line-height:1.35;cursor:pointer}
+    .telegram-notification-options input[type="checkbox"]{appearance:auto;width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:0;padding:0;border:0;border-radius:4px;background:transparent;box-shadow:none;accent-color:var(--brand);cursor:pointer}
+    .telegram-notification-options input[type="checkbox"]:focus-visible{outline:2px solid var(--brand);outline-offset:3px;box-shadow:none}
+    .telegram-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .telegram-token-field{max-width:520px;margin-top:16px}
+    @media(max-width:860px){.telegram-chat-form{grid-template-columns:repeat(2,minmax(0,1fr))}.telegram-chat-submit{grid-column:1/-1}.telegram-chat-submit .btn{width:100%}.telegram-thresholds{grid-template-columns:repeat(2,minmax(0,1fr))}.telegram-notification-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.telegram-chat-form,.telegram-thresholds{grid-template-columns:minmax(0,1fr)}.telegram-chat-submit{grid-column:auto}.telegram-notification-options{grid-template-columns:minmax(0,1fr)}.telegram-actions{align-items:stretch;flex-direction:column}.telegram-actions .btn{width:100%}}
     @media(max-width:860px){.tabs{justify-content:flex-start;border-radius:13px}.view-toolbar{align-items:stretch;flex-direction:column}.view-toolbar-controls{justify-content:flex-start}.view-search{width:100%;min-width:0}.security-banner{align-items:flex-start}.security-banner-copy{align-items:flex-start;flex-direction:column;gap:3px}.security-banner>.btn{flex:0 0 auto}.drawer-head{padding:17px 16px 14px}.drawer-content{padding:15px 16px 20px}.drawer-footer{padding:12px 16px}.product-group-card{overflow:hidden}.product-group-head{align-items:flex-start}}
     @media(max-width:560px){.shell{padding:14px 10px 28px}.admin-brand-copy strong{font-size:16px}.admin-brand .portal-logo{width:40px;height:40px;flex-basis:40px}.topbar .actions{gap:6px}.topbar .actions .btn{flex:0 0 40px;width:40px;min-width:40px;padding:8px}.topbar .actions .btn#logoutBtn{flex:0 0 auto;width:auto;min-width:40px}.tabs{gap:2px;padding:4px}.tab{min-height:38px;padding:8px 10px;font-size:11px}.security-banner{padding:10px}.security-banner-copy{font-size:11px}.security-banner-copy strong{white-space:normal}.view-toolbar-controls{align-items:stretch}.segmented-filters{width:100%;justify-content:space-between}.segment-filter{flex:1;padding-inline:6px}.view-toolbar-controls>.btn{width:100%}.reseller-drawer{width:100%}.drawer-fields,.drawer-adjustment-fields{grid-template-columns:1fr}.drawer-fields .full{grid-column:auto}.drawer-title-copy h2{font-size:16px}.drawer-footer .btn{min-width:0}.product-group-head{padding:12px}.product-group-head .btn{flex:0 0 auto;min-width:0}.product-table{min-width:680px}}
   </style>
@@ -598,13 +608,13 @@
       <div class="form-panel telegram-settings-panel">
         <div class="section-head"><div class="section-title"><h2>Telegram admin bot</h2><p>Obaveštenja i bezbedne admin akcije u Telegramu. Bot tajne se čuvaju van panela.</p></div></div>
         <div id="telegramBotStatus" class="muted">Status bota se učitava...</div>
-        <div class="form-grid">
+        <div class="telegram-chat-form">
           <div><label for="telegramChatId">Admin chat ID</label><input id="telegramChatId" inputmode="numeric" placeholder="ID koji bot prikaže na /start" /></div>
           <div><label for="telegramChatLabel">Naziv uređaja/osobe</label><input id="telegramChatLabel" maxlength="120" placeholder="Moj Telegram" /></div>
-          <div class="form-actions"><button class="btn primary" id="telegramAddChatBtn" type="button">Dodaj admin chat</button></div>
+          <div class="telegram-chat-submit"><button class="btn primary" id="telegramAddChatBtn" type="button">Dodaj admin chat</button></div>
         </div>
         <div id="telegramAdminChats" class="passkey-list"></div>
-        <div class="form-grid">
+        <div class="telegram-thresholds">
           <div><label for="telegramTotpThreshold">Traži 2FA iznad (RSD)</label><input id="telegramTotpThreshold" type="number" min="1000" step="1000" /></div>
           <div><label for="telegramLowBalance">Upozori kada balans padne ispod (RSD)</label><input id="telegramLowBalance" type="number" step="1000" /></div>
         </div>
@@ -616,12 +626,12 @@
           <label><input type="checkbox" data-telegram-notification="low_balance" /> Nizak balans</label>
           <label><input type="checkbox" data-telegram-notification="inventory_error" /> Greške Inventory API-ja</label>
         </div>
-        <div class="security-actions">
+        <div class="telegram-actions">
           <button class="btn primary" id="telegramSaveSettingsBtn" type="button">Sačuvaj podešavanja</button>
           <button class="btn" id="telegramGenerateTokenBtn" type="button">Generiši / rotiraj API token</button>
           <button class="btn" id="telegramTestBtn" type="button">Pošalji test poruku</button>
         </div>
-        <div class="form-grid"><div><label for="telegramApiTokenOnce">API token (prikazuje se samo jednom)</label><input id="telegramApiTokenOnce" type="password" readonly autocomplete="off" /></div></div>
+        <div class="telegram-token-field"><label for="telegramApiTokenOnce">API token (prikazuje se samo jednom)</label><input id="telegramApiTokenOnce" type="password" readonly autocomplete="off" /></div>
         <div class="muted" id="telegramBotMessage"></div>
       </div>
       </div>
