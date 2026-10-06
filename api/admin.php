@@ -44,7 +44,7 @@ function fetch_resellers(PDO $pdo): array {
   ensure_security_tables($pdo);
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'status', 'balance_rsd'];
-  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent'] as $column) {
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent', 'admin_notes'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
   $select[] = "(SELECT enabled_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_enabled_at";
@@ -869,12 +869,18 @@ try {
     $balance = (int)($input['balance_rsd'] ?? 0);
     $discount = normalized_discount_percent($input['discount_percent'] ?? 0);
     $newToken = (string)($input['new_token'] ?? '');
+    $hasAdminNotesInput = array_key_exists('admin_notes', $input);
+    $adminNotes = trim((string)($input['admin_notes'] ?? ''));
+    $adminNotesLength = function_exists('mb_strlen') ? mb_strlen($adminNotes, 'UTF-8') : strlen($adminNotes);
 
     if ($id <= 0 || !valid_email($email)) {
       json_response(['ok' => false, 'error' => 'Neispravan reseller.'], 400);
     }
     if ($displayName !== '' && strlen($displayName) > 120) {
       json_response(['ok' => false, 'error' => 'Ime je predugačko.'], 400);
+    }
+    if ($adminNotesLength > 5000) {
+      json_response(['ok' => false, 'error' => 'Admin beleška može imati najviše 5000 karaktera.'], 400);
     }
 
     $pdo->beginTransaction();
@@ -902,6 +908,10 @@ try {
       $fields[] = 'phone = ?';
       $params[] = $phone;
     }
+    if ($hasAdminNotesInput && has_column($pdo, 'resellers', 'admin_notes')) {
+      $fields[] = 'admin_notes = ?';
+      $params[] = $adminNotes;
+    }
     if ($newToken !== '') {
       if (strlen($newToken) < 12) {
         throw new RuntimeException('Nova šifra/token mora imati najmanje 12 karaktera.');
@@ -928,6 +938,7 @@ try {
       'reseller_id' => $id,
       'credential_changed' => $newToken !== '',
       'discount_percent' => $discount,
+      'admin_notes_changed' => $hasAdminNotesInput,
     ]);
 
     $diff = $balance - (int)$oldBalance;

@@ -112,6 +112,7 @@
     .form-actions .btn{min-width:180px}
     .table-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap;min-width:300px}
     .table-actions .btn{min-height:36px;padding:8px 10px;font-size:12px}
+    .admin-note{min-width:260px;min-height:72px;font-size:12px}
     .table-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
     .table-toolbar .search-field{width:min(100%,420px)}
     .table-toolbar label{margin-top:0}
@@ -439,7 +440,7 @@
           <div class="section-head">
             <div class="section-title">
               <h2>Reselleri i balance</h2>
-              <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login.</p>
+              <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login. Admin beleška ostaje vidljiva samo ovde.</p>
             </div>
           </div>
           <div class="form-panel" style="margin-bottom:16px">
@@ -946,7 +947,7 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Popust (%)","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Popust (%)","Admin beleška","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
@@ -960,13 +961,14 @@
         const status = input(r.status || "active", "compact"); status.dataset.field = "status"; row.insertCell().appendChild(status);
         const balance = input(r.balance_rsd || 0, "compact"); balance.dataset.field = "balance_rsd"; balance.type = "number"; row.insertCell().appendChild(balance);
         const discount = input(r.discount_percent || 0, "compact"); discount.dataset.field = "discount_percent"; discount.type = "number"; discount.min = "0"; discount.max = "100"; discount.step = "0.01"; row.insertCell().appendChild(discount);
+        const adminNotes = textarea(r.admin_notes || ""); adminNotes.className = "admin-note"; adminNotes.dataset.field = "admin_notes"; adminNotes.placeholder = "Interna beleška samo za admina..."; row.insertCell().appendChild(adminNotes);
         const token = input("", "wide"); token.dataset.field = "new_token"; token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
             await ensureAdminStepUp();
-            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, discount_percent:discount.value, new_token:token.value }) });
+            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, discount_percent:discount.value, admin_notes:adminNotes.value, new_token:token.value }) });
             showToast("ok", "Reseller je ažuriran.");
             state.data = result;
             renderWithUiState(() => render());

@@ -252,6 +252,7 @@ function ensure_security_tables(PDO $pdo): void {
     'credential_changed_at DATETIME NULL',
     'security_2fa_reminded_at DATETIME NULL',
     'discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0',
+    'admin_notes TEXT NULL',
   ] as $definition) {
     $column = strtok($definition, ' ');
     if ($column && !has_column($pdo, 'resellers', $column)) {

@@ -23,6 +23,7 @@
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
+  - Admins can store a private per-reseller note in Admin → Reselleri; it is not exposed to reseller users or order notes.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin can cancel an order from the filtered Orders view through a transaction-safe, auditable reversal action.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
@@ -121,6 +122,7 @@
 - `sql/2026-06-13_admin_panel.sql` - migration for admin users and future delivery/status fields.
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
 - `sql/2026-08-09_account_security_inventory.sql` - migration for reseller phone/profile completion metadata, security audit, login attempts, Inventory API history, and missing-game reports.
+- `sql/2026-10-06_reseller_admin_notes.sql` - migration for private admin notes attached to reseller accounts.
 
 ## Architecture & Technical Decisions
 - Frameworks: no framework; plain PHP 8+, static HTML/CSS/JS.
@@ -170,6 +172,7 @@
   - Run `sql/2026-06-14_reseller_order_notes.sql` in phpMyAdmin for per-order reseller notes.
   - Run `sql/2026-08-09_account_security_inventory.sql` in phpMyAdmin for account onboarding, Inventory API audit, and missing-game reports.
   - Run `sql/2026-09-10_order_reliability.sql` in phpMyAdmin. It uses `CREATE TABLE IF NOT EXISTS` and does not delete existing data.
+  - Run `sql/2026-10-06_reseller_admin_notes.sql` in phpMyAdmin for the private per-reseller admin notes column; runtime schema helpers also add it when database privileges allow.
   - In private `api/config.local.php`, keep `mail.from` on a real domain mailbox accepted by cPanel. `mail.order_to` and `mail.payment_notice_to` may be comma-separated; the application always includes `arsenijee19@gmail.com` and `support@licenca.rs` as fallback recipients.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -195,6 +198,7 @@
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
   - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
+  - Admin-only reseller notes are free-form operational context and do not change balance, wallet transactions, or payment status.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
   - Admin order cancellation locks the order and reseller rows, verifies the original negative `ORDER` transaction, adds exactly one positive `ORDER_REVERSAL` transaction linked to the order when the wallet schema supports it, restores the charged amount, marks the order `canceled`, and writes an audit event. A second or concurrent reversal is rejected; legacy ENUM wallet schemas use a clearly described `ADMIN_ADJUSTMENT` fallback.
 - Product availability:
@@ -242,6 +246,7 @@
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.
+- Added private per-reseller admin notes with a 5000-character limit and a dedicated SQL migration.
 - Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
 - Set reseller/admin session lifetime to 60 minutes.
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.
