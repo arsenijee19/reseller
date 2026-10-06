@@ -92,19 +92,20 @@
     .scroll-top-btn.is-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}
     .scroll-top-btn:hover{transform:translateY(-2px);box-shadow:0 13px 32px rgba(18,32,51,.2)}
     .scroll-top-btn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .balance-group{display:flex;align-items:center;gap:10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
-    .balance-pill{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;column-gap:10px;min-height:44px;padding:0 5px;border:0;background:transparent;text-align:left;cursor:pointer}
+    .balance-group{display:flex;align-items:stretch;gap:10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+    .balance-pill{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;justify-content:start;column-gap:10px;min-height:48px;padding:0 5px;border:0;background:transparent;text-align:left;cursor:pointer}
     .balance-pill:hover{transform:none;box-shadow:none;border:0}
     .balance-icon{grid-row:1 / 3;width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#dcfce7;color:#138a43}
     .balance-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .balance-caption{color:#667085;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-    .balance-amount{display:inline-flex;align-items:baseline;gap:4px;font-size:19px;font-weight:850;letter-spacing:-.035em;color:var(--text)}
+    .balance-amount{display:inline-flex;align-items:baseline;gap:4px;font-family:inherit;font-size:19px;font-weight:850;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--text)}
     .balance-amount #balanceText{display:inline-block;text-align:right;font-variant-numeric:tabular-nums}
     .balance-amount small{font-size:11px;letter-spacing:0;color:var(--muted)}
     .balance-pill.is-counting .balance-icon{animation:wallet-count-bounce .38s ease-in-out 3;box-shadow:0 0 0 5px rgba(22,163,74,.1)}
     .balance-pill.is-counting #balanceText{color:var(--good)}
     @keyframes wallet-count-bounce{50%{transform:translateY(-2px) scale(1.06)}}
-    .paid-header-btn{min-height:40px;padding:8px 13px;border-radius:12px;background:#effcf4!important;border-color:#bbf0cc!important;color:#147a3b!important;box-shadow:none!important;white-space:nowrap;font-size:15px}
+    .paid-header-btn{min-height:48px;padding:0 14px;border-radius:12px;background:var(--panel)!important;border-color:var(--line)!important;color:var(--text)!important;box-shadow:none!important;white-space:nowrap;font-size:15px;font-weight:600}
+    .paid-header-btn svg{width:18px;height:18px;flex:0 0 18px;color:var(--good);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .logout-icon-btn{width:46px;height:46px;flex:0 0 46px;padding:11px;border-radius:14px}
     .logout-icon-btn svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .auth-only{display:none!important}
@@ -138,7 +139,8 @@
     .order-controls > .btn{min-width:114px;min-height:52px;border-radius:12px}
     .support-actions{align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
     .support-actions .support-label{margin-right:4px;color:var(--muted);font-size:12px}
-    .support-actions .btn{min-height:40px}
+    .support-actions .btn{min-height:44px;font-size:15px;font-weight:600}
+    .support-actions .btn svg{width:17px;height:17px;flex:0 0 17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .verification-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:14px}
     .verification-controls label{margin-top:0}
     .verification-controls input{min-height:48px}
@@ -238,7 +240,7 @@
     .history-footer .btn{justify-self:start;min-height:38px;font-size:12px}
     :root[data-theme="dark"] .status-indicator{color:var(--muted)}
     :root[data-theme="dark"] .balance-icon{background:rgba(37,167,101,.17);color:#49d38b}
-    :root[data-theme="dark"] .paid-header-btn{background:rgba(37,167,101,.14)!important;border-color:rgba(73,211,139,.32)!important;color:#74e2a5!important}
+    :root[data-theme="dark"] .paid-header-btn{background:var(--panel)!important;border-color:var(--line)!important;color:var(--text)!important}
     :root[data-theme="dark"] .shop-price-tip{background:rgba(37,167,101,.13);border-color:rgba(73,211,139,.3);color:#74e2a5}
     :root[data-theme="dark"] .shop-price-tip:hover,:root[data-theme="dark"] .shop-price-tip:focus-visible{background:rgba(37,167,101,.22)}
     .notes-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -493,10 +495,11 @@
     .support-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .support-actions .support-label{grid-column:1/-1;margin:0}
     .support-actions .btn{flex:none;min-width:0;width:100%;padding-inline:10px}
-    .support-actions #missingGameBtn{border-color:#fed7aa;background:#fff7ed;color:#c2410c}
-    .support-actions #requestGameBtn{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
-    :root[data-theme="dark"] .support-actions #missingGameBtn{border-color:rgba(251,146,60,.32);background:rgba(234,88,12,.12);color:#fdba74}
-    :root[data-theme="dark"] .support-actions #requestGameBtn{border-color:rgba(167,139,250,.3);background:rgba(109,40,217,.13);color:#c4b5fd}
+    .support-actions #missingGameBtn,.support-actions #requestGameBtn{border-color:var(--line);background:var(--panel);color:var(--text);box-shadow:none}
+    .support-actions #missingGameBtn svg{color:#ea580c}
+    .support-actions #requestGameBtn svg{color:#7c3aed}
+    :root[data-theme="dark"] .support-actions #missingGameBtn svg{color:#fdba74}
+    :root[data-theme="dark"] .support-actions #requestGameBtn svg{color:#c4b5fd}
     .price-group{padding:13px 14px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
     .price-search{width:min(100%,280px);min-height:44px;background:var(--soft)}
     .price-group-head{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:9px}
@@ -563,6 +566,25 @@
       .price-group{padding:12px}
       .price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
+    @media(max-width:640px){
+      body.is-authenticated .topbar{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,40px);grid-template-rows:44px auto;align-items:center;gap:16px 8px;margin-bottom:16px}
+      body.is-authenticated .brand{grid-column:1;grid-row:1}
+      body.is-authenticated .status.auth-only{display:contents!important}
+      body.is-authenticated .status-indicator{display:none}
+      body.is-authenticated .balance-group{position:static;grid-column:1/-1;grid-row:2;display:flex;align-items:stretch;justify-content:space-between;gap:10px;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 6px 20px rgba(31,48,79,.045)}
+      body.is-authenticated .balance-pill{display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto auto;flex:1;min-width:0;min-height:46px;padding:0;justify-content:start}
+      body.is-authenticated .paid-header-btn{align-self:stretch;height:auto;min-height:46px!important;padding-inline:13px}
+      body.is-authenticated .status .account-icon-btn{grid-column:2;grid-row:1;margin:0}
+      body.is-authenticated .status .theme-btn{grid-column:3;grid-row:1;margin:0}
+      body.is-authenticated .status .logout-icon-btn{grid-column:4;grid-row:1;margin:0}
+      body.is-authenticated .layout{padding-top:0}
+      body.is-authenticated .layout,.main-column,.app-column{gap:16px}
+      .section-heading{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:8px 12px}
+      .section-heading .section-copy{display:contents}
+      .section-heading h2{grid-column:2;align-self:center;margin:0}
+      .section-heading p{grid-column:1/-1;width:100%;margin:0}
+      .support-actions .btn{min-height:48px;padding-inline:10px}
+    }
     @media(max-width:400px){
       .brand p{display:none}
       .brand h1{font-size:15px}
@@ -590,9 +612,9 @@
         <div class="balance-group">
           <button class="pill balance-pill" id="balanceBtn" type="button" title="Prikaži istoriju transakcija">
             <span class="balance-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="3"/><path d="M3.5 9h17M7 4h10M15 14h2"/></svg></span>
-            <span class="balance-caption">Balans</span><span class="mono balance-amount"><span id="balanceText">0</span><small>RSD</small></span>
+            <span class="balance-caption">Balans</span><span class="balance-amount"><span id="balanceText">0</span><small>RSD</small></span>
           </button>
-          <button class="btn good paid-header-btn" id="paidBtn" type="button">Uplatio sam</button>
+          <button class="btn good paid-header-btn" id="paidBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg><span class="paid-btn-label">Uplatio sam</span></button>
         </div>
         <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn account-icon-btn" id="accountSettingsBtn" type="button" title="Podešavanja naloga" aria-label="Podešavanja naloga"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></button>
@@ -669,8 +691,8 @@
               </div>
               <div class="actions support-actions">
                 <span class="support-label">Treba Vam pomoć?</span>
-                <button class="btn" id="missingGameBtn" type="button">Igra mi nije stigla</button>
-                <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
+                <button class="btn" id="missingGameBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v9"/></svg>Igra mi nije stigla</button>
+                <button class="btn" id="requestGameBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Zatraži igru</button>
               </div>
               <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
               <div class="msg" id="orderMsg"></div>
@@ -921,6 +943,10 @@
       <p>Panel je osvežen da brže pronađete igru, proverite stanje i završite porudžbinu.</p>
       <div class="release-list">
         <div class="release-item">
+          <strong>Usklađen mobilni prikaz</strong>
+          <p>Balans i uplata su poravnati, razmaci ujednačeni, a opisi sekcija čitljiviji na telefonu.</p>
+        </div>
+        <div class="release-item">
           <strong>Ugodniji početak prijave</strong>
           <p>Provera postojeće prijave sada se prikazuje nežnim prelazom, bez kratkog treperenja ekrana.</p>
         </div>
@@ -981,7 +1007,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-login-loading-transition";
+    const RELEASE_VERSION = "2026-10-06-mobile-layout-refinement";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -2666,7 +2692,7 @@
     async function paidNotice(){
       hide(paidMsg);
       paidBtn.disabled = true;
-      paidBtn.textContent = "Šaljem...";
+      paidBtn.querySelector(".paid-btn-label").textContent = "Šaljem...";
       try{
         const result = await api("/api/payment_notice.php", { method:"POST", body:JSON.stringify({}) });
         show(paidMsg, result.mail_sent ? "ok" : "warn", result.message || "Obaveštenje je evidentirano. Proverićemo uplatu i ažurirati balance.");
@@ -2674,7 +2700,7 @@
         show(paidMsg, "bad", e.message);
       }finally{
         paidBtn.disabled = false;
-        paidBtn.textContent = "Uplatio sam";
+        paidBtn.querySelector(".paid-btn-label").textContent = "Uplatio sam";
       }
     }
 
