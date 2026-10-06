@@ -248,6 +248,7 @@
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.
 - Added private per-reseller admin notes with a 5000-character limit and a dedicated SQL migration.
 - Fixed the grouped product picker bootstrap helper and made authenticated catalog/history loading atomic; failed protected loading now clears the session back to the login screen.
+- Hardened reseller price loading against cached/stale responses and client display fallbacks; the server remains authoritative for the final discounted order price.
 - Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
 - Set reseller/admin session lifetime to 60 minutes.
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.

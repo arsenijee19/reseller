@@ -882,6 +882,9 @@ try {
     if ($adminNotesLength > 5000) {
       json_response(['ok' => false, 'error' => 'Admin beleška može imati najviše 5000 karaktera.'], 400);
     }
+    if (!has_column($pdo, 'resellers', 'discount_percent')) {
+      throw new RuntimeException('Popust nije dostupan dok se ne pokrene SQL migracija za discount_percent.');
+    }
 
     $pdo->beginTransaction();
     $old = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ? LIMIT 1');
@@ -893,10 +896,8 @@ try {
 
     $fields = ['email = ?', 'status = ?', 'balance_rsd = ?'];
     $params = [$email, $status, $balance];
-    if (has_column($pdo, 'resellers', 'discount_percent')) {
-      $fields[] = 'discount_percent = ?';
-      $params[] = $discount;
-    }
+    $fields[] = 'discount_percent = ?';
+    $params[] = $discount;
     if (has_column($pdo, 'resellers', 'display_name')) {
       $fields[] = 'display_name = ?';
       $params[] = $displayName !== '' ? $displayName : null;
@@ -997,6 +998,9 @@ try {
     }
 
     $columns = column_names($pdo, 'resellers');
+    if ($discount > 0 && !in_array('discount_percent', $columns, true)) {
+      throw new RuntimeException('Popust nije dostupan dok se ne pokrene SQL migracija za discount_percent.');
+    }
     $fields = ['email', 'token_hash', 'status', 'balance_rsd'];
     $params = [$email, password_hash($token, PASSWORD_DEFAULT), $status, $balance];
     if (in_array('discount_percent', $columns, true)) {

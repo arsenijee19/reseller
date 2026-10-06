@@ -895,7 +895,7 @@
       const headers = Object.assign({}, options.headers || {});
       if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
       if (state.csrf) headers["X-CSRF-Token"] = state.csrf;
-      const res = await fetch(url, Object.assign({ credentials:"same-origin" }, options, { headers }));
+      const res = await fetch(url, Object.assign({ credentials:"same-origin", cache:"no-store" }, options, { headers }));
       const text = await res.text();
       let json = {};
       try{
@@ -1426,8 +1426,23 @@
       ]);
       state.products = productsRes.products || [];
       state.prices = new Map();
+      const profileDiscount = Number(state.me && state.me.discount_percent);
+      const responseDiscount = Number(pricesRes.discount_percent);
+      const discountPercent = Number.isFinite(responseDiscount)
+        ? Math.max(0, Math.min(100, responseDiscount))
+        : (Number.isFinite(profileDiscount) ? Math.max(0, Math.min(100, profileDiscount)) : 0);
       (pricesRes.prices || []).forEach((p) => {
-        state.prices.set(String(p.product_id), p);
+        const serverPrice = Number(p.price);
+        const rawBasePrice = Number(p.base_price);
+        const basePrice = Number.isFinite(rawBasePrice) ? rawBasePrice : serverPrice;
+        const displayPrice = discountPercent > 0 && Number.isFinite(basePrice)
+          ? Math.max(0, Math.round(basePrice * (100 - discountPercent) / 100))
+          : serverPrice;
+        state.prices.set(String(p.product_id), Object.assign({}, p, {
+          base_price: basePrice,
+          price: displayPrice,
+          discount_percent: discountPercent
+        }));
       });
       renderProductOptions();
       renderPrices();
