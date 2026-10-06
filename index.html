@@ -487,7 +487,6 @@
     .price-variant:active{transform:scale(.985)}
     .price-variant-label{font-size:11px;color:var(--muted);line-height:1.25}
     .price-variant strong{font-size:14px;font-variant-numeric:tabular-nums;line-height:1.2;letter-spacing:-.01em}
-    .price-minimum{color:var(--muted);font-size:10px;line-height:1.2}
     .price-variant .price-original{font-size:10px}
     .price-variant .discount-badge{font-size:9px;padding:2px 5px}
     .price-variant-details{position:absolute;top:calc(100% + 7px);left:50%;width:max-content;max-width:min(320px,calc(100vw - 40px));padding:10px 12px;border:1px solid rgba(16,163,127,.18);border-radius:11px;background:var(--panel);box-shadow:0 12px 28px rgba(16,24,40,.16);color:#08796b;font-size:12px;line-height:1.45;text-align:center;transform:translate(-50%,4px);z-index:6}
@@ -1936,7 +1935,6 @@
               appendText(cell, "span", `-${product.discount_percent}%`, "discount-badge");
             }
             const recommended = recommendedResalePrice(Number(product.price));
-            appendText(cell, "span", `Min. ${price(recommended)}`, "price-minimum");
             const recommendation = document.createElement("div");
             recommendation.className = "price-variant-details";
             recommendation.id = detailsId;
