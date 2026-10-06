@@ -2,6 +2,7 @@ import importlib.util
 import os
 import pathlib
 import unittest
+from unittest import mock
 
 
 BOT_PATH = pathlib.Path(__file__).resolve().parents[1] / "telegram-bot" / "bot.py"
@@ -48,6 +49,26 @@ class CommandParserTests(unittest.TestCase):
         self.assertTrue(bot.is_allowed_start_message(allowed))
         self.assertFalse(bot.is_allowed_start_message(blocked))
         self.assertFalse(bot.is_allowed_start_message(ordinary))
+
+
+class PanelRequestTests(unittest.TestCase):
+    def test_panel_request_uses_cpanel_compatible_token_header(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b'{"ok":true,"authorized":false}'
+
+        with mock.patch.object(bot.urllib.request, "urlopen", return_value=Response()) as urlopen:
+            bot.panel("authorized", 123)
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("X-panel-token"), "test-api-token")
+        self.assertIsNone(request.get_header("Authorization"))
 
 
 if __name__ == "__main__":
