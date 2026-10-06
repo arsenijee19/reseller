@@ -34,20 +34,21 @@ $responseSent = false;
 function update_order_delivery_state(PDO $pdo, int $orderId, string $status, array $payload = [], string $notes = ''): void {
   $sets = [];
   $params = [];
+  $columns = column_names($pdo, 'orders');
 
-  if (has_column($pdo, 'orders', 'status')) {
+  if (in_array('status', $columns, true)) {
     $sets[] = 'status = ?';
     $params[] = $status;
   }
-  if (has_column($pdo, 'orders', 'delivery_payload')) {
+  if (in_array('delivery_payload', $columns, true)) {
     $sets[] = 'delivery_payload = ?';
     $params[] = json_encode($payload, JSON_UNESCAPED_UNICODE);
   }
-  if ($notes !== '' && has_column($pdo, 'orders', 'admin_notes')) {
+  if ($notes !== '' && in_array('admin_notes', $columns, true)) {
     $sets[] = 'admin_notes = ?';
     $params[] = $notes;
   }
-  if (has_column($pdo, 'orders', 'updated_at')) {
+  if (in_array('updated_at', $columns, true)) {
     $sets[] = 'updated_at = NOW()';
   }
   if (!$sets) return;
@@ -58,14 +59,37 @@ function update_order_delivery_state(PDO $pdo, int $orderId, string $status, arr
 }
 
 $pdo = db();
-try {
-  ensure_security_tables($pdo);
-  ensure_order_observability_tables($pdo);
-} catch (Throwable $ignored) {
-  // Order creation must remain available even if a legacy DB user cannot create the observability tables.
-}
-require_completed_profile($pdo, $reseller_id);
 $profile = reseller_profile($pdo, $reseller_id);
+if (!$profile) {
+  json_response(["ok"=>false,"error"=>"Nalog nije pronađen."], 404);
+}
+if (!array_key_exists('profile_completed_at', $profile)) {
+  try {
+    ensure_security_tables($pdo);
+    $profile = reseller_profile($pdo, $reseller_id) ?: $profile;
+  } catch (Throwable $ignored) {
+    // Keep legacy databases usable if runtime schema updates are unavailable.
+  }
+}
+if (!table_exists($pdo, 'order_delivery_events')) {
+  try {
+    ensure_order_observability_tables($pdo);
+  } catch (Throwable $ignored) {
+    // Order persistence must not depend on optional notification audit tables.
+  }
+}
+if (array_key_exists('profile_completed_at', $profile) && (
+  (string)($profile['profile_completed_at'] ?? '') === '' ||
+  !valid_email((string)($profile['email'] ?? '')) ||
+  is_internal_reseller_email((string)($profile['email'] ?? '')) ||
+  (array_key_exists('phone', $profile) && !valid_phone((string)($profile['phone'] ?? '')))
+)) {
+  json_response([
+    'ok' => false,
+    'error' => 'Dovršite podešavanja naloga pre nastavka korišćenja panela.',
+    'profile_required' => true,
+  ], 428);
+}
 if ($profile) {
   $reseller_name = (string)($profile["display_name"] ?? "");
   $reseller_phone = (string)($profile["phone"] ?? "");
@@ -145,19 +169,32 @@ try {
   if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
   }
+  $successResponse = json_encode([
+    "ok"=>true,
+    "request_id"=>$request_id,
+    "charged_rsd"=>$price,
+    "balance_rsd"=>$newBal,
+    "email_ok"=>null,
+    "n8n_ok"=>null,
+    "delivery_status"=>"processing"
+  ], JSON_UNESCAPED_UNICODE);
   if (function_exists('fastcgi_finish_request')) {
     ignore_user_abort(true);
     @set_time_limit(30);
-    echo json_encode([
-      "ok"=>true,
-      "request_id"=>$request_id,
-      "charged_rsd"=>$price,
-      "balance_rsd"=>$newBal,
-      "email_ok"=>null,
-      "n8n_ok"=>null,
-      "delivery_status"=>"processing"
-    ], JSON_UNESCAPED_UNICODE);
+    echo $successResponse;
     fastcgi_finish_request();
+    $responseSent = true;
+  } else {
+    // Let the browser finish reading the JSON before slower notification work.
+    ignore_user_abort(true);
+    @set_time_limit(30);
+    header('Connection: close');
+    header('Content-Length: ' . strlen($successResponse));
+    echo $successResponse;
+    while (ob_get_level() > 0) {
+      if (!@ob_end_flush()) break;
+    }
+    flush();
     $responseSent = true;
   }
 

@@ -2532,7 +2532,7 @@
       hide(orderMsg);
       try{
         await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id }) });
-        await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, 500 - (performance.now() - startedAt))));
+        await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, 120 - (performance.now() - startedAt))));
         window.clearTimeout(slowOrderTimer);
         setOrderProcessing(false);
         hide(orderMsg);

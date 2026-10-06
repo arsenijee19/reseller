@@ -21,7 +21,7 @@
   - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
-  - On PHP-FPM, order creation returns as soon as the order and wallet charge are committed; email and n8n delivery continue after the response and update the existing delivery audit records. Non-FPM PHP keeps the synchronous fallback.
+  - Order creation avoids per-request schema creation on its critical path, commits the order and wallet charge first, then flushes JSON before email/n8n work; PHP-FPM uses `fastcgi_finish_request()` and other PHP handlers attempt a content-length/connection-close flush.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
