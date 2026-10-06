@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import pathlib
 import unittest
@@ -69,6 +70,50 @@ class PanelRequestTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.get_header("X-panel-token"), "test-api-token")
         self.assertIsNone(request.get_header("Authorization"))
+
+
+class MessageHandlingTests(unittest.TestCase):
+    def test_start_sends_chat_id_without_panel_api(self):
+        with mock.patch.object(bot, "send") as send, mock.patch.object(bot, "panel") as panel:
+            bot.handle_message({"text": "/start", "from": {"username": "arsoarso"}, "chat": {"id": 4242}})
+
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[0], 4242)
+        self.assertIn("4242", send.call_args.args[1])
+        panel.assert_not_called()
+
+    def test_help_runs_through_panel_api_and_replies(self):
+        class Response:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return self.payload
+
+        actions = []
+
+        def urlopen(request, timeout):
+            payload = json.loads(request.data)
+            actions.append(payload["action"])
+            response = {"ok": True}
+            if payload["action"] == "authorized":
+                response["authorized"] = True
+            elif payload["action"] == "get_conversation":
+                response["conversation"] = None
+            return Response(json.dumps(response).encode())
+
+        with mock.patch.object(bot.urllib.request, "urlopen", side_effect=urlopen), mock.patch.object(bot, "send") as send:
+            bot.handle_message({"text": "/help", "from": {"username": "arsoarso"}, "chat": {"id": 4242}})
+
+        self.assertEqual(actions, ["authorized", "heartbeat", "get_conversation"])
+        send.assert_called_once()
+        self.assertIn("PlayWorld admin bot", send.call_args.args[1])
 
 
 if __name__ == "__main__":

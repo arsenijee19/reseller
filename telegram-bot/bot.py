@@ -250,12 +250,12 @@ def handle_message(message: dict[str, Any]) -> None:
     if command == "start":
         send(chat_id, f"Chat ID ovog naloga: <code>{chat_id}</code>. Dodajte ga u Admin → Podešavanja → Telegram admin bot.")
         return
-    authorized = panel("authorized", chat_id, chat_id=chat_id)
+    authorized = panel("authorized", chat_id)
     is_admin = bool(authorized.get("authorized"))
     if not is_admin:
         return
     panel("heartbeat", chat_id, service="webhook")
-    conversation = panel("get_conversation", chat_id, chat_id=chat_id).get("conversation")
+    conversation = panel("get_conversation", chat_id).get("conversation")
     if conversation and not command:
         state = conversation.get("state")
         payload = conversation.get("payload") or {}
@@ -265,7 +265,7 @@ def handle_message(message: dict[str, Any]) -> None:
             except ValueError as exc:
                 send(chat_id, safe(exc))
                 return
-            panel("clear_conversation", chat_id, chat_id=chat_id)
+            panel("clear_conversation", chat_id)
             if payload.get("notice_id"):
                 begin_balance(chat_id, int(payload["reseller_id"]), amount, f"Potvrđena uplata preko Telegrama · obaveštenje #{payload['notice_id']}", "payment_confirm", {"notice_id": int(payload["notice_id"]), "amount_rsd": amount}, int(payload.get("message_id") or 0) or None)
             else:
@@ -277,7 +277,7 @@ def handle_message(message: dict[str, Any]) -> None:
             finish_action(chat_id, result, int(payload.get("message_id") or 0))
             return
         if state == "await_reject_reason":
-            panel("clear_conversation", chat_id, chat_id=chat_id)
+            panel("clear_conversation", chat_id)
             result = panel("reject_payment", chat_id, notice_id=payload.get("notice_id"), reason=text)
             send(chat_id, "Uplata je odbijena." if result.get("ok") else safe(result.get("error", "Nije uspelo.")), edit=int(payload.get("message_id") or 0) or None)
             return
@@ -382,7 +382,7 @@ def choose_reseller_for_adjustment(chat_id: int, query: str, amount: int, reason
     if len(matches) == 1:
         begin_balance(chat_id, int(matches[0]["id"]), amount, reason)
     elif matches:
-        panel("set_conversation", chat_id, chat_id=chat_id, state="await_reseller_action", payload={"amount_rsd": amount, "reason": reason})
+        panel("set_conversation", chat_id, state="await_reseller_action", payload={"amount_rsd": amount, "reason": reason})
         send(chat_id, "Izaberite resellera:", [[{"text": f"{name_of(r)} · #{r['id']}", "callback_data": f"adj:{r['id']}"}] for r in matches])
     else:
         send(chat_id, "Reseller nije pronađen. Koristite /dopuna ime 5000 razlog.")
@@ -390,11 +390,11 @@ def choose_reseller_for_adjustment(chat_id: int, query: str, amount: int, reason
 
 def finish_action(chat_id: int, result: dict[str, Any], message_id: int = 0) -> None:
     if result.get("requires_totp"):
-        panel("set_conversation", chat_id, chat_id=chat_id, state="await_totp", payload={"action_id": result.get("action_id"), "message_id": message_id})
+        panel("set_conversation", chat_id, state="await_totp", payload={"action_id": result.get("action_id"), "message_id": message_id})
         message = "Kod nije ispravan. Pokušajte ponovo sa svežim šestocifrenim kodom." if result.get("totp_error") else "Iznos zahteva svež admin 2FA kod. Pošaljite šestocifreni kod iz Authenticator aplikacije."
         send(chat_id, message, edit=message_id or None)
         return
-    panel("clear_conversation", chat_id, chat_id=chat_id)
+    panel("clear_conversation", chat_id)
     if not result.get("ok"):
         send(chat_id, safe(result.get("error", "Akcija nije uspela.")), edit=message_id or None)
         return
@@ -418,7 +418,7 @@ def handle_callback(query: dict[str, Any]) -> None:
     data = str(query.get("data", ""))
     if not is_allowed_username((query.get("from") or {}).get("username")):
         return
-    auth = panel("authorized", chat_id, chat_id=chat_id)
+    auth = panel("authorized", chat_id)
     if not auth.get("authorized"):
         answer_callback(callback_id, "Nemaš pristup."); return
     parts = data.split(":")
@@ -432,17 +432,17 @@ def handle_callback(query: dict[str, Any]) -> None:
             if int(row.get("reseller_id", 0)) == int(parts[1]):
                 send(chat_id, f"<b>#{row['id']} · {safe(row.get('product_name'))}</b>\n{safe(row.get('account_type'))} · {format_rsd(row.get('price_rsd'))} · {safe(row.get('created_at'))}")
     elif parts[0] == "adjust" and len(parts) == 3:
-        panel("set_conversation", chat_id, chat_id=chat_id, state="await_amount", payload={"reseller_id": int(parts[1]), "operation": parts[2], "reason": "Dopuna preko Telegrama" if parts[2] == "plus" else "Oduzimanje preko Telegrama", "message_id": message_id})
+        panel("set_conversation", chat_id, state="await_amount", payload={"reseller_id": int(parts[1]), "operation": parts[2], "reason": "Dopuna preko Telegrama" if parts[2] == "plus" else "Oduzimanje preko Telegrama", "message_id": message_id})
         send(chat_id, "Unesite iznos (npr. 5000, 5.000 ili 5k). Posle toga dobićete pregled za potvrdu.", edit=message_id)
     elif parts[0] == "select" and len(parts) == 3:
         send(chat_id, "Izbor je istekao. Pokrenite komandu ponovo.")
     elif parts[0] == "adj" and len(parts) == 2:
-        conversation = panel("get_conversation", chat_id, chat_id=chat_id).get("conversation")
+        conversation = panel("get_conversation", chat_id).get("conversation")
         payload = (conversation or {}).get("payload") or {}
         if not conversation or conversation.get("state") != "await_reseller_action":
             send(chat_id, "Izbor je istekao. Pokrenite komandu ponovo.")
         else:
-            panel("clear_conversation", chat_id, chat_id=chat_id)
+            panel("clear_conversation", chat_id)
             begin_balance(chat_id, int(parts[1]), int(payload["amount_rsd"]), str(payload.get("reason") or "Promena balansa preko Telegrama"), edit_id=message_id)
     elif parts[0] == "ok" and len(parts) == 2:
         result = panel("confirm_action", chat_id, action_id=parts[1])
@@ -458,7 +458,7 @@ def handle_callback(query: dict[str, Any]) -> None:
         if notice.get("amount_rsd"):
             begin_balance(chat_id, int(notice["reseller_id"]), int(notice["amount_rsd"]), f"Potvrđena uplata preko Telegrama · obaveštenje #{notice['id']}", "payment_confirm", {"notice_id": int(notice["id"]), "amount_rsd": int(notice["amount_rsd"])}, message_id)
         else:
-            panel("set_conversation", chat_id, chat_id=chat_id, state="await_amount", payload={"notice_id": int(notice["id"]), "reseller_id": int(notice["reseller_id"]), "message_id": message_id})
+            panel("set_conversation", chat_id, state="await_amount", payload={"notice_id": int(notice["id"]), "reseller_id": int(notice["reseller_id"]), "message_id": message_id})
             send(chat_id, f"Uplata #{notice['id']} · {safe(notice.get('display_name') or notice.get('reseller_email'))}. Unesite primljeni iznos u RSD.", edit=message_id)
     elif parts[0] == "other" and len(parts) == 2:
         payments = panel("payments", chat_id).get("payments", [])
@@ -466,10 +466,10 @@ def handle_callback(query: dict[str, Any]) -> None:
         if not notice:
             send(chat_id, "Uplata je već obrađena ili ne postoji.", edit=message_id)
         else:
-            panel("set_conversation", chat_id, chat_id=chat_id, state="await_amount", payload={"notice_id": int(notice["id"]), "reseller_id": int(notice["reseller_id"]), "message_id": message_id})
+            panel("set_conversation", chat_id, state="await_amount", payload={"notice_id": int(notice["id"]), "reseller_id": int(notice["reseller_id"]), "message_id": message_id})
             send(chat_id, f"Unesite stvarni iznos primljen od {safe(notice.get('display_name') or notice.get('reseller_email'))}.", edit=message_id)
     elif parts[0] == "reject" and len(parts) == 2:
-        panel("set_conversation", chat_id, chat_id=chat_id, state="await_reject_reason", payload={"notice_id": int(parts[1]), "message_id": message_id})
+        panel("set_conversation", chat_id, state="await_reject_reason", payload={"notice_id": int(parts[1]), "message_id": message_id})
         send(chat_id, "Unesite razlog odbijanja ili pošaljite — ako ne želite razlog.", edit=message_id)
     elif parts[0] == "paid" and len(parts) == 2:
         begin_order_action(chat_id, "mark_order_paid", {"order_id": int(parts[1])}, "Označi porudžbinu plaćenom", edit_id=message_id)
