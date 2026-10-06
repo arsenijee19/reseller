@@ -444,15 +444,19 @@
     .price-period-title{font-size:12px;font-weight:850;letter-spacing:.01em}
     .platform-badge{display:inline-flex;align-items:center;padding:3px 6px;border-radius:6px;background:#e4eaff;color:#3d4ed8;font-size:10px;font-weight:850;line-height:1}
     .platform-badge.ps4{background:#e3f4ff;color:#1672a5}
-    .price-variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px}
-    .price-variant{display:grid;align-content:start;gap:3px;min-width:0;min-height:58px;padding:8px 9px;border:1px solid transparent;border-radius:10px;background:var(--soft);color:var(--text);text-align:left;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),transform .16s var(--ease)}
-    .price-variant:hover,.price-variant[aria-expanded="true"]{border-color:rgba(49,93,244,.22);background:rgba(49,93,244,.07)}
+    .price-variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:9px}
+    .price-variant-wrap{position:relative;min-width:0}
+    .price-variant{display:grid;width:100%;align-content:start;gap:4px;min-width:0;min-height:68px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);text-align:left;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
+    .price-variant:hover{border-color:rgba(49,93,244,.35);background:rgba(49,93,244,.045);box-shadow:0 5px 14px rgba(49,93,244,.08)}
+    .price-variant[aria-expanded="true"]{border-color:rgba(49,93,244,.48);background:rgba(49,93,244,.08);box-shadow:0 0 0 2px rgba(49,93,244,.09)}
+    .price-variant:focus-visible{outline:2px solid rgba(49,93,244,.72);outline-offset:2px}
+    .price-variant-wrap:has(.price-variant[aria-expanded="true"]){z-index:5}
     .price-variant:active{transform:scale(.985)}
     .price-variant-label{font-size:11px;color:var(--muted);line-height:1.25}
-    .price-variant strong{font-size:13px;font-variant-numeric:tabular-nums;line-height:1.2}
+    .price-variant strong{font-size:14px;font-variant-numeric:tabular-nums;line-height:1.2;letter-spacing:-.01em}
     .price-variant .price-original{font-size:10px}
     .price-variant .discount-badge{font-size:9px;padding:2px 5px}
-    .price-variant-details{grid-column:1/-1;padding:9px 10px;border-radius:10px;background:rgba(16,163,127,.08);color:#08796b;font-size:12px;line-height:1.45}
+    .price-variant-details{position:absolute;top:calc(100% + 7px);left:50%;width:max-content;max-width:min(320px,calc(100vw - 40px));padding:10px 12px;border:1px solid rgba(16,163,127,.18);border-radius:11px;background:var(--panel);box-shadow:0 12px 28px rgba(16,24,40,.16);color:#08796b;font-size:12px;line-height:1.45;text-align:center;transform:translate(-50%,4px);z-index:6}
     .price-variant-details[hidden]{display:none}
     .delivery-offer{display:none;align-items:center;gap:10px;margin-top:12px;padding:11px 12px;border:1px solid rgba(49,93,244,.16);border-radius:13px;background:linear-gradient(110deg,rgba(49,93,244,.055),rgba(107,70,232,.045))}
     .delivery-offer.visible{display:none}
@@ -470,6 +474,7 @@
     :root[data-theme="dark"] .platform-badge.ps4{background:rgba(56,189,248,.16);color:#88d8ff}
     @media(max-width:860px){
       .delivery-offer.visible{display:flex}
+      .price-variant-details{position:static;width:auto;max-width:none;margin-top:7px;box-shadow:none;text-align:left;transform:none}
       .shell{padding:16px 12px 36px}
       .topbar{flex-direction:row;align-items:center;gap:10px;margin-bottom:16px}
       .brand{align-items:center}
@@ -1854,6 +1859,8 @@
           });
           sortedProducts.forEach((product, productIndex) => {
             const slot = priceSlot(product);
+            const item = document.createElement("div");
+            item.className = "price-variant-wrap";
             const cell = document.createElement("button");
             cell.type = "button";
             cell.className = "price-variant";
@@ -1882,7 +1889,8 @@
               cell.setAttribute("aria-expanded", String(!expanded));
               recommendation.hidden = expanded;
             });
-            variants.append(cell, recommendation);
+            item.append(cell, recommendation);
+            variants.appendChild(item);
           });
           period.appendChild(variants);
           card.appendChild(period);
