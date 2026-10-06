@@ -145,23 +145,18 @@ try {
     'created_at' => gmdate('c'),
   ]);
 
-  // 4) Wallet transakcija
-  $wt = $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description, related_order_id)
-                       VALUES (?, 'ORDER', ?, ?, ?)");
-  $wt->execute([$reseller_id, -$price, $desc, $orderDbId]);
+  // Record the debit and balance snapshot through the shared atomic wallet service.
+  $wallet = apply_wallet_transaction($pdo, $reseller_id, -$price, 'ORDER', $desc, [
+    'related_order_id' => $orderDbId,
+    'source' => 'panel',
+  ]);
+  $newBal = (int)$wallet['balance_after_rsd'];
 
-  // 5) Update balansa
-  $up = $pdo->prepare("UPDATE resellers SET balance_rsd = balance_rsd - ? WHERE id=?");
-  $up->execute([$price, $reseller_id]);
-  if ($up->rowCount() !== 1) {
-    throw new RuntimeException("Balance se promenio tokom poručivanja. Osvežite stranicu i pokušajte ponovo.", 409);
-  }
-
-  // 6) Novi balans
-  $b = $pdo->prepare("SELECT balance_rsd FROM resellers WHERE id=?");
-  $b->execute([$reseller_id]);
-  $newBal = (int)$b->fetchColumn();
-
+  telegram_enqueue($pdo, 'order-' . $orderDbId, 'new_order', [
+    'order_id' => $orderDbId, 'reseller_id' => $reseller_id, 'reseller_email' => $reseller_email,
+    'reseller_name' => $reseller_name, 'product_name' => (string)$p['product_name'],
+    'account_type' => (string)$p['account_type'], 'price_rsd' => $price, 'balance_rsd' => $newBal,
+  ]);
   $pdo->commit();
 
   // Return as soon as the order and wallet charge are durable. PHP-FPM can

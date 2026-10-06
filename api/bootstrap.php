@@ -536,6 +536,80 @@ function audit_event(PDO $pdo, string $actorType, ?int $actorId, string $eventTy
   ]);
 }
 
+function apply_wallet_transaction(PDO $pdo, int $resellerId, int $amountRsd, string $type, string $description, array $metadata = []): array {
+  if (!$pdo->inTransaction()) throw new LogicException('Wallet changes require an open transaction.');
+  if ($resellerId <= 0 || $amountRsd === 0 || abs($amountRsd) > 100000000) throw new InvalidArgumentException('Invalid wallet change.');
+  $idempotencyKey = trim((string)($metadata['idempotency_key'] ?? ''));
+  if ($idempotencyKey !== '' && has_column($pdo, 'wallet_transactions', 'idempotency_key')) {
+    $existing = $pdo->prepare('SELECT id, reseller_id, amount_rsd FROM wallet_transactions WHERE idempotency_key = ? LIMIT 1 FOR UPDATE');
+    $existing->execute([$idempotencyKey]);
+    $row = $existing->fetch(PDO::FETCH_ASSOC);
+    if ($row) return ['duplicate' => true, 'transaction_id' => (int)$row['id'], 'balance_before_rsd' => null, 'balance_after_rsd' => null];
+  }
+
+  $lock = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ? LIMIT 1 FOR UPDATE');
+  $lock->execute([$resellerId]);
+  $balance = $lock->fetchColumn();
+  if ($balance === false) throw new RuntimeException('Reseller nije pronađen.');
+  $before = (int)$balance;
+  $after = $before + $amountRsd;
+  $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$after, $resellerId]);
+
+  $columns = ['reseller_id', 'type', 'amount_rsd', 'description'];
+  $values = [$resellerId, $type, $amountRsd, substr($description, 0, 255)];
+  $optional = [
+    'source' => (string)($metadata['source'] ?? 'panel'),
+    'admin_id' => $metadata['admin_id'] ?? null,
+    'admin_chat_id' => $metadata['admin_chat_id'] ?? null,
+    'balance_before_rsd' => $before,
+    'balance_after_rsd' => $after,
+    'telegram_message_id' => $metadata['telegram_message_id'] ?? null,
+    'idempotency_key' => $idempotencyKey !== '' ? $idempotencyKey : null,
+    'reversal_of_transaction_id' => $metadata['reversal_of_transaction_id'] ?? null,
+    'related_order_id' => $metadata['related_order_id'] ?? null,
+  ];
+  foreach ($optional as $column => $value) {
+    if (!has_column($pdo, 'wallet_transactions', $column)) continue;
+    $columns[] = $column;
+    $values[] = $value;
+  }
+  $quoted = array_map(static fn($column) => '`' . str_replace('`', '', $column) . '`', $columns);
+  $stmt = $pdo->prepare('INSERT INTO wallet_transactions (' . implode(',', $quoted) . ') VALUES (' . implode(',', array_fill(0, count($values), '?')) . ')');
+  $stmt->execute($values);
+  $transactionId = (int)$pdo->lastInsertId();
+  if (table_exists($pdo, 'telegram_bot_config')) {
+    $threshold = (int)$pdo->query('SELECT low_balance_threshold_rsd FROM telegram_bot_config WHERE id = 1')->fetchColumn();
+    if ($before >= $threshold && $after < $threshold) {
+      $name = has_column($pdo, 'resellers', 'display_name') ? 'display_name' : "'' AS display_name";
+      $reseller = $pdo->prepare("SELECT email, {$name} FROM resellers WHERE id = ? LIMIT 1");
+      $reseller->execute([$resellerId]);
+      $identity = $reseller->fetch(PDO::FETCH_ASSOC) ?: [];
+      telegram_enqueue($pdo, 'low-balance-' . $transactionId, 'low_balance', [
+        'reseller_id' => $resellerId, 'reseller_email' => (string)($identity['email'] ?? ''),
+        'reseller_name' => (string)($identity['display_name'] ?? ''), 'balance_rsd' => $after,
+        'threshold_rsd' => $threshold, 'transaction_id' => $transactionId,
+      ]);
+    }
+  }
+  return ['duplicate' => false, 'transaction_id' => $transactionId, 'balance_before_rsd' => $before, 'balance_after_rsd' => $after];
+}
+
+function telegram_notifications(PDO $pdo): array {
+  if (!table_exists($pdo, 'telegram_bot_config')) return [];
+  $json = $pdo->query('SELECT notifications_json FROM telegram_bot_config WHERE id = 1')->fetchColumn();
+  $decoded = is_string($json) ? json_decode($json, true) : null;
+  return is_array($decoded) ? $decoded : [];
+}
+
+function telegram_enqueue(PDO $pdo, string $eventKey, string $eventType, array $payload): bool {
+  if (!table_exists($pdo, 'telegram_outbox') || !table_exists($pdo, 'telegram_bot_config')) return false;
+  $settings = telegram_notifications($pdo);
+  if (array_key_exists($eventType, $settings) && empty($settings[$eventType])) return false;
+  $stmt = $pdo->prepare("INSERT IGNORE INTO telegram_outbox (event_key, event_type, payload_json) VALUES (?, ?, ?)");
+  $stmt->execute([substr($eventKey, 0, 120), substr($eventType, 0, 40), json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+  return $stmt->rowCount() > 0;
+}
+
 function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'balance_rsd', 'status'];

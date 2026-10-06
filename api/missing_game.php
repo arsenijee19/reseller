@@ -58,6 +58,15 @@ try {
   $reportStmt->execute([$orderId]);
   $report = $reportStmt->fetch(PDO::FETCH_ASSOC);
   $createdNow = $insert->rowCount() > 0;
+  if ($createdNow && $report) {
+    telegram_enqueue($pdo, 'missing-' . (int)$report['id'], 'missing_game', [
+      'report_id' => (int)$report['id'], 'order_id' => (int)$order['id'],
+      'reseller_id' => $resellerId, 'reseller_email' => (string)$profile['email'],
+      'reseller_name' => (string)($profile['display_name'] ?? ''),
+      'product_name' => (string)($order['product_name'] ?: $order['product_id']),
+      'account_type' => (string)($order['account_type'] ?? ''),
+    ]);
+  }
   $pdo->commit();
 
   if (!$createdNow) {

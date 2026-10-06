@@ -225,6 +225,16 @@ try {
     $requestDbId,
   ]);
 
+  if (!in_array($result, ['success', 'duplicate'], true)) {
+    $resellerProfile = reseller_profile($pdo, $resellerId) ?: [];
+    telegram_enqueue($pdo, 'inventory-error-' . $requestDbId, 'inventory_error', [
+      'request_id' => $requestDbId, 'reseller_id' => $resellerId,
+      'reseller_name' => (string)($resellerProfile['display_name'] ?? ''),
+      'reseller_email' => (string)($resellerProfile['email'] ?? ''),
+      'result' => $result, 'http_status' => $httpStatus,
+    ]);
+  }
+
   audit_event($pdo, 'reseller', $resellerId, 'verification_code_request', $result, [
     'account_hash' => request_fingerprint($accountEmail),
     'http_status' => $httpStatus,

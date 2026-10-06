@@ -1,0 +1,27 @@
+services:
+  bot:
+    build: .
+    container_name: reseller-tg-bot
+    restart: unless-stopped
+    env_file:
+      - /etc/reseller-tg-bot/bot.env
+    environment:
+      TLS_CERT: /run/tls/fullchain.pem
+      TLS_KEY: /run/tls/privkey.pem
+      PORT: "8443"
+    ports:
+      - "0.0.0.0:8443:8443"
+    volumes:
+      - /etc/reseller-tg-bot/tls:/run/tls:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

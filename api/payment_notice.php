@@ -15,6 +15,14 @@ require_json_content_type();
 
 require_csrf();
 $reseller = require_reseller();
+$input = read_json_body();
+$reportedAmount = null;
+if (array_key_exists('amount_rsd', $input) && trim((string)$input['amount_rsd']) !== '') {
+  $reportedAmount = filter_var($input['amount_rsd'], FILTER_VALIDATE_INT);
+  if ($reportedAmount === false || $reportedAmount <= 0 || $reportedAmount > 100000000) {
+    json_response(['ok' => false, 'error' => 'Iznos uplate nije validan.'], 400);
+  }
+}
 
 try {
   $pdo = db();
@@ -31,6 +39,7 @@ try {
   if (!$row) {
     json_response(['ok' => false, 'error' => 'Nalog nije pronađen. Refrešujte stranicu i ulogujte se ponovo.'], 404);
   }
+  $profile = reseller_profile($pdo, (int)$row['id']) ?: [];
 
   $clickedAt = gmdate('Y-m-d H:i:s') . ' UTC';
   $subject = 'Reseller je označio uplatu';
@@ -38,6 +47,7 @@ try {
   $message .= 'Reseller ID: ' . (int)$row['id'] . "\n";
   $message .= 'Reseller Email: ' . (string)$row['email'] . "\n";
   $message .= 'Trenutni balance: ' . (int)$row['balance_rsd'] . " RSD\n";
+  $message .= 'Prijavljeni iznos: ' . ($reportedAmount === null ? 'nije unet' : number_format($reportedAmount, 0, ',', '.') . ' RSD') . "\n";
   $message .= 'Vreme klika: ' . $clickedAt . "\n\n";
   $message .= "Potrebno je proveriti uplatu i po potrebi ažurirati balance u admin panelu.\n";
 
@@ -47,8 +57,8 @@ try {
   ]);
   $noticeId = null;
   if (table_exists($pdo, 'payment_notice_requests')) {
-    $insert = $pdo->prepare('INSERT INTO payment_notice_requests (reseller_id, reseller_email, balance_rsd, clicked_at, status, recipients, attempts) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $insert->execute([
+    $insert = $pdo->prepare('INSERT INTO payment_notice_requests (reseller_id, reseller_email, balance_rsd, clicked_at, status, recipients, attempts' . (has_column($pdo, 'payment_notice_requests', 'amount_rsd') ? ', amount_rsd' : '') . ') VALUES (?, ?, ?, ?, ?, ?, ?' . (has_column($pdo, 'payment_notice_requests', 'amount_rsd') ? ', ?' : '') . ')');
+    $insertValues = [
       (int)$row['id'],
       (string)$row['email'],
       (int)$row['balance_rsd'],
@@ -56,8 +66,20 @@ try {
       'pending',
       implode(', ', $recipients),
       0,
-    ]);
+    ];
+    if (has_column($pdo, 'payment_notice_requests', 'amount_rsd')) $insertValues[] = $reportedAmount;
+    $insert->execute($insertValues);
     $noticeId = (int)$pdo->lastInsertId();
+    if ($noticeId > 0) {
+      telegram_enqueue($pdo, 'payment-' . $noticeId, 'payment_notice', [
+        'notice_id' => $noticeId,
+        'reseller_id' => (int)$row['id'],
+        'reseller_email' => (string)$row['email'],
+        'reseller_name' => (string)($profile['display_name'] ?? ''),
+        'balance_rsd' => (int)$row['balance_rsd'],
+        'amount_rsd' => $reportedAmount,
+      ]);
+    }
   }
 
   $result = send_text_notification_email($recipients, $subject, $message);

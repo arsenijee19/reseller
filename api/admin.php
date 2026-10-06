@@ -165,9 +165,13 @@ function fetch_transactions(PDO $pdo): array {
   $resellerName = has_column($pdo, 'resellers', 'display_name') ? 'r.display_name AS reseller_name' : "'' AS reseller_name";
   $relatedOrder = has_column($pdo, 'wallet_transactions', 'related_order_id') ? 'wt.related_order_id' : 'NULL AS related_order_id';
   $createdAt = has_column($pdo, 'wallet_transactions', 'created_at') ? 'wt.created_at' : 'NULL AS created_at';
+  $extraColumns = [];
+  foreach (['source', 'admin_id', 'admin_chat_id', 'balance_before_rsd', 'balance_after_rsd', 'telegram_message_id', 'reversal_of_transaction_id'] as $column) {
+    $extraColumns[] = has_column($pdo, 'wallet_transactions', $column) ? "wt.{$column}" : "NULL AS {$column}";
+  }
   $stmt = $pdo->query(
     "SELECT wt.id, wt.reseller_id, {$resellerName}, r.email AS reseller_email,
-      wt.type, wt.amount_rsd, wt.description, {$relatedOrder}, {$createdAt}
+      wt.type, wt.amount_rsd, wt.description, {$relatedOrder}, {$createdAt}, " . implode(', ', $extraColumns) . "
     FROM wallet_transactions wt
     LEFT JOIN resellers r ON r.id = wt.reseller_id
     ORDER BY wt.id DESC
@@ -569,6 +573,17 @@ try {
     json_response(dashboard_payload($pdo, $_GET));
   }
 
+  if ($action === 'telegram_settings') {
+    if (!table_exists($pdo, 'telegram_bot_config') || !table_exists($pdo, 'telegram_admins')) {
+      json_response(['ok' => false, 'error' => 'Pokrenite SQL migraciju za Telegram bota.'], 503);
+    }
+    $config = $pdo->query('SELECT totp_threshold_rsd, low_balance_threshold_rsd, notifications_json, webhook_last_seen_at, outbox_last_seen_at, last_error, (api_token_hash IS NOT NULL AND api_token_hash <> "") AS api_token_configured FROM telegram_bot_config WHERE id = 1')->fetch(PDO::FETCH_ASSOC) ?: [];
+    $config['notifications'] = json_decode((string)($config['notifications_json'] ?? ''), true) ?: [];
+    unset($config['notifications_json']);
+    $config['admins'] = $pdo->query('SELECT ta.chat_id, ta.admin_id, ta.label, ta.created_at, au.username FROM telegram_admins ta LEFT JOIN admin_users au ON au.id = ta.admin_id ORDER BY ta.created_at ASC')->fetchAll(PDO::FETCH_ASSOC);
+    json_response(['ok' => true, 'telegram' => $config, 'csrf_token' => csrf_token()]);
+  }
+
   if ($action === '2fa_status') {
     $admin = require_admin();
     json_response(['ok' => true, 'two_factor' => admin_twofa_public_status($pdo, (int)$admin['id']), 'csrf_token' => csrf_token()]);
@@ -595,6 +610,72 @@ try {
   require_post();
   require_csrf();
   $input = read_json_body();
+
+  if (strpos($action, 'telegram_') === 0) {
+    if (!table_exists($pdo, 'telegram_bot_config') || !table_exists($pdo, 'telegram_admins')) {
+      json_response(['ok' => false, 'error' => 'Pokrenite SQL migraciju za Telegram bota.'], 503);
+    }
+    $admin = require_admin();
+    require_recent_admin_step_up();
+    $adminId = (int)$admin['id'];
+
+    if ($action === 'telegram_generate_token') {
+      $token = 'pwrstg_' . rtrim(strtr(base64_encode(random_bytes(36)), '+/', '-_'), '=');
+      // This randomly generated 288-bit secret is high entropy; a fast digest keeps webhook calls cheap.
+      $pdo->prepare('UPDATE telegram_bot_config SET api_token_hash = ?, last_error = NULL WHERE id = 1')
+        ->execute([hash('sha256', $token)]);
+      audit_event($pdo, 'admin', $adminId, 'telegram_api_token_rotated', 'success');
+      json_response(['ok' => true, 'token' => $token, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'telegram_add_chat') {
+      $chatIdRaw = trim((string)($input['chat_id'] ?? ''));
+      $label = trim((string)($input['label'] ?? ''));
+      if (!preg_match('/^-?\d{1,19}$/', $chatIdRaw) || (int)$chatIdRaw === 0 || strlen($label) > 120) {
+        json_response(['ok' => false, 'error' => 'Unesite validan Telegram chat ID i naziv do 120 karaktera.'], 400);
+      }
+      $pdo->prepare('INSERT INTO telegram_admins (chat_id, admin_id, label, added_by_admin_id) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE admin_id = VALUES(admin_id), label = VALUES(label), added_by_admin_id = VALUES(added_by_admin_id)')
+        ->execute([(int)$chatIdRaw, $adminId, $label !== '' ? $label : null, $adminId]);
+      audit_event($pdo, 'admin', $adminId, 'telegram_admin_chat_added', 'success', ['chat_id' => $chatIdRaw]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'telegram_remove_chat') {
+      $chatId = (string)($input['chat_id'] ?? '');
+      if (!preg_match('/^-?\d{1,19}$/', $chatId)) json_response(['ok' => false, 'error' => 'Chat ID nije validan.'], 400);
+      $pdo->prepare('DELETE FROM telegram_admins WHERE chat_id = ?')->execute([(int)$chatId]);
+      audit_event($pdo, 'admin', $adminId, 'telegram_admin_chat_removed', 'success', ['chat_id' => $chatId]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'telegram_save_settings') {
+      $totpThreshold = filter_var($input['totp_threshold_rsd'] ?? null, FILTER_VALIDATE_INT);
+      $lowBalance = filter_var($input['low_balance_threshold_rsd'] ?? null, FILTER_VALIDATE_INT);
+      $notifications = is_array($input['notifications'] ?? null) ? $input['notifications'] : [];
+      $allowedNotifications = ['payment_notice', 'new_order', 'missing_game', 'game_request', 'low_balance', 'inventory_error'];
+      if ($totpThreshold === false || $totpThreshold < 1000 || $totpThreshold > 100000000 || $lowBalance === false || $lowBalance < -100000000 || $lowBalance > 100000000) {
+        json_response(['ok' => false, 'error' => 'Proverite pragove za 2FA i upozorenje balansa.'], 400);
+      }
+      $clean = [];
+      foreach ($allowedNotifications as $key) $clean[$key] = !empty($notifications[$key]);
+      $pdo->prepare('UPDATE telegram_bot_config SET totp_threshold_rsd = ?, low_balance_threshold_rsd = ?, notifications_json = ? WHERE id = 1')
+        ->execute([$totpThreshold, $lowBalance, json_encode($clean)]);
+      audit_event($pdo, 'admin', $adminId, 'telegram_settings_updated', 'success');
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'telegram_test') {
+      $chatId = trim((string)($input['chat_id'] ?? ''));
+      if (!preg_match('/^-?\d{1,19}$/', $chatId) || (int)$chatId === 0) json_response(['ok' => false, 'error' => 'Izaberite validan chat ID.'], 400);
+      $allowed = $pdo->prepare("SELECT 1 FROM telegram_admins ta JOIN admin_users au ON au.id = ta.admin_id WHERE ta.chat_id = ? AND ta.admin_id = ? AND au.status = 'active' LIMIT 1");
+      $allowed->execute([(int)$chatId, $adminId]);
+      if (!$allowed->fetchColumn()) json_response(['ok' => false, 'error' => 'Test poruka može da se pošalje samo na vaš povezani admin chat.'], 403);
+      telegram_enqueue($pdo, 'test-' . bin2hex(random_bytes(16)), 'test', ['chat_id' => (int)$chatId, 'admin_name' => (string)$admin['username']]);
+      json_response(['ok' => true, 'message' => 'Test poruka je stavljena u red za slanje.', 'csrf_token' => csrf_token()]);
+    }
+
+    json_response(['ok' => false, 'error' => 'Nepoznata Telegram akcija.'], 404);
+  }
 
   if ($action === '2fa_setup_start') {
     $admin = require_admin();
@@ -799,17 +880,13 @@ try {
     }
 
     $adminId = (int)($_SESSION['admin_id'] ?? 0);
+    ensure_security_tables($pdo);
     $pdo->beginTransaction();
     try {
-      $resellerStmt = $pdo->prepare('SELECT id, balance_rsd FROM resellers WHERE id = ? LIMIT 1 FOR UPDATE');
-      $resellerStmt->execute([$resellerId]);
-      $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
-      if (!$reseller) throw new RuntimeException('Reseller nije pronađen.');
-
-      $newBalance = (int)$reseller['balance_rsd'] + $amount;
-      $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$newBalance, $resellerId]);
-      $pdo->prepare('INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, ?, ?, ?)')
-        ->execute([$resellerId, $type, $amount, $description]);
+      apply_wallet_transaction($pdo, $resellerId, $amount, $type, $description, [
+        'source' => 'panel',
+        'admin_id' => (int)($_SESSION['admin_id'] ?? 0),
+      ]);
       audit_event($pdo, 'admin', $adminId, 'manual_transaction_added', 'success', [
         'reseller_id' => $resellerId,
         'amount_rsd' => $amount,
@@ -961,8 +1038,9 @@ try {
       throw new RuntimeException('Popust nije dostupan dok se ne pokrene SQL migracija za discount_percent.');
     }
 
+    ensure_security_tables($pdo);
     $pdo->beginTransaction();
-    $old = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ? LIMIT 1');
+    $old = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ? LIMIT 1 FOR UPDATE');
     $old->execute([$id]);
     $oldBalance = $old->fetchColumn();
     if ($oldBalance === false) {
@@ -971,10 +1049,6 @@ try {
 
     $fields = ['email = ?', 'status = ?'];
     $params = [$email, $status];
-    if ($balanceInputPresent) {
-      $fields[] = 'balance_rsd = ?';
-      $params[] = $balance;
-    }
     $fields[] = 'discount_percent = ?';
     $params[] = $discount;
     if (has_column($pdo, 'resellers', 'display_name')) {
@@ -1012,6 +1086,14 @@ try {
     }
     $params[] = $id;
 
+    $diff = $balanceInputPresent ? $balance - (int)$oldBalance : 0;
+    if ($diff !== 0) {
+      $wallet = apply_wallet_transaction($pdo, $id, $diff, 'ADMIN_ADJUSTMENT', 'Admin balance adjustment', [
+        'source' => 'panel',
+        'admin_id' => (int)($_SESSION['admin_id'] ?? 0),
+      ]);
+      $balance = (int)$wallet['balance_after_rsd'];
+    }
     $stmt = $pdo->prepare('UPDATE resellers SET ' . implode(', ', $fields) . ' WHERE id = ?');
     $stmt->execute($params);
     audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'reseller_updated', 'success', [
@@ -1020,12 +1102,6 @@ try {
       'discount_percent' => $discount,
       'admin_notes_changed' => $hasAdminNotesInput,
     ]);
-
-    $diff = $balanceInputPresent ? $balance - (int)$oldBalance : 0;
-    if ($diff !== 0) {
-      $tx = $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, 'ADMIN_ADJUSTMENT', ?, ?)");
-      $tx->execute([$id, $diff, 'Admin balance adjustment']);
-    }
 
     $pdo->commit();
     json_response(dashboard_payload($pdo));
@@ -1261,6 +1337,7 @@ try {
     if (strlen($reason) > 500) json_response(['ok' => false, 'error' => 'Razlog je predugačak.'], 400);
 
     $adminId = (int)($_SESSION['admin_id'] ?? 0);
+    ensure_security_tables($pdo);
     $pdo->beginTransaction();
 
     $orderStmt = $pdo->prepare('SELECT id, reseller_id, product_id, price_rsd, status, canceled_at FROM orders WHERE id = ? FOR UPDATE');
@@ -1282,11 +1359,6 @@ try {
       throw new RuntimeException('Nije moguće bezbedno poništiti porudžbinu: wallet veza sa porudžbinom ne postoji.');
     }
 
-    $resellerStmt = $pdo->prepare('SELECT id, balance_rsd FROM resellers WHERE id = ? FOR UPDATE');
-    $resellerStmt->execute([(int)$order['reseller_id']]);
-    $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$reseller) throw new RuntimeException('Reseller porudžbine nije pronađen.');
-
     $chargeStmt = $pdo->prepare("SELECT id, amount_rsd FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = 'ORDER' ORDER BY id ASC LIMIT 1 FOR UPDATE");
     $chargeStmt->execute([(int)$order['reseller_id'], $id]);
     $charge = $chargeStmt->fetch(PDO::FETCH_ASSOC);
@@ -1305,12 +1377,13 @@ try {
     }
 
     $refund = abs($chargedAmount);
-    $newBalance = (int)$reseller['balance_rsd'] + $refund;
-    $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$newBalance, (int)$order['reseller_id']]);
-
     $description = 'Order reversal #' . $id . ($reason !== '' ? ': ' . $reason : '');
-    $wallet = $pdo->prepare('INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description, related_order_id) VALUES (?, ?, ?, ?, ?)');
-    $wallet->execute([(int)$order['reseller_id'], $reversalType, $refund, $description, $id]);
+    $wallet = apply_wallet_transaction($pdo, (int)$order['reseller_id'], $refund, $reversalType, $description, [
+      'source' => 'panel',
+      'admin_id' => $adminId,
+      'related_order_id' => $id,
+    ]);
+    $newBalance = (int)$wallet['balance_after_rsd'];
 
     $orderUpdate = $pdo->prepare('UPDATE orders SET status = ?, canceled_at = NOW(), canceled_by_admin_id = ?, cancellation_reason = ?, updated_at = NOW() WHERE id = ?');
     $orderUpdate->execute(['canceled', $adminId, $reason !== '' ? $reason : null, $id]);

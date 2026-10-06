@@ -26,6 +26,7 @@ if (!valid_email($email) || $amount === 0) {
 
 try {
   $pdo = db();
+  ensure_security_tables($pdo);
   $pdo->beginTransaction();
 
   $st = $pdo->prepare('SELECT id FROM resellers WHERE email = ? LIMIT 1');
@@ -35,17 +36,11 @@ try {
   if (!$rid) {
     throw new RuntimeException('Reseller nije pronađen.');
   }
-
-  $pdo->prepare('UPDATE resellers SET balance_rsd = balance_rsd + ? WHERE id = ?')
-      ->execute([$amount, $rid]);
-
-  $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description)
-                 VALUES (?, 'ADMIN_TOPUP', ?, ?)")
-      ->execute([$rid, $amount, 'Admin topup']);
-
-  $newBalStmt = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ?');
-  $newBalStmt->execute([$rid]);
-  $newBal = (int)$newBalStmt->fetchColumn();
+  $wallet = apply_wallet_transaction($pdo, $rid, $amount, 'ADMIN_TOPUP', 'Admin topup', [
+    'source' => 'panel',
+    'admin_id' => (int)($_SESSION['admin_id'] ?? 0),
+  ]);
+  $newBal = (int)$wallet['balance_after_rsd'];
 
   $pdo->commit();
   json_response(['ok' => true, 'new_balance' => $newBal]);

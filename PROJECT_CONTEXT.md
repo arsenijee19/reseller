@@ -67,12 +67,19 @@
   - Reseller login header centers the PlayWorld brand while keeping the theme control aligned to the right.
   - Expired session/CSRF errors are shown as user-friendly refresh-and-login-again messages.
   - Every committed order records separate email and n8n delivery events in `order_delivery_events`; failed order emails can be resent from Admin → Porudžbine.
+  - Telegram administration source is implemented as an isolated stdlib Python webhook service under `telegram-bot/`, with HMAC-checked webhook secret, Telegram update deduplication/retry, HTML escaping, outbox retries, inline confirmations, admin-chat allowlist, and no direct DB access.
+  - cPanel exposes a Bearer-authenticated `api/telegram_gateway.php`; random API token digests are stored in `telegram_bot_config`, and admin Settings can manage chat IDs, notification switches, TOTP threshold, low-balance threshold, token rotation, and test messages.
+  - Shared `apply_wallet_transaction()` now performs row-locked balance changes and records snapshots; admin manual transactions, reseller admin balance edits, admin top-ups, reseller orders, and Telegram balance actions share it.
+  - Telegram payment confirmations require a manually entered amount if absent from the notice; balance actions use five-minute pending records, unique idempotency keys, optional high-value Admin TOTP, and reversal transactions rather than deletion.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
   - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
   - 2FA setup currently provides a manual Authenticator key and `otpauth://` setup link instead of a locally rendered QR image, because no reviewed local QR generator dependency exists in this no-build project.
 - Unfinished work:
+  - Telegram bot is not production-active until cPanel code and migrations are deployed, the one-time panel API token is copied to the VPS, the user creates a BotFather token, webhook TLS is configured, and inbound VPS TCP 8443 is reachable. No tokens or passwords are stored in Git.
+  - `TELEGRAM_BOT_RUNBOOK.md` documents production migration/setup. The cPanel DB was not available here, so SQL execution and financial concurrency need a staging/live test before enabling Telegram writes.
+  - The isolated VPS deployment may be installed/built, but starting it without the BotFather token, panel API token, and webhook certificate cannot work and should not be attempted.
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
   - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
   - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
@@ -141,6 +148,12 @@
 - `sql/2026-08-09_account_security_inventory.sql` - migration for reseller phone/profile completion metadata, security audit, login attempts, Inventory API history, and missing-game reports.
 - `sql/2026-10-06_reseller_admin_notes.sql` - migration for private admin notes attached to reseller accounts.
 - `sql/2026-10-06_wallet_transaction_types.sql` - widens wallet transaction type to VARCHAR for manual transaction classifications.
+- `sql/2026-10-06_telegram_admin_bot.sql` - additive bot tables and wallet/payment/report audit metadata; execute once after prerequisite migrations.
+- `api/telegram_gateway.php` - panel-only, token-authenticated API for the separate Telegram process.
+- `telegram-bot/bot.py` - isolated HTTPS Telegram webhook and outbox worker; standard library only.
+- `telegram-bot/compose.yaml` - dedicated hardened Docker service named `reseller-tg-bot`, bound to TCP 8443.
+- `TELEGRAM_BOT_RUNBOOK.md` - BotFather, cPanel migration, self-signed TLS, webhook and acceptance checklist.
+- `tests/test_telegram_bot.py` - amount and command parser unit tests.
 
 ## Architecture & Technical Decisions
 - Frameworks: no framework; plain PHP 8+, static HTML/CSS/JS.
@@ -172,6 +185,8 @@
   - `api/verification_code.php` posts to `PWRS_INVENTORY_API_BASE` `/api/supplier/v1/2fa/email-code-requests` using a server-side supplier bearer token.
   - Inventory Supplier API token is never exposed to browser JavaScript, admin users, reseller users, docs, or audit logs.
   - `api/missing_game.php` posts a `reseller_missing_game` event to the configured n8n webhook for downstream Telegram/support handling.
+  - Telegram notifications are inserted into `telegram_outbox` in the same transaction as supported order/report changes, then delivered by the separate VPS worker. Failed deliveries retry; Telegram does not connect to MySQL.
+  - Telegram webhook requires `X-Telegram-Bot-Api-Secret-Token`; panel commands and callbacks require the stored API token plus an active whitelisted `telegram_admins.chat_id`.
 
 ## Setup & Execution
 - Dependencies:
@@ -180,6 +195,7 @@
 - Environment variables:
   - Optional fallback keys use uppercase config paths, for example `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `ADMIN_PASSWORD_HASH`.
   - Inventory fallback keys: `PWRS_INVENTORY_API_BASE` and `PWRS_INVENTORY_SUPPLIER_TOKEN`.
+  - VPS-only bot values live in `/etc/reseller-tg-bot/bot.env`: `BOT_TOKEN`, `WEBHOOK_SECRET`, `PANEL_API_URL`, `PANEL_API_TOKEN`, and webhook URL. Never store real values in the repository.
 - Installation steps:
   - cPanel live web root is `/home/psigrersrs/reseller.psigre.rs`.
   - Preferred deployment is cPanel Git Version Control with the repository cloned outside the live web root, then deployed via `.cpanel.yml`.
@@ -192,6 +208,8 @@
   - Run `sql/2026-09-10_order_reliability.sql` in phpMyAdmin. It uses `CREATE TABLE IF NOT EXISTS` and does not delete existing data.
   - Run `sql/2026-10-06_reseller_admin_notes.sql` in phpMyAdmin for the private per-reseller admin notes column; runtime schema helpers also add it when database privileges allow.
   - Run `sql/2026-10-06_wallet_transaction_types.sql` in phpMyAdmin before using the expanded Admin Transactions type list.
+  - Run `sql/2026-10-06_telegram_admin_bot.sql` once after the existing wallet, order notes, account-security, and payment notice tables are present.
+  - Telegram/VPS deployment uses Docker Compose project name `reseller-tg-bot`, dedicated `/opt/reseller-tg-bot` code directory, `/etc/reseller-tg-bot` secrets, and HTTPS port 8443. Follow `TELEGRAM_BOT_RUNBOOK.md`; do not attach it to existing app containers or Nginx.
   - In private `api/config.local.php`, keep `mail.from` on a real domain mailbox accepted by cPanel. `mail.order_to` and `mail.payment_notice_to` may be comma-separated; the application always includes `arsenijee19@gmail.com` and `support@licenca.rs` as fallback recipients.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -211,6 +229,9 @@
   - Reseller UI no longer asks for buyer email; `orders.buyer_email` and n8n `customer_email` are populated from the reseller profile email.
   - Wallet transaction type `ORDER` is inserted with negative amount.
   - Reseller balance is decreased by product price.
+  - Current balance writes call `apply_wallet_transaction()` inside the caller's DB transaction; it locks the reseller row and records before/after snapshots when the migration is installed.
+  - Telegram financial actions must have a pending action owned by the chat, not expired, and not already completed. The exact TOTP trigger is absolute amount greater than the configured threshold; five invalid codes cancel that pending action.
+  - A Telegram transaction reversal inserts one inverse wallet row linked uniquely to its original; original transaction data is retained.
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
   - The order endpoint uses `fastcgi_finish_request()` when available so slow email/webhook calls do not keep the reseller waiting after a committed order; the PHP-FPM worker still completes and records those side effects.
   - `order_delivery_events` stores one current email event and one current n8n event per order, including status, attempts, HTTP code, recipients, and sanitized error text. This is operational observability, not a replacement for the financial order/wallet records.
@@ -345,6 +366,8 @@
 - Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
 ## Current Priorities
+- Deploy the Telegram panel API and additive migration to cPanel, configure admin token and BotFather token, then enable the isolated `reseller-tg-bot` webhook on VPS following `TELEGRAM_BOT_RUNBOOK.md`.
+- Confirm port 8443 reachability/firewall policy and run the Telegram manual acceptance checklist in staging before production financial actions.
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
 - Run `sql/2026-08-09_account_security_inventory.sql` on the live cPanel database.
 - Run `sql/2026-08-27_admin_order_reversals.sql` on the live cPanel database.

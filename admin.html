@@ -444,6 +444,9 @@
     .product-new-wrap{margin-bottom:14px}.product-new-toggle{display:flex;justify-content:space-between;align-items:center;gap:14px;width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);cursor:pointer}.product-new-toggle strong{font-size:13px}.product-new-toggle span{color:var(--muted);font-size:11px}.product-new-wrap[open] .product-new-toggle{border-radius:14px 14px 0 0}.product-new-form{padding:16px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;background:var(--panel)}
     .product-price-change button{padding:0;border:0;background:none;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
     #view-settings .security-panel,#view-settings .passkey-panel{margin-top:14px}
+    #view-settings .telegram-settings-panel{margin-top:14px}
+    .telegram-notification-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:18px 0}
+    .telegram-notification-options label{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface,#fff)}
     @media(max-width:860px){.tabs{justify-content:flex-start;border-radius:13px}.view-toolbar{align-items:stretch;flex-direction:column}.view-toolbar-controls{justify-content:flex-start}.view-search{width:100%;min-width:0}.security-banner{align-items:flex-start}.security-banner-copy{align-items:flex-start;flex-direction:column;gap:3px}.security-banner>.btn{flex:0 0 auto}.drawer-head{padding:17px 16px 14px}.drawer-content{padding:15px 16px 20px}.drawer-footer{padding:12px 16px}.product-group-card{overflow:hidden}.product-group-head{align-items:flex-start}}
     @media(max-width:560px){.shell{padding:14px 10px 28px}.admin-brand-copy strong{font-size:16px}.admin-brand .portal-logo{width:40px;height:40px;flex-basis:40px}.topbar .actions{gap:6px}.topbar .actions .btn{flex:0 0 40px;width:40px;min-width:40px;padding:8px}.topbar .actions .btn#logoutBtn{flex:0 0 auto;width:auto;min-width:40px}.tabs{gap:2px;padding:4px}.tab{min-height:38px;padding:8px 10px;font-size:11px}.security-banner{padding:10px}.security-banner-copy{font-size:11px}.security-banner-copy strong{white-space:normal}.view-toolbar-controls{align-items:stretch}.segmented-filters{width:100%;justify-content:space-between}.segment-filter{flex:1;padding-inline:6px}.view-toolbar-controls>.btn{width:100%}.reseller-drawer{width:100%}.drawer-fields,.drawer-adjustment-fields{grid-template-columns:1fr}.drawer-fields .full{grid-column:auto}.drawer-title-copy h2{font-size:16px}.drawer-footer .btn{min-width:0}.product-group-head{padding:12px}.product-group-head .btn{flex:0 0 auto;min-width:0}.product-table{min-width:680px}}
   </style>
@@ -591,6 +594,35 @@
         </div>
         <div id="passkeyList" class="passkey-list"></div>
         <div class="msg" id="passkeyMsg"></div>
+      </div>
+      <div class="form-panel telegram-settings-panel">
+        <div class="section-head"><div class="section-title"><h2>Telegram admin bot</h2><p>Obaveštenja i bezbedne admin akcije u Telegramu. Bot tajne se čuvaju van panela.</p></div></div>
+        <div id="telegramBotStatus" class="muted">Status bota se učitava...</div>
+        <div class="form-grid">
+          <div><label for="telegramChatId">Admin chat ID</label><input id="telegramChatId" inputmode="numeric" placeholder="ID koji bot prikaže na /start" /></div>
+          <div><label for="telegramChatLabel">Naziv uređaja/osobe</label><input id="telegramChatLabel" maxlength="120" placeholder="Moj Telegram" /></div>
+          <div class="form-actions"><button class="btn primary" id="telegramAddChatBtn" type="button">Dodaj admin chat</button></div>
+        </div>
+        <div id="telegramAdminChats" class="passkey-list"></div>
+        <div class="form-grid">
+          <div><label for="telegramTotpThreshold">Traži 2FA iznad (RSD)</label><input id="telegramTotpThreshold" type="number" min="1000" step="1000" /></div>
+          <div><label for="telegramLowBalance">Upozori kada balans padne ispod (RSD)</label><input id="telegramLowBalance" type="number" step="1000" /></div>
+        </div>
+        <div class="telegram-notification-options">
+          <label><input type="checkbox" data-telegram-notification="payment_notice" /> Prijavljene uplate</label>
+          <label><input type="checkbox" data-telegram-notification="new_order" /> Nove porudžbine</label>
+          <label><input type="checkbox" data-telegram-notification="missing_game" /> Igra nije stigla</label>
+          <label><input type="checkbox" data-telegram-notification="game_request" /> Zahtevi za igre</label>
+          <label><input type="checkbox" data-telegram-notification="low_balance" /> Nizak balans</label>
+          <label><input type="checkbox" data-telegram-notification="inventory_error" /> Greške Inventory API-ja</label>
+        </div>
+        <div class="security-actions">
+          <button class="btn primary" id="telegramSaveSettingsBtn" type="button">Sačuvaj podešavanja</button>
+          <button class="btn" id="telegramGenerateTokenBtn" type="button">Generiši / rotiraj API token</button>
+          <button class="btn" id="telegramTestBtn" type="button">Pošalji test poruku</button>
+        </div>
+        <div class="form-grid"><div><label for="telegramApiTokenOnce">API token (prikazuje se samo jednom)</label><input id="telegramApiTokenOnce" type="password" readonly autocomplete="off" /></div></div>
+        <div class="muted" id="telegramBotMessage"></div>
       </div>
       </div>
 
@@ -835,7 +867,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", productFilter:"all", resellerSearch:"", resellerFilter:"all", editingResellerId:null, admin2faPending:false, admin2faManageMode:"", adminTwoFactorEnabled:false, filters:{} };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", productFilter:"all", resellerSearch:"", resellerFilter:"all", editingResellerId:null, admin2faPending:false, admin2faManageMode:"", adminTwoFactorEnabled:false, telegramChats:[], filters:{} };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
@@ -1089,6 +1121,39 @@
           : "Nema dodatih passkey ključeva. Preporučujemo da dodate bar jedan pouzdan uređaj.";
         renderPasskeys(passkeys);
       }catch(e){ $("passkeyStatusText").textContent = "Passkey status trenutno nije dostupan."; }
+    }
+    async function loadTelegramSettings(){
+      try{
+        const result = await api("telegram_settings");
+        const config = result.telegram || {};
+        state.telegramChats = config.admins || [];
+        const status = $("telegramBotStatus");
+        const lastWebhook = config.webhook_last_seen_at ? new Date(String(config.webhook_last_seen_at).replace(" ", "T")) : null;
+        const webhookActive = !!(lastWebhook && Date.now() - lastWebhook.getTime() < 75000);
+        status.textContent = `Webhook: ${webhookActive ? "aktivan" : "nema svežeg kontakta"} · API token: ${config.api_token_configured ? "podešen" : "nije podešen"} · poslednji kontakt: ${config.webhook_last_seen_at || "nema"} · poslednji outbox: ${config.outbox_last_seen_at || "nema"}${config.last_error ? " · greška: " + config.last_error : ""}`;
+        $("telegramTotpThreshold").value = config.totp_threshold_rsd ?? 50000;
+        $("telegramLowBalance").value = config.low_balance_threshold_rsd ?? 0;
+        const notifications = config.notifications || {};
+        document.querySelectorAll("[data-telegram-notification]").forEach((input) => input.checked = notifications[input.dataset.telegramNotification] !== false);
+        const list = $("telegramAdminChats"); list.textContent = "";
+        state.telegramChats.forEach((chat) => {
+          const row = document.createElement("div"); row.className = "passkey-row";
+          const detail = document.createElement("div");
+          text(detail, "strong", `${chat.label || "Admin chat"} · ${chat.chat_id}`);
+          text(detail, "span", `Admin nalog: ${chat.username || chat.admin_id}`);
+          const remove = document.createElement("button"); remove.className = "btn danger"; remove.type = "button"; remove.textContent = "Ukloni";
+          remove.addEventListener("click", async () => {
+            try{ await ensureAdminStepUp(); await api("telegram_remove_chat", { method:"POST", body:JSON.stringify({ chat_id:chat.chat_id }) }); await loadTelegramSettings(); }
+            catch(e){ $("telegramBotMessage").textContent = e.message; }
+          });
+          row.append(detail, remove); list.append(row);
+        });
+      }catch(e){ $("telegramBotStatus").textContent = e.message; }
+    }
+    async function telegramAdminAction(action, payload = {}){
+      const result = await api(action, { method:"POST", body:JSON.stringify(payload) });
+      $("telegramBotMessage").textContent = result.message || "Podešavanja su sačuvana.";
+      return result;
     }
     function startPasskeyRegistration(){
       $("passkeyRegistrationBox").style.display = "block";
@@ -1956,6 +2021,7 @@
       if (state.tab === "transactions") renderTransactions();
       if (state.tab === "inventory") renderInventory();
       if (state.tab === "database") renderSchema();
+      if (state.tab === "settings") loadTelegramSettings();
     }
 
     async function login(){
@@ -2235,6 +2301,26 @@
       }
     });
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
+    $("telegramAddChatBtn").addEventListener("click", async () => {
+      try{ await ensureAdminStepUp(); await telegramAdminAction("telegram_add_chat", { chat_id:$("telegramChatId").value.trim(), label:$("telegramChatLabel").value.trim() }); $("telegramChatId").value = ""; $("telegramChatLabel").value = ""; await loadTelegramSettings(); }
+      catch(e){ $("telegramBotMessage").textContent = e.message; }
+    });
+    $("telegramSaveSettingsBtn").addEventListener("click", async () => {
+      try{
+        await ensureAdminStepUp();
+        const notifications = {};
+        document.querySelectorAll("[data-telegram-notification]").forEach((input) => notifications[input.dataset.telegramNotification] = input.checked);
+        await telegramAdminAction("telegram_save_settings", { totp_threshold_rsd:Number($("telegramTotpThreshold").value), low_balance_threshold_rsd:Number($("telegramLowBalance").value), notifications });
+      }catch(e){ $("telegramBotMessage").textContent = e.message; }
+    });
+    $("telegramGenerateTokenBtn").addEventListener("click", async () => {
+      try{ await ensureAdminStepUp(); const result = await telegramAdminAction("telegram_generate_token"); $("telegramApiTokenOnce").type = "text"; $("telegramApiTokenOnce").value = result.token; await loadTelegramSettings(); }
+      catch(e){ $("telegramBotMessage").textContent = e.message; }
+    });
+    $("telegramTestBtn").addEventListener("click", async () => {
+      try{ await ensureAdminStepUp(); const id = $("telegramChatId").value.trim() || String(state.telegramChats[0]?.chat_id || ""); if (!id) throw new Error("Dodajte admin chat ID pre testiranja."); await telegramAdminAction("telegram_test", { chat_id:id }); }
+      catch(e){ $("telegramBotMessage").textContent = e.message; }
+    });
     $("createResellerBtn").addEventListener("click", createReseller);
     $("addTransactionBtn").addEventListener("click", async () => {
       const btn = $("addTransactionBtn");

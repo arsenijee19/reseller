@@ -1,0 +1,8 @@
+FROM python:3.12-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY bot.py /app/bot.py
+USER 10001:10001
+EXPOSE 8443
+CMD ["python", "/app/bot.py"]

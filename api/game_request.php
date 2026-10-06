@@ -38,6 +38,19 @@ try {
   if (!$row) {
     json_response(['ok' => false, 'error' => 'Nalog nije pronađen. Refrešujte stranicu i ulogujte se ponovo.'], 404);
   }
+  $profile = reseller_profile($pdo, (int)$row['id']) ?: [];
+
+  $requestId = null;
+  if (table_exists($pdo, 'reseller_game_requests')) {
+    $insert = $pdo->prepare('INSERT INTO reseller_game_requests (reseller_id, suggestion) VALUES (?, ?)');
+    $insert->execute([(int)$row['id'], $suggestion]);
+    $requestId = (int)$pdo->lastInsertId();
+    telegram_enqueue($pdo, 'game-request-' . $requestId, 'game_request', [
+      'request_id' => $requestId, 'reseller_id' => (int)$row['id'],
+      'reseller_email' => (string)$row['email'], 'reseller_name' => (string)($profile['display_name'] ?? ''),
+      'suggestion' => $suggestion,
+    ]);
+  }
 
   $subject = 'Reseller je zatražio novu igru';
   $message = "Reseller je poslao predlog igre za dodavanje u isporuku.\n\n";
@@ -53,7 +66,7 @@ try {
 
   $sent = @mail('arsenijee19@gmail.com', $subject, $message, $headers);
 
-  json_response(['ok' => true, 'mail_sent' => $sent]);
+  json_response(['ok' => true, 'mail_sent' => $sent, 'request_id' => $requestId]);
 } catch (Throwable $e) {
   json_response(['ok' => false, 'error' => 'Greška pri slanju predloga.'], 500);
 }
