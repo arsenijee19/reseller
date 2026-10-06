@@ -356,13 +356,66 @@
       .transaction-form-grid>.form-actions .btn{width:100%}
       .table-toolbar .search-field{min-width:0}
     }
+    /* Match the reseller portal's shared authentication and control system. */
+    :root{--portal-card-radius:18px;--portal-control-radius:12px;--portal-control-height:48px;--portal-icon-size:44px}
+    .portal-auth-header{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1360px;margin:0 auto;padding:4px 0}
+    .portal-brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .portal-logo{width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;border-radius:13px;background:linear-gradient(145deg,#315df4,#7041e8);color:#fff;box-shadow:0 9px 22px rgba(73,80,220,.2)}
+    .portal-logo svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .portal-brand strong,.portal-brand span{display:block}
+    .portal-brand strong{font-size:17px;letter-spacing:-.025em}
+    .portal-brand span{margin-top:2px;color:var(--muted);font-size:12px}
+    .icon-control{width:var(--portal-icon-size);height:var(--portal-icon-size);min-width:var(--portal-icon-size);min-height:var(--portal-icon-size);padding:10px;border-radius:var(--portal-control-radius)}
+    .icon-control svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .login{width:min(100%,460px);margin:82px auto 0;border-radius:var(--portal-card-radius)}
+    .login .section{text-align:left;padding:24px}
+    .login-heading{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .login-heading .portal-logo{width:40px;height:40px;flex-basis:40px;border-radius:12px;background:#e1edff;color:#2160da;box-shadow:none}
+    .login-heading h1{font-size:20px;letter-spacing:-.025em}
+    .login .section>p{margin-bottom:16px}
+    .login label{margin:0 0 7px;text-align:left}
+    .login input{min-height:var(--portal-control-height);border-radius:var(--portal-control-radius)}
+    .login-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:14px}
+    .login-actions .btn{width:100%;min-height:48px;white-space:normal}
+    .login-actions .btn.primary{background:linear-gradient(135deg,#2563eb,#4f46e5);border:0}
+    .login-switch{margin:20px 0 0;text-align:center;color:var(--muted);font-size:13px}
+    .login-switch a{color:var(--brand);font-weight:750}
+    .login-divider{display:flex;align-items:center;gap:10px;margin:2px 0;color:var(--muted);font-size:12px}
+    .login-divider::before,.login-divider::after{content:"";height:1px;flex:1;background:var(--line)}
+    .login-passkey{background:var(--soft)}
+    :root[data-theme="dark"] .login-heading .portal-logo{background:rgba(91,147,255,.17);color:#a9c5ff}
+    .topbar .icon-control{flex:0 0 44px}
+    @media(max-width:980px){
+      .portal-auth-header{padding:2px 0}
+      .login{margin-top:78px}
+    }
+    @media(max-width:560px){
+      .shell{padding:16px 16px 32px}
+      .portal-brand strong{font-size:15px}
+      .login{margin-top:78px}
+      .login .section{padding:20px}
+      .login-heading h1{font-size:20px}
+      .login-actions .btn{min-width:0}
+      .topbar{flex-direction:row;align-items:center;gap:8px}
+      .topbar-title h1{font-size:19px}
+      .topbar .actions{gap:6px}
+      .topbar .actions .icon-control{width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;padding:9px}
+      .topbar .actions #refreshBtn,.topbar .actions #logoutBtn{width:40px;min-width:40px;padding:9px}
+    }
   </style>
 </head>
 <body>
   <main class="shell">
+    <header class="portal-auth-header" id="authHeader">
+      <div class="portal-brand">
+        <span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 8.2h9.6a3.5 3.5 0 0 1 3.4 2.7l1 4.5a2.1 2.1 0 0 1-3.4 2l-2.2-1.8H8.4l-2.2 1.8a2.1 2.1 0 0 1-3.4-2l1-4.5a3.5 3.5 0 0 1 3.4-2.7Z"/><path d="M8 11v4m-2-2h4m5-1h.01M18 14h.01"/></svg></span>
+        <div><strong>PlayWorld.rs</strong><span>Admin panel</span></div>
+      </div>
+      <button class="btn icon-control" id="loginThemeBtn" type="button" aria-label="Uključi dark mode" title="Uključi dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg></button>
+    </header>
     <section class="panel login" id="loginPanel">
       <div class="section">
-        <h1>Admin prijava</h1>
+        <div class="login-heading"><span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 5-3.4 8.3-7 10-3.6-1.7-7-5-7-10V6l7-3Z"/></svg></span><h1>Admin prijava</h1></div>
         <p>Administracija resellera, proizvoda, cena i porudžbina.</p>
         <label for="adminPassword">Šifra</label>
         <input id="adminPassword" type="password" autocomplete="current-password" />
@@ -372,15 +425,15 @@
           <p class="muted">Unesite kod iz Authenticator aplikacije ili jedan recovery kod.</p>
           <button class="btn" id="admin2faBackBtn" type="button">Nazad</button>
         </div>
-        <div class="actions">
-          <button class="btn" id="loginThemeBtn" type="button">Dark</button>
-          <button class="btn" id="adminPasskeyLoginBtn" type="button">Prijavi se Passkey-em</button>
+        <div class="actions login-actions">
           <button class="btn primary" id="adminLoginBtn">Uloguj se</button>
-          <a class="btn" href="/" aria-label="Vrati se na reseller prijavu">Reseller prijava</a>
+          <div class="login-divider">ili</div>
+          <button class="btn login-passkey" id="adminPasskeyLoginBtn" type="button">Prijavi se Passkey-em</button>
         </div>
         <div class="msg" id="loginMsg"></div>
       </div>
     </section>
+    <p class="login-switch" id="loginSwitch">Nisi admin? <a href="/" aria-label="Vrati se na reseller prijavu">Reseller prijava</a></p>
 
     <section id="adminPanel" class="hidden">
       <header class="topbar">
@@ -389,9 +442,9 @@
           <p>Kontrola korisnika, balance-a, proizvoda i porudžbina.</p>
         </div>
         <div class="actions">
-          <button class="btn" id="themeBtn" type="button">Dark</button>
-          <button class="btn" id="refreshBtn">Osveži</button>
-          <button class="btn" id="logoutBtn">Logout</button>
+          <button class="btn icon-control" id="themeBtn" type="button" aria-label="Uključi dark mode" title="Uključi dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg></button>
+          <button class="btn icon-control" id="refreshBtn" type="button" title="Osveži" aria-label="Osveži"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-2l2.5 2M4 15l2.5 2a7 7 0 0 0 12-2"/></svg></button>
+          <button class="btn icon-control" id="logoutBtn" type="button" title="Odjavi se" aria-label="Odjavi se"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14"/><path d="M11 12h8m-3-4 4 4-4 4"/></svg></button>
         </div>
       </header>
 
@@ -811,7 +864,14 @@
       saveTheme(next);
       ["themeBtn","loginThemeBtn"].forEach((id) => {
         const btn = $(id);
-        if (btn) btn.textContent = next === "dark" ? "Light" : "Dark";
+        if (btn) {
+          const label = next === "dark" ? "Uključi light mode" : "Uključi dark mode";
+          btn.setAttribute("aria-label", label);
+          btn.title = label;
+          btn.innerHTML = next === "dark"
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg>';
+        }
       });
     }
 
@@ -834,6 +894,8 @@
 
     function setLoggedIn(loggedIn){
       $("loginPanel").classList.toggle("hidden", loggedIn);
+      $("authHeader").classList.toggle("hidden", loggedIn);
+      $("loginSwitch").classList.toggle("hidden", loggedIn);
       $("adminPanel").classList.toggle("hidden", !loggedIn);
     }
 

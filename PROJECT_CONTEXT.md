@@ -48,6 +48,8 @@
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
+  - Reseller and admin login now share a branded header, consistent icon-only theme control, centered authentication cards, and clear links between login screens.
+  - Reseller mobile price list groups product variants by game, adds an in-list search synchronized with the product picker, and reveals recommended resale pricing on tap instead of hover-only tooltips.
   - Admin/reseller UI avoids aggressive scroll jumps after selection/save actions.
   - Admin order filters, active tab, table scroll positions, focused row controls, and local mutation feedback survive dashboard refreshes.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
@@ -258,6 +260,8 @@
 - Redesigned the reseller portal into a calmer two-column desktop layout with distinct order, verification-code, price-list, and history cards; retained the existing API/actions and made the type/letter filters keep the product picker open after selection.
 - Replaced the CSS-drawn resale-price shop glyph and notes-search text toggle with accessible inline SVG icons, preserving their current tooltip/search behavior.
 - Added a compact magnifying-glass Notes search control in the order history header.
+- Unified mobile/desktop reseller and admin login styling with the portal brand; standardized header action icons, card/input/button geometry, and formal in-panel status/balance labels without changing authentication behavior.
+- Rebuilt reseller price display as game groups with platform badges and tappable variant prices; recommended minimum resale prices are now shown inline for touch and keyboard users. Added a catalog search field synchronized with the existing product-picker search.
 - Added a reseller-scoped transaction history dialog that displays admin-entered transaction descriptions and related order notes; kept the surrounding recent-orders list independent.
 - Standardized admin form field sizing, dropdown affordances, button geometry, form spacing, and responsive layouts; aligned the Transactions entry form into one balanced desktop row without changing its action or API.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
