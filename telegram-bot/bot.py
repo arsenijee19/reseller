@@ -26,6 +26,7 @@ PANEL_API_TOKEN = os.environ["PANEL_API_TOKEN"]
 TLS_CERT = os.environ.get("TLS_CERT", "/run/secrets/fullchain.pem")
 TLS_KEY = os.environ.get("TLS_KEY", "/run/secrets/privkey.pem")
 PORT = int(os.environ.get("PORT", "8443"))
+ALLOWED_TELEGRAM_USERNAME = os.environ.get("ALLOWED_TELEGRAM_USERNAME", "arsoarso").lstrip("@").casefold()
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
 API_LOCK = threading.Lock()
 LAST_API_CALL = 0.0
@@ -80,6 +81,10 @@ def parse_command(text: str) -> tuple[str, list[str]]:
         return "", []
     command = parts[0][1:].split("@", 1)[0].lower()
     return command, parts[1:]
+
+
+def is_allowed_username(username: str | None) -> bool:
+    return bool(username) and username.lstrip("@").casefold() == ALLOWED_TELEGRAM_USERNAME
 
 
 def panel(action: str, chat_id: int, **fields: Any) -> dict[str, Any]:
@@ -232,7 +237,8 @@ def show_transactions(chat_id: int, reseller_id: int, limit: int = 10) -> None:
 def handle_message(message: dict[str, Any]) -> None:
     chat_id = int(message.get("chat", {}).get("id", 0))
     text = str(message.get("text") or "").strip()
-    if not chat_id or not text:
+    sender = message.get("from") or {}
+    if not chat_id or not text or not is_allowed_username(sender.get("username")):
         return
     authorized = panel("authorized", chat_id, chat_id=chat_id)
     is_admin = bool(authorized.get("authorized"))
@@ -403,6 +409,8 @@ def handle_callback(query: dict[str, Any]) -> None:
     chat_id = int(message.get("chat", {}).get("id", 0))
     message_id = int(message.get("message_id", 0))
     data = str(query.get("data", ""))
+    if not is_allowed_username((query.get("from") or {}).get("username")):
+        return
     auth = panel("authorized", chat_id, chat_id=chat_id)
     if not auth.get("authorized"):
         answer_callback(callback_id, "Nemaš pristup."); return
@@ -479,6 +487,13 @@ def deliver_outbox() -> None:
                     targets = [int(payload["chat_id"])] if payload.get("chat_id") else result.get("chat_ids", [])
                     success = True
                     for target in targets:
+                        identity_result = telegram("getChat", {"chat_id": target})
+                        identity = identity_result.get("result", {})
+                        if not identity_result.get("ok"):
+                            success = False
+                            continue
+                        if not is_allowed_username(identity.get("username")):
+                            continue
                         if item["event_type"] == "test":
                             body = f"Test poruka: Telegram admin bot je povezan sa panelom, {safe(payload.get('admin_name'))}."
                         else:

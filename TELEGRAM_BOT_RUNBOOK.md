@@ -39,6 +39,7 @@ Kopiraj samo sadržaj `telegram-bot/` u `/opt/reseller-tg-bot/` i compose fajl k
 - `PANEL_API_URL`: `https://reseller.psigre.rs/api/telegram_gateway.php`.
 - `PANEL_API_TOKEN`: jednokratno prikazani token iz Admin → Podešavanja.
 - `PUBLIC_WEBHOOK_URL`: `https://vps-03a19c11.vps.ovh.net:8443/telegram`.
+- `ALLOWED_TELEGRAM_USERNAME`: `arsoarso`; inbound commands/callbacks and notification targets are additionally checked against this username, while cPanel chat-ID allowlisting remains mandatory.
 
 Napravi self-signed server sertifikat sa DNS imenom koje Telegram otvara; javni sertifikat se registruje direktno kod Telegrama, privatni ključ ostaje samo na VPS-u:
 
@@ -102,6 +103,7 @@ Komanda `/uplate` prikazuje prijave iz „Uplatio sam“. Trenutni portal ne tra
 ## Ručni test-checklist
 
 - Nepoznat chat pošalje `/start`: dobije samo poruku bez pristupa i svoj chat ID; ostale poruke se ignorišu.
+- Samo `@arsoarso` može da koristi komande, callbacks ili da prima obaveštenja; drugi Telegram nalozi se ignorišu.
 - Poznat chat: `/reselleri`, fuzzy ime sa jednim i više pogodaka, `/reseller`, `/transakcije`.
 - `/dopuna` odbija negativan, nulu i nevalidan iznos; proba `5000`, `5.000`, `5,000`, `5k`.
 - Počni dopunu/oduzimanje, pa klikni potvrdu dva puta: balans i wallet transakcija se promene samo jednom.

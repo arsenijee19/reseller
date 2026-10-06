@@ -35,6 +35,12 @@ class CommandParserTests(unittest.TestCase):
         self.assertEqual(bot.normalize("Kreš 26"), "kres26")
         self.assertEqual(bot.format_date("2026-10-06 14:22:00"), "6. 10. 2026. 14:22")
 
+    def test_only_configured_telegram_username_is_allowed(self):
+        self.assertTrue(bot.is_allowed_username("arsoarso"))
+        self.assertTrue(bot.is_allowed_username("@ArsoArso"))
+        self.assertFalse(bot.is_allowed_username("someone_else"))
+        self.assertFalse(bot.is_allowed_username(None))
+
 
 if __name__ == "__main__":
     unittest.main()
