@@ -433,6 +433,9 @@
     .price-search{width:min(100%,280px);min-height:44px;background:var(--soft)}
     .price-group-head{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:9px}
     .price-group-head strong{font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+    .price-period{display:grid;gap:8px}
+    .price-period+.price-period{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .price-period-title{font-size:12px;font-weight:850;letter-spacing:.01em}
     .platform-badge{display:inline-flex;align-items:center;padding:3px 6px;border-radius:6px;background:#e4eaff;color:#3d4ed8;font-size:10px;font-weight:850;line-height:1}
     .platform-badge.ps4{background:#e3f4ff;color:#1672a5}
     .price-variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px}
@@ -485,6 +488,7 @@
       .price-search{width:100%;min-height:44px}
       .prices{gap:9px}
       .price-group{padding:12px}
+      .price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media(max-width:400px){
       .brand p{display:none}
@@ -492,7 +496,7 @@
       .status{gap:5px}
       .status .account-icon-btn,.status .theme-btn,.status .logout-icon-btn{width:36px;height:36px;min-width:36px;min-height:36px;flex-basis:36px;padding:8px}
       .balance-amount{font-size:18px}
-      .price-variants{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}
+      .price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
   </style>
 </head>
@@ -815,6 +819,10 @@
       <p>Dodali smo novi sigurnosni update i olakšali pregled porudžbina i isporuke.</p>
       <div class="release-list">
         <div class="release-item">
+          <strong>Pregledniji slotovi i pretplate</strong>
+          <p>Slotovi su poređani po platformi, a kod pretplata je trajanje jasno označeno kao 1, 3 ili 12 meseci.</p>
+        </div>
+        <div class="release-item">
           <strong>Email isporuke pri izboru igre</strong>
           <p>Nakon izbora igre na telefonu odmah možete proveriti adresu isporuke i po potrebi je promeniti, bez prekidanja skrolovanja.</p>
         </div>
@@ -899,7 +907,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-mobile-delivery-email";
+    const RELEASE_VERSION = "2026-10-06-mobile-catalog-slots";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusText = $("statusText");
@@ -1795,7 +1803,9 @@
       products.forEach((product) => {
         const originalName = String(product.product_name || "Proizvod").trim();
         const title = originalName
+          .replace(/\s*[-–]?\s*(?:PS[45](?:\s*[\/+&]\s*PS[45])?\s+)?(?:Primary|Secondary)\s*\)?\s*$/i, "")
           .replace(/\s*\(?\s*PS[45](?:\s*[\/+&]\s*PS[45])?\s*\)?\s*$/i, "")
+          .replace(/\s*[-–]?\s*(?:1|3|12)[\s-]*(?:months?|mesec(?:a|i)?|mo\b|m\b)\s*$/i, "")
           .replace(/[\s\-(]+$/, "") || originalName;
         if (!groups.has(title.toLocaleLowerCase("sr"))) groups.set(title.toLocaleLowerCase("sr"), { title, products: [] });
         groups.get(title.toLocaleLowerCase("sr")).products.push(product);
@@ -1814,48 +1824,99 @@
         [...platforms].sort().forEach((platform) => appendText(heading, "span", platform, `platform-badge ${platform.toLowerCase()}`));
         card.appendChild(heading);
 
-        const variants = document.createElement("div");
-        variants.className = "price-variants";
-        group.products.forEach((product, productIndex) => {
-          const accountType = String(product.account_type || "").trim();
-          const platform = accountType.match(/PS[45]/i)?.[0]?.toUpperCase();
-          const variantLabel = /secondary/i.test(accountType) ? "Secondary" : platform ? `${platform} Primary` : accountType || "Cena";
-          const cell = document.createElement("button");
-          cell.type = "button";
-          cell.className = "price-variant";
-          cell.setAttribute("aria-expanded", "false");
-          const detailsId = `recommended-${groupIndex}-${productIndex}`;
-          cell.setAttribute("aria-controls", detailsId);
-          appendText(cell, "span", variantLabel, "price-variant-label");
-          const currentPrice = document.createElement("strong");
-          currentPrice.textContent = `${price(product.price)} ${product.currency || "RSD"}`;
-          cell.appendChild(currentPrice);
-          const basePrice = Number(product.base_price);
-          if (Number.isFinite(basePrice) && basePrice > Number(product.price)) {
-            appendText(cell, "span", `${price(basePrice)} ${product.currency || "RSD"}`, "price-original");
-            appendText(cell, "span", `-${product.discount_percent}%`, "discount-badge");
-          }
-          const recommended = recommendedResalePrice(Number(product.price));
-          const recommendation = document.createElement("div");
-          recommendation.className = "price-variant-details";
-          recommendation.id = detailsId;
-          recommendation.hidden = true;
-          recommendation.textContent = `${variantLabel} - preporučena minimalna prodajna cena: ${price(recommended)} ${product.currency || "RSD"}`;
-          cell.addEventListener("click", () => {
-            const expanded = cell.getAttribute("aria-expanded") === "true";
-            variants.querySelectorAll('.price-variant[aria-expanded="true"]').forEach((openCell) => {
-              openCell.setAttribute("aria-expanded", "false");
-            });
-            variants.querySelectorAll(".price-variant-details").forEach((details) => { details.hidden = true; });
-            cell.setAttribute("aria-expanded", String(!expanded));
-            recommendation.hidden = expanded;
-          });
-          variants.append(cell, recommendation);
+        const byDuration = new Map();
+        group.products.forEach((product) => {
+          const duration = subscriptionDuration(product);
+          if (!byDuration.has(duration)) byDuration.set(duration, []);
+          byDuration.get(duration).push(product);
         });
-        card.appendChild(variants);
+        const durations = [...byDuration.keys()].sort((a, b) => a - b);
+        durations.forEach((duration, periodIndex) => {
+          const period = document.createElement("section");
+          period.className = "price-period";
+          if (duration) appendText(period, "h3", subscriptionDurationLabel(duration), "price-period-title");
+          const variants = document.createElement("div");
+          variants.className = "price-variants";
+          const sortedProducts = byDuration.get(duration).slice().sort((a, b) => {
+            const aSlot = priceSlot(a);
+            const bSlot = priceSlot(b);
+            return aSlot.order - bSlot.order || Number(a.product_id) - Number(b.product_id);
+          });
+          sortedProducts.forEach((product, productIndex) => {
+            const slot = priceSlot(product);
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "price-variant";
+            cell.setAttribute("aria-expanded", "false");
+            const detailsId = `recommended-${groupIndex}-${periodIndex}-${productIndex}`;
+            cell.setAttribute("aria-controls", detailsId);
+            appendText(cell, "span", slot.label, "price-variant-label");
+            const currentPrice = document.createElement("strong");
+            currentPrice.textContent = `${price(product.price)} ${product.currency || "RSD"}`;
+            cell.appendChild(currentPrice);
+            const basePrice = Number(product.base_price);
+            if (Number.isFinite(basePrice) && basePrice > Number(product.price)) {
+              appendText(cell, "span", `${price(basePrice)} ${product.currency || "RSD"}`, "price-original");
+              appendText(cell, "span", `-${product.discount_percent}%`, "discount-badge");
+            }
+            const recommended = recommendedResalePrice(Number(product.price));
+            const recommendation = document.createElement("div");
+            recommendation.className = "price-variant-details";
+            recommendation.id = detailsId;
+            recommendation.hidden = true;
+            recommendation.textContent = `${slot.label} - preporučena minimalna prodajna cena: ${price(recommended)} ${product.currency || "RSD"}`;
+            cell.addEventListener("click", () => {
+              const expanded = cell.getAttribute("aria-expanded") === "true";
+              variants.querySelectorAll('.price-variant[aria-expanded="true"]').forEach((openCell) => openCell.setAttribute("aria-expanded", "false"));
+              variants.querySelectorAll(".price-variant-details").forEach((details) => { details.hidden = true; });
+              cell.setAttribute("aria-expanded", String(!expanded));
+              recommendation.hidden = expanded;
+            });
+            variants.append(cell, recommendation);
+          });
+          period.appendChild(variants);
+          card.appendChild(period);
+        });
         pricesList.appendChild(card);
       });
       if (!pricesList.children.length) pricesList.textContent = state.productSearch ? "Nema proizvoda za ovu pretragu." : "Cene nisu dostupne.";
+    }
+
+    function subscriptionDuration(product){
+      const source = `${product.product_name || ""} ${product.account_type || ""}`;
+      const match = source.match(/(?:^|[^\d])(1|3|12)[\s-]*(?:months?\b|mesec(?:a|i)?\b|mo\b|m\b)/i);
+      return match ? Number(match[1]) : 0;
+    }
+
+    function subscriptionDurationLabel(months){
+      if (months === 1) return "1 mesec";
+      if (months === 3) return "3 meseca";
+      if (months === 12) return "12 meseci";
+      return `${months} meseci`;
+    }
+
+    function priceSlot(product){
+      const accountType = String(product.account_type || "").trim();
+      const typePlatforms = accountType.match(/PS[45]/gi) || [];
+      const fallbackPlatforms = String(product.product_name || "").match(/PS[45]/gi) || [];
+      const platforms = [...new Set((typePlatforms.length ? typePlatforms : fallbackPlatforms).map((platform) => platform.toUpperCase()))];
+      const isSecondary = /secondary/i.test(accountType);
+      const isPrimary = /primary/i.test(accountType);
+      const platformLabel = platforms.length > 1 ? "PS4 / PS5" : platforms[0] || "";
+      const label = isSecondary
+        ? `${platformLabel ? `${platformLabel} ` : ""}Secondary`
+        : isPrimary
+          ? `${platformLabel ? `${platformLabel} ` : ""}Primary`
+          : accountType || "Cena";
+      let order = 4;
+      if (isPrimary && platforms.includes("PS5")) order = 0;
+      else if (isPrimary && platforms.includes("PS4")) order = 1;
+      else if (isPrimary) order = 0.5;
+      else if (isSecondary && platforms.includes("PS5") && platforms.includes("PS4")) order = 2.5;
+      else if (isSecondary && platforms.includes("PS5")) order = 2;
+      else if (isSecondary && platforms.includes("PS4")) order = 3;
+      else if (isSecondary) order = 2.5;
+      return { label, order };
     }
 
     function recommendedResalePrice(resellerPrice){
