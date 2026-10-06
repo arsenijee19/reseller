@@ -273,6 +273,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Refreshed Telegram bot message formatting with restrained emoji labels for balances, payments, orders, alerts, confirmations, and command help; command names and action behavior are unchanged.
 - Fixed Telegram webhook 500s by removing duplicated `chat_id` keyword arguments from bot-to-panel calls; added regression coverage for `/start` and `/help` handling.
 - Telegram worker now sends the panel token only through `X-Panel-Token`; production cPanel testing showed an `Authorization` header can cause valid panel-token requests to fail authentication.
 - Updated reseller sign-in for Safari password managers: the token input is now a real password field in a submitted HTML form with username/current-password autocomplete, an accessible show/hide toggle, and inline token errors.

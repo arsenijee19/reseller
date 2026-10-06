@@ -80,6 +80,7 @@ class MessageHandlingTests(unittest.TestCase):
         send.assert_called_once()
         self.assertEqual(send.call_args.args[0], 4242)
         self.assertIn("4242", send.call_args.args[1])
+        self.assertTrue(send.call_args.args[1].startswith("👋"))
         panel.assert_not_called()
 
     def test_help_runs_through_panel_api_and_replies(self):
@@ -114,6 +115,7 @@ class MessageHandlingTests(unittest.TestCase):
         self.assertEqual(actions, ["authorized", "heartbeat", "get_conversation"])
         send.assert_called_once()
         self.assertIn("PlayWorld admin bot", send.call_args.args[1])
+        self.assertTrue(send.call_args.args[1].startswith("🤖"))
 
 
 if __name__ == "__main__":

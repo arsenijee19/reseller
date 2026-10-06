@@ -166,10 +166,10 @@ def begin_balance(chat_id: int, reseller_id: int, amount: int, reason: str, kind
         send(chat_id, safe(result.get("error", "Akcija nije mogla da se pripremi.")))
         return
     preview = result["preview"]
-    text = (f"<b>{safe(preview.get('title'))}</b>\nBalans: {format_rsd(preview.get('before'))} → "
-            f"<b>{format_rsd(preview.get('after'))}</b>\nPromena: {format_rsd(preview.get('amount'))}\nRazlog: {safe(preview.get('reason'))}\n\n"
-            "Potvrdite u narednih 5 minuta.")
-    message_id = send(chat_id, text, [[{"text": "Potvrdi", "callback_data": f"ok:{result['action_id']}"}, {"text": "Otkaži", "callback_data": f"no:{result['action_id']}"}]], edit=edit_id)
+    text = (f"🧾 <b>{safe(preview.get('title'))}</b>\n💰 Balans: {format_rsd(preview.get('before'))} → "
+            f"<b>{format_rsd(preview.get('after'))}</b>\n📊 Promena: {format_rsd(preview.get('amount'))}\n📝 Razlog: {safe(preview.get('reason'))}\n\n"
+            "⏳ Potvrdite u narednih 5 minuta.")
+    message_id = send(chat_id, text, [[{"text": "✅ Potvrdi", "callback_data": f"ok:{result['action_id']}"}, {"text": "❌ Otkaži", "callback_data": f"no:{result['action_id']}"}]], edit=edit_id)
     if message_id: panel("set_action_message", chat_id, action_id=result["action_id"], message_id=message_id)
 
 
@@ -179,13 +179,14 @@ def begin_order_action(chat_id: int, kind: str, payload: dict[str, Any], label: 
         send(chat_id, safe(result.get("error", "Akcija nije mogla da se pripremi.")))
         return
     preview = result["preview"]
-    details = [f"<b>{safe(preview.get('title', label))}</b>"]
+    details = [f"🔎 <b>{safe(preview.get('title', label))}</b>"]
     for key, title in (("before", "Trenutna cena"), ("after", "Nova vrednost"), ("amount", "Promena"), ("reason", "Detalji")):
         if key in preview:
             value = format_rsd(preview[key], signed=key == "amount") if key in ("before", "after", "amount") and isinstance(preview[key], int) else safe(preview[key])
-            details.append(f"{title}: {value}")
-    details.append("Potvrdite u narednih 5 minuta.")
-    message_id = send(chat_id, "\n".join(details), [[{"text": "Potvrdi", "callback_data": f"ok:{result['action_id']}"}, {"text": "Otkaži", "callback_data": f"no:{result['action_id']}"}]], edit=edit_id)
+            icon = {"before": "💰", "after": "✅", "amount": "📊", "reason": "📝"}[key]
+            details.append(f"{icon} {title}: {value}")
+    details.append("⏳ Potvrdite u narednih 5 minuta.")
+    message_id = send(chat_id, "\n".join(details), [[{"text": "✅ Potvrdi", "callback_data": f"ok:{result['action_id']}"}, {"text": "❌ Otkaži", "callback_data": f"no:{result['action_id']}"}]], edit=edit_id)
     if message_id: panel("set_action_message", chat_id, action_id=result["action_id"], message_id=message_id)
 
 
@@ -208,12 +209,12 @@ def reseller_matches(chat_id: int, query: str) -> None:
                 scored.append((score, row))
         exact = [row for _, row in sorted(scored, key=lambda pair: pair[0], reverse=True)[:8]]
     if not exact:
-        send(chat_id, "Nisam pronašao resellera. Probajte ime, email ili ID.")
+        send(chat_id, "🔎 Nisam pronašao resellera. Probajte ime, email ili ID.")
     elif len(exact) == 1:
         show_reseller(chat_id, int(exact[0]["id"]))
     else:
         keyboard = [[{"text": f"{name_of(row)} · #{row['id']}", "callback_data": f"r:{row['id']}"}] for row in exact]
-        send(chat_id, "Izaberite odgovarajućeg resellera:", keyboard)
+        send(chat_id, "👥 Izaberite odgovarajućeg resellera:", keyboard)
 
 
 def show_reseller(chat_id: int, reseller_id: int) -> None:
@@ -223,11 +224,11 @@ def show_reseller(chat_id: int, reseller_id: int) -> None:
         return
     row = result["reseller"]
     balance = int(row.get("balance_rsd") or 0)
-    text = (f"<b>{safe(name_of(row))} · #{row['id']}</b>\nEmail: {safe(row.get('email'))}\n"
-            f"Telefon: {safe(row.get('phone') or 'nije unet')}\nBalans: {'<b>' if balance < 0 else ''}{format_rsd(balance)}{'</b>' if balance < 0 else ''}\n"
-            f"Status: {safe(row.get('status'))} · 2FA: {safe(result.get('two_factor'))} · Popust: {safe(row.get('discount_percent', 0))}%")
-    keyboard = [[{"text": "Dopuni", "callback_data": f"adjust:{row['id']}:plus"}, {"text": "Oduzmi", "callback_data": f"adjust:{row['id']}:minus"}],
-                [{"text": "Transakcije", "callback_data": f"tx:{row['id']}"}, {"text": "Porudžbine", "callback_data": f"orders:{row['id']}"}]]
+    text = (f"👤 <b>{safe(name_of(row))} · #{row['id']}</b>\n✉️ Email: {safe(row.get('email'))}\n"
+            f"📱 Telefon: {safe(row.get('phone') or 'nije unet')}\n💰 Balans: {'<b>' if balance < 0 else ''}{format_rsd(balance)}{'</b>' if balance < 0 else ''}\n"
+            f"🔐 Status: {safe(row.get('status'))} · 2FA: {safe(result.get('two_factor'))} · Popust: {safe(row.get('discount_percent', 0))}%")
+    keyboard = [[{"text": "➕ Dopuni", "callback_data": f"adjust:{row['id']}:plus"}, {"text": "➖ Oduzmi", "callback_data": f"adjust:{row['id']}:minus"}],
+                [{"text": "📒 Transakcije", "callback_data": f"tx:{row['id']}"}, {"text": "🛒 Porudžbine", "callback_data": f"orders:{row['id']}"}]]
     send(chat_id, text, keyboard)
 
 
@@ -237,7 +238,7 @@ def show_transactions(chat_id: int, reseller_id: int, limit: int = 10) -> None:
         send(chat_id, safe(result.get("error", "Transakcije nisu dostupne.")))
         return
     entries = result.get("transactions", [])
-    send(chat_id, "<b>Poslednje transakcije</b>\n" + ("\n".join(f"#{r['id']} · {safe(r['type'])} · {format_rsd(r['amount_rsd'], signed=True)}\n{safe(r.get('description'))} · {safe(format_date(r.get('created_at')))}" for r in entries) or "Nema transakcija."))
+    send(chat_id, "📒 <b>Poslednje transakcije</b>\n" + ("\n".join(f"#{r['id']} · {safe(r['type'])} · {format_rsd(r['amount_rsd'], signed=True)}\n📝 {safe(r.get('description'))} · {safe(format_date(r.get('created_at')))}" for r in entries) or "Još nema transakcija."))
 
 
 def handle_message(message: dict[str, Any]) -> None:
@@ -248,7 +249,7 @@ def handle_message(message: dict[str, Any]) -> None:
         return
     command, args = parse_command(text)
     if command == "start":
-        send(chat_id, f"Chat ID ovog naloga: <code>{chat_id}</code>. Dodajte ga u Admin → Podešavanja → Telegram admin bot.")
+        send(chat_id, f"👋 Dobro došli!\n🆔 Chat ID ovog naloga: <code>{chat_id}</code>\nDodajte ga u Admin → Podešavanja → Telegram admin bot.")
         return
     authorized = panel("authorized", chat_id)
     is_admin = bool(authorized.get("authorized"))
@@ -282,15 +283,15 @@ def handle_message(message: dict[str, Any]) -> None:
             send(chat_id, "Uplata je odbijena." if result.get("ok") else safe(result.get("error", "Nije uspelo.")), edit=int(payload.get("message_id") or 0) or None)
             return
         if state == "await_reseller_action":
-            send(chat_id, "Izaberite resellera pomoću dugmeta ispod.")
+            send(chat_id, "👆 Izaberite resellera pomoću dugmeta ispod.")
             return
 
     if command in ("start", "help", "pomoc"):
-        send(chat_id, "<b>PlayWorld admin bot</b>\n/reselleri · /reseller ime|ID|email\n/dopuna ime|ID iznos razlog\n/oduzmi ime|ID iznos razlog\n/transakcije ime|ID [broj]\n/ponisti transakcija_ID\n/uplate · /porudzbine [nepla] · /placeno porudžbina_ID\n/dug · /cena product_ID nova_cena · /proizvod product_ID on|off · /danas")
+        send(chat_id, "🤖 <b>PlayWorld admin bot</b>\n\n👥 /reselleri · /reseller ime|ID|email\n➕ /dopuna ime|ID iznos razlog\n➖ /oduzmi ime|ID iznos razlog\n📒 /transakcije ime|ID [broj]\n↩️ /ponisti transakcija_ID\n💳 /uplate\n🛒 /porudzbine [nepla] · /placeno porudžbina_ID\n⚠️ /dug\n🏷️ /cena product_ID nova_cena · /proizvod product_ID on|off\n📊 /danas")
     elif command == "reselleri":
         result = panel("list_resellers", chat_id)
         rows = result.get("resellers", [])
-        send(chat_id, "<b>Reselleri</b> · izaberite nalog:", [[{"text": f"{name_of(r)} · {format_rsd(r.get('balance_rsd'))}", "callback_data": f"r:{r['id']}"}] for r in rows[:50]])
+        send(chat_id, "👥 <b>Reselleri</b> · izaberite nalog:", [[{"text": f"{name_of(r)} · {format_rsd(r.get('balance_rsd'))}", "callback_data": f"r:{r['id']}"}] for r in rows[:50]])
     elif command == "reseller" and args:
         reseller_matches(chat_id, " ".join(args))
     elif command in ("dopuna", "oduzmi") and len(args) >= 2:
@@ -307,27 +308,27 @@ def handle_message(message: dict[str, Any]) -> None:
         begin_order_action(chat_id, "reverse_transaction", {"transaction_id": int(args[0])}, "Storno")
     elif command == "uplate":
         payments = panel("payments", chat_id).get("payments", [])
-        if not payments: send(chat_id, "Nema uplata koje čekaju potvrdu.")
+        if not payments: send(chat_id, "✅ Nema uplata koje čekaju potvrdu.")
         for p in payments:
             title = p.get("display_name") or p.get("reseller_email")
             amount = p.get("amount_rsd")
             amount_text = format_rsd(amount) if amount else "iznos nije prijavljen"
-            keyboard = [[{"text": f"Potvrdi {amount_text}" if amount else "Unesi iznos", "callback_data": f"pay:{p['id']}"}, {"text": "Drugi iznos", "callback_data": f"other:{p['id']}"}, {"text": "Odbij", "callback_data": f"reject:{p['id']}"}]]
-            send(chat_id, f"<b>Nova uplata · {safe(title)} · #{p['reseller_id']}</b>\nPrijavljeno: {amount_text}\nBalans: {format_rsd(p.get('balance_rsd'))}\nVreme: {safe(format_date(p.get('clicked_at')))}", keyboard)
+            keyboard = [[{"text": f"✅ Potvrdi {amount_text}" if amount else "✏️ Unesi iznos", "callback_data": f"pay:{p['id']}"}, {"text": "↔️ Drugi iznos", "callback_data": f"other:{p['id']}"}, {"text": "❌ Odbij", "callback_data": f"reject:{p['id']}"}]]
+            send(chat_id, f"💳 <b>Nova uplata · {safe(title)} · #{p['reseller_id']}</b>\n📥 Prijavljeno: {amount_text}\n💰 Balans: {format_rsd(p.get('balance_rsd'))}\n🕒 Vreme: {safe(format_date(p.get('clicked_at')))}", keyboard)
     elif command == "porudzbine":
         orders = panel("orders", chat_id, unpaid=bool(args and args[0].lower().startswith("nepla"))).get("orders", [])
-        if not orders: send(chat_id, "Nema porudžbina za prikaz.")
+        if not orders: send(chat_id, "🛒 Nema porudžbina za prikaz.")
         for order in orders:
             title = f"{order.get('display_name') or order.get('email')} · #{order['id']}"
             desc = f"{order.get('product_name') or 'Igra'} · {order.get('account_type') or ''} · {format_rsd(order.get('price_rsd'))} · {order.get('created_at')}"
-            keyboard = [[{"text": "Označi plaćeno", "callback_data": f"paid:{order['id']}"}]] if not order.get("reseller_paid") else None
-            send(chat_id, f"<b>{safe(title)}</b>\n{safe(desc)}\nStatus plaćanja: {'plaćeno' if order.get('reseller_paid') else 'neplaćeno'}", keyboard)
+            keyboard = [[{"text": "✅ Označi plaćeno", "callback_data": f"paid:{order['id']}"}]] if not order.get("reseller_paid") else None
+            send(chat_id, f"🛒 <b>{safe(title)}</b>\n🎮 {safe(desc)}\n{'✅ Plaćeno' if order.get('reseller_paid') else '🟠 Neplaćeno'}", keyboard)
     elif command == "placeno" and args and args[0].isdigit():
         begin_order_action(chat_id, "mark_order_paid", {"order_id": int(args[0])}, "Označi porudžbinu plaćenom")
     elif command == "dug":
         result = panel("debt", chat_id)
         entries = result.get("resellers", [])
-        send(chat_id, "<b>Reselleri u minusu</b>\n" + "\n".join(f"#{r['id']} {safe(name_of(r))}: <b>{format_rsd(r['balance_rsd'])}</b>" for r in entries) + f"\n\nUkupan dug: <b>{format_rsd(result.get('total_debt_rsd'))}</b>")
+        send(chat_id, "⚠️ <b>Reselleri u minusu</b>\n" + ("\n".join(f"#{r['id']} {safe(name_of(r))}: <b>{format_rsd(r['balance_rsd'])}</b>" for r in entries) or "Nema resellera u minusu.") + f"\n\n💰 Ukupan dug: <b>{format_rsd(result.get('total_debt_rsd'))}</b>")
     elif command == "cena" and len(args) == 2:
         try: price = parse_amount(args[1])
         except ValueError as exc: send(chat_id, safe(exc)); return
@@ -337,7 +338,7 @@ def handle_message(message: dict[str, Any]) -> None:
     elif command == "danas":
         result = panel("today", chat_id)
         orders, payments = result.get("orders") or {}, result.get("payments") or {}
-        send(chat_id, f"<b>Danas</b>\nPorudžbine: {orders.get('count', 0)} · {format_rsd(orders.get('volume'))}\nPotvrđene uplate: {payments.get('count', 0)} · {format_rsd(payments.get('volume'))}")
+        send(chat_id, f"📊 <b>Pregled dana</b>\n🛒 Porudžbine: {orders.get('count', 0)} · {format_rsd(orders.get('volume'))}\n💳 Potvrđene uplate: {payments.get('count', 0)} · {format_rsd(payments.get('volume'))}")
     else:
         send(chat_id, "Nepoznata komanda. Pošaljite /help za spisak.")
 
@@ -391,7 +392,7 @@ def choose_reseller_for_adjustment(chat_id: int, query: str, amount: int, reason
 def finish_action(chat_id: int, result: dict[str, Any], message_id: int = 0) -> None:
     if result.get("requires_totp"):
         panel("set_conversation", chat_id, state="await_totp", payload={"action_id": result.get("action_id"), "message_id": message_id})
-        message = "Kod nije ispravan. Pokušajte ponovo sa svežim šestocifrenim kodom." if result.get("totp_error") else "Iznos zahteva svež admin 2FA kod. Pošaljite šestocifreni kod iz Authenticator aplikacije."
+        message = "❌ Kod nije ispravan. Pokušajte ponovo sa svežim šestocifrenim kodom." if result.get("totp_error") else "🔐 Iznos zahteva svež admin 2FA kod. Pošaljite šestocifreni kod iz Authenticator aplikacije."
         send(chat_id, message, edit=message_id or None)
         return
     panel("clear_conversation", chat_id)
@@ -400,13 +401,13 @@ def finish_action(chat_id: int, result: dict[str, Any], message_id: int = 0) -> 
         return
     info = result.get("result") or {}
     if info.get("balance_after_rsd") is not None:
-        message = f"Potvrđeno. Novi balans: <b>{format_rsd(info['balance_after_rsd'])}</b> · transakcija #{info.get('transaction_id')}"
+        message = f"✅ Promena je potvrđena. Novi balans: <b>{format_rsd(info['balance_after_rsd'])}</b> · transakcija #{info.get('transaction_id')}"
     elif info.get("order_id"):
-        message = f"Porudžbina #{info['order_id']} je označena kao plaćena."
+        message = f"✅ Porudžbina #{info['order_id']} je označena kao plaćena."
     elif info.get("product_id"):
-        message = "Promena proizvoda je sačuvana."
+        message = "✅ Promena proizvoda je sačuvana."
     else:
-        message = "Akcija je potvrđena."
+        message = "✅ Akcija je potvrđena."
     send(chat_id, message, edit=message_id or None)
 
 
@@ -517,27 +518,27 @@ def format_event(kind: str, p: dict[str, Any]) -> str:
     name = safe(p.get("reseller_name") or p.get("reseller_email") or f"Reseller #{p.get('reseller_id')}")
     if kind == "payment_notice":
         amount = format_rsd(p["amount_rsd"]) if p.get("amount_rsd") else "iznos nije unet"
-        return f"<b>Nova uplata: {name} (#{p.get('reseller_id')})</b>\nPrijavljeno: {amount}\nTrenutni balans: {format_rsd(p.get('balance_rsd'))}"
+        return f"💳 <b>Nova uplata: {name} (#{p.get('reseller_id')})</b>\n📥 Prijavljeno: {amount}\n💰 Trenutni balans: {format_rsd(p.get('balance_rsd'))}"
     if kind == "new_order":
-        return f"<b>Nova porudžbina · {name}</b>\n{safe(p.get('product_name'))} · {safe(p.get('account_type'))}\nCena: {format_rsd(p.get('price_rsd'))} · novi balans: {format_rsd(p.get('balance_rsd'))}\nPorudžbina #{p.get('order_id')}"
+        return f"🛒 <b>Nova porudžbina · {name}</b>\n🎮 {safe(p.get('product_name'))} · {safe(p.get('account_type'))}\n💰 Cena: {format_rsd(p.get('price_rsd'))} · novi balans: {format_rsd(p.get('balance_rsd'))}\n🧾 Porudžbina #{p.get('order_id')}"
     if kind == "missing_game":
-        return f"<b>Igra nije stigla · {name}</b>\n{safe(p.get('product_name'))} · {safe(p.get('account_type'))}\nPorudžbina #{p.get('order_id')} · prijava #{p.get('report_id')}"
+        return f"📦 <b>Igra nije stigla · {name}</b>\n🎮 {safe(p.get('product_name'))} · {safe(p.get('account_type'))}\n🧾 Porudžbina #{p.get('order_id')} · prijava #{p.get('report_id')}"
     if kind == "game_request":
-        return f"<b>Zahtev za igru · {name}</b>\n{safe(p.get('suggestion'))}\nPrijava #{p.get('request_id')}"
+        return f"🎮 <b>Zahtev za igru · {name}</b>\n💬 {safe(p.get('suggestion'))}\n🧾 Prijava #{p.get('request_id')}"
     if kind == "low_balance":
-        return f"<b>Balans ispod limita · {name}</b>\nTrenutni balans: {format_rsd(p.get('balance_rsd'))} · prag {format_rsd(p.get('threshold_rsd'))}"
+        return f"⚠️ <b>Balans ispod limita · {name}</b>\n💰 Trenutni balans: {format_rsd(p.get('balance_rsd'))} · prag {format_rsd(p.get('threshold_rsd'))}"
     if kind == "inventory_error":
-        return f"<b>Inventory API greška · {name}</b>\nRezultat: {safe(p.get('result'))} · HTTP {safe(p.get('http_status'))}\nZahtev #{p.get('request_id')}"
+        return f"🚨 <b>Inventory API greška · {name}</b>\n📡 Rezultat: {safe(p.get('result'))} · HTTP {safe(p.get('http_status'))}\n🧾 Zahtev #{p.get('request_id')}"
     return ""
 
 
 def event_keyboard(kind: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     if kind == "payment_notice":
-        return {"inline_keyboard": [[{"text": f"Potvrdi {format_rsd(payload['amount_rsd'])}" if payload.get("amount_rsd") else "Unesi iznos", "callback_data": f"pay:{payload['notice_id']}"}, {"text": "Drugi iznos", "callback_data": f"other:{payload['notice_id']}"}, {"text": "Odbij", "callback_data": f"reject:{payload['notice_id']}"}]]}
+        return {"inline_keyboard": [[{"text": f"✅ Potvrdi {format_rsd(payload['amount_rsd'])}" if payload.get("amount_rsd") else "✏️ Unesi iznos", "callback_data": f"pay:{payload['notice_id']}"}, {"text": "↔️ Drugi iznos", "callback_data": f"other:{payload['notice_id']}"}, {"text": "❌ Odbij", "callback_data": f"reject:{payload['notice_id']}"}]]}
     if kind == "missing_game":
-        return {"inline_keyboard": [[{"text": "Označi rešeno", "callback_data": f"solve:missing_game:{payload['report_id']}"}]]}
+        return {"inline_keyboard": [[{"text": "✅ Označi rešeno", "callback_data": f"solve:missing_game:{payload['report_id']}"}]]}
     if kind == "game_request":
-        return {"inline_keyboard": [[{"text": "Označi rešeno", "callback_data": f"solve:game_request:{payload['request_id']}"}]]}
+        return {"inline_keyboard": [[{"text": "✅ Označi rešeno", "callback_data": f"solve:game_request:{payload['request_id']}"}]]}
     return None
 
 
