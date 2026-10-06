@@ -241,12 +241,13 @@ def handle_message(message: dict[str, Any]) -> None:
     sender = message.get("from") or {}
     if not chat_id or not text or not is_allowed_username(sender.get("username")):
         return
+    command, args = parse_command(text)
+    if command == "start":
+        send(chat_id, f"Chat ID ovog naloga: <code>{chat_id}</code>. Dodajte ga u Admin → Podešavanja → Telegram admin bot.")
+        return
     authorized = panel("authorized", chat_id, chat_id=chat_id)
     is_admin = bool(authorized.get("authorized"))
-    command, args = parse_command(text)
     if not is_admin:
-        if command == "start":
-            send(chat_id, f"Nemaš pristup. Tvoj chat ID: <code>{chat_id}</code>")
         return
     panel("heartbeat", chat_id, service="webhook")
     conversation = panel("get_conversation", chat_id, chat_id=chat_id).get("conversation")

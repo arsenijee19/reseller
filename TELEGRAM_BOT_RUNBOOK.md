@@ -77,7 +77,7 @@ sudo sh -c 'set -a; . /etc/reseller-tg-bot/bot.env; set +a; \
 
 U produkciji pokreni skriptu iz same bot fascikle (`telegram-bot/set-webhook.sh`) koja je kopirana u `/opt/reseller-tg-bot`; potrebno je da joj se dodeli executable bit ili da se pozove preko `sh`.
 
-Pošalji botu `/start`. Neovlašćen odgovor prikazuje samo chat ID. Unesi taj ID u Admin → Podešavanja → Telegram admin bot, dodaj oznaku i sačuvaj. Klikni „Pošalji test poruku“.
+Pošalji botu `/start` sa naloga `@arsoarso`. Samo taj username dobija chat ID; `/start` radi i pre povezivanja panel API-ja. Unesi prikazani ID u Admin → Podešavanja → Telegram admin bot, dodaj oznaku i sačuvaj. Klikni „Pošalji test poruku“.
 
 ## 5. Komande
 
