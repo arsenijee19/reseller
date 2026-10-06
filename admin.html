@@ -52,6 +52,12 @@
     button,input,select,textarea{font:inherit}
     .shell{width:min(100%,1480px);margin:0 auto;padding:20px 18px 44px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:16px}
+    .session-restore{display:none;min-height:180px;place-items:center;color:var(--muted);font-size:14px}
+    .session-restore-content{display:flex;align-items:center;gap:11px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow)}
+    .session-restore-spinner{width:18px;height:18px;border:2px solid rgba(37,99,235,.18);border-top-color:var(--brand);border-radius:50%;animation:session-spin .75s linear infinite}
+    @keyframes session-spin{to{transform:rotate(360deg)}}
+    body.session-checking .session-restore{display:grid}
+    body.session-checking .login,body.session-checking .login-switch,body.session-checking #adminPanel{visibility:hidden}
     .topbar-title{min-width:0}
     h1,h2,h3,p{margin:0}
     h1{font-size:20px}
@@ -402,9 +408,10 @@
       .topbar .actions .icon-control{width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;padding:9px}
       .topbar .actions #refreshBtn,.topbar .actions #logoutBtn{width:40px;min-width:40px;padding:9px}
     }
+    @media(prefers-reduced-motion:reduce){.session-restore-spinner{animation-duration:1.8s}}
   </style>
 </head>
-<body>
+<body class="session-checking">
   <main class="shell">
     <header class="portal-auth-header" id="authHeader">
       <div class="portal-brand">
@@ -413,6 +420,9 @@
       </div>
       <button class="btn icon-control" id="loginThemeBtn" type="button" aria-label="Uključi dark mode" title="Uključi dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg></button>
     </header>
+    <div class="session-restore" role="status" aria-live="polite">
+      <div class="session-restore-content"><span class="session-restore-spinner" aria-hidden="true"></span><span>Proveravamo admin prijavu...</span></div>
+    </div>
     <section class="panel login" id="loginPanel">
       <div class="section">
         <div class="login-heading"><span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 5-3.4 8.3-7 10-3.6-1.7-7-5-7-10V6l7-3Z"/></svg></span><h1>Admin prijava</h1></div>
@@ -2020,7 +2030,8 @@
           await load();
         }
       })
-      .catch(() => setLoggedIn(false));
+      .catch(() => setLoggedIn(false))
+      .finally(() => document.body.classList.remove("session-checking"));
     setTheme(defaultTheme());
   </script>
 </body>
