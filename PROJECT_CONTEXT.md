@@ -241,6 +241,7 @@
 - Replaced the classic reseller product select with a grouped, searchable product picker that keeps letter filters, price previews, and the existing order selection flow.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
+- Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.
 - Added an Admin panel link to the reseller login screen, refined reseller dropdown styling, shortened order notification emails, and optimized reseller login so past orders no longer block the initial portal display.
 - Set reseller/admin session lifetime to 60 minutes.
 - Fixed reseller catalog loading so products and prices render together after both API calls return, preventing an empty price list when responses arrive out of order.
