@@ -58,11 +58,15 @@
     button,input,select,textarea{font:inherit}
     .shell{max-width:1440px;margin:0 auto;padding:26px 28px 48px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
-    .session-restore{display:none;min-height:180px;place-items:center;color:var(--muted);font-size:14px}
-    .session-restore-content{display:flex;align-items:center;gap:11px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 8px 28px rgba(31,48,79,.055)}
-    .session-restore-spinner{width:18px;height:18px;border:2px solid rgba(49,93,244,.18);border-top-color:var(--brand);border-radius:50%;animation:session-spin .75s linear infinite}
+    .session-restore{display:none;min-height:180px;place-items:center;padding:20px;color:var(--muted);font-size:14px}
+    .session-restore-content{position:relative;display:flex;align-items:center;gap:13px;overflow:hidden;padding:16px 21px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,var(--panel),var(--soft));box-shadow:0 14px 36px rgba(31,48,79,.09);animation:session-card-in .28s cubic-bezier(.2,.75,.25,1) .12s both}
+    .session-restore-content::before{position:absolute;top:0;left:-45%;width:38%;height:2px;content:"";background:linear-gradient(90deg,transparent,var(--brand),var(--accent),transparent);animation:session-sheen 1.5s ease-in-out .12s infinite}
+    .session-restore-spinner{width:22px;height:22px;flex:0 0 22px;border:2px solid rgba(49,93,244,.15);border-top-color:var(--brand);border-right-color:var(--accent);border-radius:50%;box-shadow:0 0 0 5px rgba(49,93,244,.055);animation:session-spin .9s cubic-bezier(.5,.1,.35,.9) infinite}
     @keyframes session-spin{to{transform:rotate(360deg)}}
-    body.session-checking .session-restore{display:grid}
+    @keyframes session-card-in{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes session-sheen{0%,100%{transform:translateX(0);opacity:0}25%,75%{opacity:.8}50%{transform:translateX(430%);opacity:.8}}
+    body.session-checking .session-restore{display:grid;animation:session-restore-reveal .2s .1s both}
+    @keyframes session-restore-reveal{from{opacity:0}to{opacity:1}}
     body.session-checking .layout{visibility:hidden}
     .brand{display:flex;align-items:center;gap:12px;min-width:0}
     .brand-copy{min-width:0}
@@ -917,6 +921,10 @@
       <p>Panel je osvežen da brže pronađete igru, proverite stanje i završite porudžbinu.</p>
       <div class="release-list">
         <div class="release-item">
+          <strong>Ugodniji početak prijave</strong>
+          <p>Provera postojeće prijave sada se prikazuje nežnim prelazom, bez kratkog treperenja ekrana.</p>
+        </div>
+        <div class="release-item">
           <strong>Življi prikaz prijave i balansa</strong>
           <p>Status prelazi u „online“, a balans se kratko broji od nule do trenutnog iznosa.</p>
         </div>
@@ -973,7 +981,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-scroll-to-top";
+    const RELEASE_VERSION = "2026-10-06-login-loading-transition";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");

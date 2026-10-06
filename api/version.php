@@ -9,5 +9,5 @@ header('X-Content-Type-Options: nosniff');
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-06-scroll-to-top',
+  'version' => '2026-10-06-login-loading-transition',
 ], JSON_UNESCAPED_SLASHES);

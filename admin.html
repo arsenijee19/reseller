@@ -52,11 +52,14 @@
     button,input,select,textarea{font:inherit}
     .shell{width:min(100%,1480px);margin:0 auto;padding:20px 18px 44px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:16px}
-    .session-restore{display:none;min-height:180px;place-items:center;color:var(--muted);font-size:14px}
-    .session-restore-content{display:flex;align-items:center;gap:11px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow)}
-    .session-restore-spinner{width:18px;height:18px;border:2px solid rgba(37,99,235,.18);border-top-color:var(--brand);border-radius:50%;animation:session-spin .75s linear infinite}
+    .session-restore{display:none;min-height:180px;place-items:center;padding:20px;color:var(--muted);font-size:14px}
+    .session-restore-content{position:relative;display:flex;align-items:center;gap:13px;overflow:hidden;padding:16px 21px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,var(--panel),var(--soft));box-shadow:var(--shadow);animation:session-card-in .28s cubic-bezier(.2,.75,.25,1) .12s both}
+    .session-restore-content::before{position:absolute;top:0;left:-45%;width:38%;height:2px;content:"";background:linear-gradient(90deg,transparent,var(--brand),var(--accent),transparent);animation:session-sheen 1.5s ease-in-out .12s infinite}
+    .session-restore-spinner{width:22px;height:22px;flex:0 0 22px;border:2px solid rgba(37,99,235,.15);border-top-color:var(--brand);border-right-color:var(--accent);border-radius:50%;box-shadow:0 0 0 5px rgba(37,99,235,.055);animation:session-spin .9s cubic-bezier(.5,.1,.35,.9) infinite}
     @keyframes session-spin{to{transform:rotate(360deg)}}
-    body.session-checking .session-restore{display:grid;animation:session-restore-reveal .18s .18s both}
+    @keyframes session-card-in{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes session-sheen{0%,100%{transform:translateX(0);opacity:0}25%,75%{opacity:.8}50%{transform:translateX(430%);opacity:.8}}
+    body.session-checking .session-restore{display:grid;animation:session-restore-reveal .22s .1s both}
     body.session-checking .login,body.session-checking .login-switch,body.session-checking #adminPanel{visibility:hidden}
     @keyframes session-restore-reveal{from{opacity:0}to{opacity:1}}
     .topbar-title{min-width:0}
@@ -421,7 +424,7 @@
       .topbar .actions .icon-control{width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;padding:9px}
       .topbar .actions #refreshBtn,.topbar .actions #logoutBtn{width:40px;min-width:40px;padding:9px}
     }
-    @media(prefers-reduced-motion:reduce){.session-restore-spinner{animation-duration:1.8s}}
+    @media(prefers-reduced-motion:reduce){.session-restore-spinner,.session-restore-content,.session-restore-content::before{animation:none!important;opacity:1;transform:none}}
     /* Admin workspace refresh: quiet navigation, readable tables, focused editing. */
     .admin-brand{display:flex;align-items:center;gap:12px;min-width:0}.admin-brand .portal-logo{width:44px;height:44px;flex:0 0 44px}.admin-brand-copy{display:grid;gap:2px}.admin-brand-copy strong{font-size:18px;letter-spacing:-.03em}.admin-brand-copy span{color:var(--muted);font-size:12px}
     .topbar{position:relative;top:auto;z-index:1;margin:0 0 12px;padding:0;background:transparent;border:0;backdrop-filter:none}
