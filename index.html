@@ -68,6 +68,8 @@
     h3{font-size:14px;margin-bottom:10px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .logout-icon-btn{width:42px;height:42px;flex:0 0 42px;padding:9px;border-radius:999px}
+    .logout-icon-btn svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .auth-only{display:none!important}
     body.is-authenticated .status.auth-only{display:flex!important}
     body.is-authenticated aside.auth-only{display:block!important}
@@ -321,6 +323,13 @@
         <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn whats-new-btn" id="accountSettingsBtn" type="button">Nalog</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
+        <button class="btn logout-icon-btn" id="logoutBtn" type="button" title="Odjavi se" aria-label="Odjavi se">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14" />
+            <path d="M11 12h8" />
+            <path d="m16 8 4 4-4 4" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -363,7 +372,6 @@
               <button class="btn good" id="paidBtn">Uplatio sam</button>
               <button class="btn" id="missingGameBtn" type="button">Igra mi nije stigla</button>
               <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
-              <button class="btn" id="logoutBtn">Logout</button>
             </div>
             <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
             <div class="msg" id="orderMsg"></div>
