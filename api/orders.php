@@ -20,8 +20,9 @@ try {
   $notesSelect = has_column($pdo, 'orders', 'reseller_notes') ? 'o.reseller_notes,' : "'' AS reseller_notes,";
   $paidSelect = has_column($pdo, 'orders', 'reseller_paid') ? 'o.reseller_paid,' : '0 AS reseller_paid,';
   $paidAtSelect = has_column($pdo, 'orders', 'reseller_paid_at') ? 'o.reseller_paid_at,' : 'NULL AS reseller_paid_at,';
+  $allOrders = h_string($_GET['all'] ?? '') === '1';
 
-  $stmt = $pdo->prepare("
+  $sql = "
     SELECT
       o.id,
       o.product_id,
@@ -36,8 +37,9 @@ try {
     LEFT JOIN product_prices pp ON pp.product_id = o.product_id
     WHERE o.reseller_id = ?
     ORDER BY o.created_at DESC, o.id DESC
-    LIMIT 10
-  ");
+  ";
+  if (!$allOrders) $sql .= ' LIMIT 10';
+  $stmt = $pdo->prepare($sql);
   $stmt->execute([$resellerId]);
 
   $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);

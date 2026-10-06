@@ -279,6 +279,8 @@
     .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
     .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
     .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
+    .transaction-positive{color:var(--good);font-weight:800;white-space:nowrap}
+    .transaction-negative{color:var(--danger);font-weight:800;white-space:nowrap}
     .login{max-width:460px;margin:15vh auto 0;border-radius:24px}
     .login .section{text-align:center;padding:30px}
     .login label{text-align:left}
@@ -522,6 +524,25 @@
           <div class="table-wrap"><table id="paymentNoticesTable"></table></div>
         </div>
 
+        <div class="section view hidden" id="view-transactions">
+          <div class="section-head">
+            <div class="section-title">
+              <h2>Transactions</h2>
+              <p>Ručno evidentiraj uplate i druge promene balansa. Pozitivan iznos dodaje sredstva, negativan ih oduzima.</p>
+            </div>
+          </div>
+          <div class="form-panel" style="margin-bottom:14px">
+            <div class="grid">
+              <div class="span-4"><label for="transactionReseller">Reseller</label><select id="transactionReseller"></select></div>
+              <div class="span-3"><label for="transactionAmount">Iznos (RSD)</label><input id="transactionAmount" type="number" step="1" placeholder="3000 ili -3000" /></div>
+              <div class="span-5"><label for="transactionDescription">Opis</label><input id="transactionDescription" type="text" maxlength="255" placeholder="Uplata po dogovoru za User1" /></div>
+              <div class="span-12 form-actions"><button class="btn good" id="addTransactionBtn" type="button">Dodaj transakciju</button></div>
+            </div>
+            <p class="muted" style="margin-top:10px">Primer: izaberite User1, unesite <span class="mono">3000</span> i opis „Uplata po dogovoru za septembar“.</p>
+          </div>
+          <div class="table-wrap"><table id="transactionsTable"></table></div>
+        </div>
+
         <div class="section view hidden" id="view-inventory">
           <div class="section-head">
             <div class="section-title">
@@ -613,6 +634,7 @@
       ["products","Proizvodi"],
       ["orders","Porudžbine"],
       ["payment_notices","Uplate"],
+      ["transactions","Transactions"],
       ["inventory","Inventory"],
       ["database","Baza"]
     ];
@@ -1276,6 +1298,36 @@
       }
     }
 
+    function renderTransactions(){
+      const resellerSelect = $("transactionReseller");
+      resellerSelect.textContent = "";
+      (state.data.resellers || []).forEach((reseller) => {
+        const label = reseller.display_name ? `${reseller.display_name} - ${reseller.email}` : reseller.email;
+        option(resellerSelect, reseller.id, `${label} (#${reseller.id})`);
+      });
+
+      const table = $("transactionsTable");
+      table.textContent = "";
+      const columns = ["id", "reseller_name", "reseller_email", "type", "amount_rsd", "description", "related_order_id", "created_at"];
+      const head = table.createTHead().insertRow();
+      columns.forEach((name) => text(head.insertCell(), "strong", name));
+      const body = table.createTBody();
+      (state.data.transactions || []).forEach((transaction) => {
+        const row = body.insertRow();
+        columns.forEach((name) => {
+          const value = name === "amount_rsd" ? money(transaction[name]) : (transaction[name] || "-");
+          const cell = row.insertCell();
+          text(cell, "span", value, name === "amount_rsd" ? (Number(transaction[name]) >= 0 ? "transaction-positive" : "transaction-negative") : "");
+        });
+      });
+      if (!(state.data.transactions || []).length) {
+        const row = body.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = columns.length;
+        text(cell, "span", "Nema zabeleženih transakcija.", "muted");
+      }
+    }
+
     function renderInventory(){
       const config = state.data.inventory_config || {};
       $("inventoryApiBaseInput").value = config.api_base_url || "https://baza.igreps.rs";
@@ -1488,6 +1540,7 @@
       if (state.tab === "products") renderProducts();
       if (state.tab === "orders") renderOrders();
       if (state.tab === "payment_notices") renderPaymentNotices();
+      if (state.tab === "transactions") renderTransactions();
       if (state.tab === "inventory") renderInventory();
       if (state.tab === "database") renderSchema();
     }
@@ -1736,6 +1789,32 @@
     });
     $("changeAdminPasswordBtn").addEventListener("click", changeAdminPassword);
     $("createResellerBtn").addEventListener("click", createReseller);
+    $("addTransactionBtn").addEventListener("click", async () => {
+      const btn = $("addTransactionBtn");
+      try{
+        btn.disabled = true;
+        btn.textContent = "Dodajem...";
+        await ensureAdminStepUp();
+        const result = await api("add_transaction", {
+          method:"POST",
+          body:JSON.stringify({
+            reseller_id:$("transactionReseller").value,
+            amount_rsd:$("transactionAmount").value,
+            description:$("transactionDescription").value.trim()
+          })
+        });
+        state.data = result;
+        $("transactionAmount").value = "";
+        $("transactionDescription").value = "";
+        renderWithUiState(() => render());
+        showToast("ok", "Transakcija je sačuvana i balance je ažuriran.");
+      }catch(e){
+        showToast("bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Dodaj transakciju";
+      }
+    });
     $("startAdmin2faBtn").addEventListener("click", startAdminTwoFactorSetup);
     $("generateAdmin2faBtn").addEventListener("click", generateAdminTwoFactorSetup);
     $("confirmAdmin2faBtn").addEventListener("click", confirmAdminTwoFactorSetup);

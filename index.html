@@ -76,6 +76,8 @@
     body.is-authenticated .footer-actions.auth-only{display:block!important}
     .pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--soft));border-radius:999px;padding:8px 14px;font-size:12px;color:var(--muted);white-space:nowrap;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
     .pill:hover{border-color:rgba(23,105,224,.28);box-shadow:0 8px 22px rgba(15,23,42,.08);transform:translateY(-1px)}
+    .balance-pill{cursor:pointer}
+    .balance-pill:focus-visible{outline:2px solid rgba(75,141,247,.72);outline-offset:2px}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
     .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
     body:not(.is-authenticated) .layout{grid-template-columns:minmax(0,520px);justify-content:center}
@@ -331,7 +333,7 @@
       </div>
       <div class="status auth-only">
         <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
-        <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
+        <button class="pill balance-pill" id="balanceBtn" type="button" aria-pressed="false" title="Prikaži sve porudžbine">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></button>
         <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn whats-new-btn" id="accountSettingsBtn" type="button">Nalog</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
@@ -420,8 +422,8 @@
         <div class="section">
           <div class="history-head">
             <div>
-              <h2>Prethodne porudžbine</h2>
-              <p>Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
+              <h2 id="historyTitle">Prethodne porudžbine</h2>
+              <p id="historyDescription">Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
             </div>
             <button class="btn" id="markAllPaidBtn" type="button" disabled>Označi sve kao plaćeno</button>
           </div>
@@ -633,6 +635,14 @@
           <strong>Preporučena prodajna cena</strong>
           <p>Ikona prodavnice pored cene prikazuje preporučenu minimalnu cenu za dalju prodaju.</p>
         </div>
+        <div class="release-item">
+          <strong>Kompletna istorija porudžbina</strong>
+          <p>Klikni na Balance u vrhu panela da učitaš sve svoje porudžbine, umesto samo poslednjih 10.</p>
+        </div>
+        <div class="release-item">
+          <strong>Admin Transactions</strong>
+          <p>Admin sada može da evidentira ručne uplate i promene balansa uz opis transakcije.</p>
+        </div>
       </div>
       <div class="actions">
         <button class="btn primary" id="dismissReleaseBtn" type="button">Razumem</button>
@@ -659,10 +669,11 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const RELEASE_VERSION = "2026-10-06-resale-price-hints";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], showAllOrders: false, productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
+    const balanceBtn = $("balanceBtn");
     const loginBox = $("loginBox");
     const appBox = $("appBox");
     const tokenInput = $("token");
@@ -717,6 +728,8 @@
     const twoFactorMsg = $("twoFactorMsg");
     const recoveryCodesBox = $("recoveryCodesBox");
     const historyList = $("historyList");
+    const historyTitle = $("historyTitle");
+    const historyDescription = $("historyDescription");
     const markAllPaidBtn = $("markAllPaidBtn");
     const notesSearchToggle = $("notesSearchToggle");
     const notesSearchWrap = $("notesSearchWrap");
@@ -1635,6 +1648,16 @@
       preserveScroll(() => { loadOrders(true); });
     }
 
+    function updateOrderHistoryMode(){
+      const showingAll = state.showAllOrders;
+      historyTitle.textContent = showingAll ? "Sve porudžbine" : "Prethodne porudžbine";
+      historyDescription.textContent = showingAll
+        ? "Kompletna evidencija porudžbina na ovom reseller nalogu."
+        : "Pregled poslednjih porudžbina na ovom reseller nalogu.";
+      balanceBtn.setAttribute("aria-pressed", String(showingAll));
+      balanceBtn.title = showingAll ? "Prikaži poslednjih 10 porudžbina" : "Prikaži sve porudžbine";
+    }
+
     function ordersMatchingNotes(){
       const query = normalizeSearch(state.notesSearch);
       if (!query) return state.orders;
@@ -1643,9 +1666,10 @@
 
     async function loadOrders(renderOnly = false){
       if (!renderOnly) {
-        const j = await api("/api/orders.php");
+        const j = await api(`/api/orders.php${state.showAllOrders ? "?all=1" : ""}`);
         state.orders = j.orders || [];
       }
+      updateOrderHistoryMode();
       const visibleOrders = ordersMatchingNotes();
       historyList.textContent = "";
       if (!state.orders.length){
@@ -1991,6 +2015,8 @@
       state.productTypeFilter = "";
       state.notesSearch = "";
       productSearch.value = "";
+      state.showAllOrders = false;
+      updateOrderHistoryMode();
       notesSearchInput.value = "";
       notesSearchCount.textContent = "";
       setNotesSearchOpen(false);
@@ -2053,6 +2079,22 @@
       state.productLetter = "";
       renderProductOptions();
       renderPrices();
+    });
+    balanceBtn.addEventListener("click", async () => {
+      const previousMode = state.showAllOrders;
+      state.showAllOrders = !previousMode;
+      updateOrderHistoryMode();
+      balanceBtn.disabled = true;
+      try{
+        await loadOrders();
+        historyList.scrollIntoView({ behavior:"smooth", block:"start" });
+      }catch(e){
+        state.showAllOrders = previousMode;
+        updateOrderHistoryMode();
+        historyList.textContent = e.message;
+      }finally{
+        balanceBtn.disabled = false;
+      }
     });
     productPickerTrigger.addEventListener("click", () => {
       if (productPickerTrigger.disabled) return;

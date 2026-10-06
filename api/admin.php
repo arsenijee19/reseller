@@ -161,6 +161,21 @@ function fetch_payment_notices(PDO $pdo): array {
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function fetch_transactions(PDO $pdo): array {
+  $resellerName = has_column($pdo, 'resellers', 'display_name') ? 'r.display_name AS reseller_name' : "'' AS reseller_name";
+  $relatedOrder = has_column($pdo, 'wallet_transactions', 'related_order_id') ? 'wt.related_order_id' : 'NULL AS related_order_id';
+  $createdAt = has_column($pdo, 'wallet_transactions', 'created_at') ? 'wt.created_at' : 'NULL AS created_at';
+  $stmt = $pdo->query(
+    "SELECT wt.id, wt.reseller_id, {$resellerName}, r.email AS reseller_email,
+      wt.type, wt.amount_rsd, wt.description, {$relatedOrder}, {$createdAt}
+    FROM wallet_transactions wt
+    LEFT JOIN resellers r ON r.id = wt.reseller_id
+    ORDER BY wt.id DESC
+    LIMIT 500
+  ");
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 function fetch_inventory_requests(PDO $pdo, array $filters): array {
   ensure_security_tables($pdo);
   $where = [];
@@ -346,6 +361,7 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
       'resellers' => table_columns($pdo, 'resellers'),
       'products' => table_columns($pdo, 'product_prices'),
       'orders' => table_columns($pdo, 'orders'),
+      'wallet_transactions' => table_columns($pdo, 'wallet_transactions'),
       'inventory_api_requests' => table_columns($pdo, 'inventory_api_requests'),
       'missing_game_reports' => table_columns($pdo, 'missing_game_reports'),
       'security_audit_events' => table_columns($pdo, 'security_audit_events'),
@@ -355,6 +371,7 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
     'resellers' => fetch_resellers($pdo),
     'products' => fetch_products($pdo),
     'orders' => fetch_orders($pdo, $filters),
+    'transactions' => fetch_transactions($pdo),
     'payment_notices' => fetch_payment_notices($pdo),
     'inventory_config' => inventory_config_payload($pdo),
     'inventory_requests' => fetch_inventory_requests($pdo, $filters),
@@ -748,6 +765,50 @@ try {
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_password_changed', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+  }
+
+  if ($action === 'add_transaction') {
+    require_recent_admin_step_up();
+    $resellerId = (int)($input['reseller_id'] ?? 0);
+    $amount = (int)($input['amount_rsd'] ?? 0);
+    $description = trim((string)($input['description'] ?? ''));
+    $descriptionLength = function_exists('mb_strlen') ? mb_strlen($description, 'UTF-8') : strlen($description);
+
+    if ($resellerId <= 0 || $amount === 0) {
+      json_response(['ok' => false, 'error' => 'Izaberite resellera i unesite iznos različit od nule.'], 400);
+    }
+    if (abs($amount) > 100000000) {
+      json_response(['ok' => false, 'error' => 'Iznos transakcije je prevelik.'], 400);
+    }
+    if ($description === '' || $descriptionLength > 255) {
+      json_response(['ok' => false, 'error' => 'Unesite opis transakcije do 255 karaktera.'], 400);
+    }
+
+    $adminId = (int)($_SESSION['admin_id'] ?? 0);
+    $pdo->beginTransaction();
+    try {
+      $resellerStmt = $pdo->prepare('SELECT id, balance_rsd FROM resellers WHERE id = ? LIMIT 1 FOR UPDATE');
+      $resellerStmt->execute([$resellerId]);
+      $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
+      if (!$reseller) throw new RuntimeException('Reseller nije pronađen.');
+
+      $newBalance = (int)$reseller['balance_rsd'] + $amount;
+      $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$newBalance, $resellerId]);
+      $type = $amount > 0 ? 'ADMIN_TOPUP' : 'ADMIN_ADJUSTMENT';
+      $pdo->prepare('INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, ?, ?, ?)')
+        ->execute([$resellerId, $type, $amount, $description]);
+      audit_event($pdo, 'admin', $adminId, 'manual_transaction_added', 'success', [
+        'reseller_id' => $resellerId,
+        'amount_rsd' => $amount,
+        'type' => $type,
+      ]);
+      $pdo->commit();
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      throw $e;
+    }
+
+    json_response(dashboard_payload($pdo));
   }
 
   if ($action === 'resend_payment_notice') {

@@ -10,6 +10,7 @@
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller login/admin login now have server-side rate limiting and security audit records without storing plaintext credentials.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
+  - Clicking the reseller Balance pill loads the complete order history; the initial panel load still uses the latest 10 orders for speed.
   - Resellers must complete account profile onboarding after the account-security migration: personal email and phone are stored on the reseller profile before protected panel actions are available.
   - Resellers still using internal `@playworld.rs` email addresses are forced back into the profile popup until they save a personal email for future delivery and verification-code messages.
   - Resellers can update account email/phone and optionally change their reseller token/password after confirming the current token/password.
@@ -25,6 +26,7 @@
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
   - Admins can store a private per-reseller note in Admin → Reselleri; it is not exposed to reseller users or order notes.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
+  - Admin Transactions tab records manual positive/negative wallet transactions with a description, updates reseller balance atomically, and shows the wallet history.
   - Admin can cancel an order from the filtered Orders view through a transaction-safe, auditable reversal action.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
@@ -104,6 +106,7 @@
 - `api/prices.php` - active price list for logged-in resellers.
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
 - `api/orders.php` - reseller recent order history.
+- `api/orders.php?all=1` - complete order history for the authenticated reseller.
 - `api/order_notes.php` - reseller-owned internal notes update endpoint for existing orders.
 - `api/order_paid.php` - reseller-owned internal paid/unpaid marker endpoint for existing orders.
 - `api/order_paid_all.php` - reseller-owned bulk endpoint for marking all previous orders as internally paid.
@@ -198,6 +201,7 @@
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
   - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
+  - Admin manual Transactions use signed RSD amounts and descriptions; positive entries use `ADMIN_TOPUP`, negative entries use `ADMIN_ADJUSTMENT`, and the balance plus wallet row commit atomically.
   - Admin-only reseller notes are free-form operational context and do not change balance, wallet transactions, or payment status.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
   - Admin order cancellation locks the order and reseller rows, verifies the original negative `ORDER` transaction, adds exactly one positive `ORDER_REVERSAL` transaction linked to the order when the wallet schema supports it, restores the charged amount, marks the order `canceled`, and writes an audit event. A second or concurrent reversal is rejected; legacy ENUM wallet schemas use a clearly described `ADMIN_ADJUSTMENT` fallback.
@@ -244,6 +248,8 @@
 - Added reseller-facing product search for order selection and price list filtering.
 - Replaced the classic reseller product select with a grouped, searchable product picker that keeps letter filters, price previews, and the existing order selection flow.
 - Added quick product-type filters for PS5 Primary, PS4 Primary, and PS4 / PS5 Secondary below the picker letter filters; they combine with text and letter search.
+- Made the reseller Balance pill load the complete order history on demand.
+- Added Admin Transactions for audited manual balance entries and atomic reseller balance updates.
 - Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
