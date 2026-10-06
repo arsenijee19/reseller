@@ -10,7 +10,7 @@
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller login/admin login now have server-side rate limiting and security audit records without storing plaintext credentials.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
-  - Clicking the reseller Balance pill loads the complete order history; the initial panel load still uses the latest 10 orders for speed.
+  - Reseller Balance opens a separate modal with up to 500 of that reseller's wallet transactions, including admin-entered descriptions and linked order notes; the orders sidebar remains the latest 10 orders.
   - Resellers must complete account profile onboarding after the account-security migration: personal email and phone are stored on the reseller profile before protected panel actions are available.
   - Resellers still using internal `@playworld.rs` email addresses are forced back into the profile popup until they save a personal email for future delivery and verification-code messages.
   - Resellers can update account email/phone and optionally change their reseller token/password after confirming the current token/password.
@@ -107,6 +107,7 @@
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
 - `api/orders.php` - reseller recent order history.
 - `api/orders.php?all=1` - complete order history for the authenticated reseller.
+- `api/transactions.php` - authenticated reseller's wallet history with admin descriptions and related order notes.
 - `api/order_notes.php` - reseller-owned internal notes update endpoint for existing orders.
 - `api/order_paid.php` - reseller-owned internal paid/unpaid marker endpoint for existing orders.
 - `api/order_paid_all.php` - reseller-owned bulk endpoint for marking all previous orders as internally paid.
@@ -248,11 +249,13 @@
 - Added reseller-facing product search for order selection and price list filtering.
 - Replaced the classic reseller product select with a grouped, searchable product picker that keeps letter filters, price previews, and the existing order selection flow.
 - Added quick product-type filters for PS5 Primary, PS4 Primary, and PS4 / PS5 Secondary below the picker letter filters; they combine with text and letter search.
-- Made the reseller Balance pill load the complete order history on demand.
+- Changed the reseller Balance pill to open a separate transaction-history dialog without changing the orders sidebar.
 - Added Admin Transactions for audited manual balance entries and atomic reseller balance updates.
 - Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
 - Redesigned the reseller portal into a calmer two-column desktop layout with distinct order, verification-code, price-list, and history cards; retained the existing API/actions and made the type/letter filters keep the product picker open after selection.
 - Replaced the CSS-drawn resale-price shop glyph and notes-search text toggle with accessible inline SVG icons, preserving their current tooltip/search behavior.
+- Added a compact magnifying-glass Notes search control in the order history header.
+- Added a reseller-scoped transaction history dialog that displays admin-entered transaction descriptions and related order notes; kept the surrounding recent-orders list independent.
 - Standardized admin form field sizing, dropdown affordances, button geometry, form spacing, and responsive layouts; aligned the Transactions entry form into one balanced desktop row without changing its action or API.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.

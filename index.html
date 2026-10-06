@@ -292,6 +292,23 @@
     .modal,.release-modal,.success-modal{transform:translateY(14px) scale(.96);opacity:0;transition:transform .22s var(--ease),opacity .18s var(--ease),box-shadow .18s var(--ease);will-change:transform,opacity}
     .modal-backdrop.open .modal,.release-backdrop.open .release-modal,.success-backdrop.open .success-modal{transform:translateY(0) scale(1);opacity:1}
     .modal{width:min(460px,100%);background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.04);padding:18px}
+    .transactions-modal{width:min(900px,100%);max-height:min(84vh,860px);overflow:auto;padding:22px;border-radius:18px}
+    .transactions-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+    .transactions-modal-head h2{margin:0 0 5px}
+    .transactions-close{width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;padding:9px;border-radius:12px}
+    .transactions-close svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+    .transactions-table-wrap{max-height:min(56vh,560px);overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+    .transactions-table{width:100%;min-width:620px;border-collapse:collapse}
+    .transactions-table th,.transactions-table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}
+    .transactions-table th{position:sticky;top:0;z-index:1;background:var(--soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+    .transactions-table tr:last-child td{border-bottom:0}
+    .transactions-table .transaction-description{display:block;min-width:220px;color:var(--text);font-weight:650;white-space:normal;overflow-wrap:anywhere}
+    .transactions-table .transaction-order-note{display:block;margin-top:5px;color:var(--muted);font-size:12px;white-space:normal;overflow-wrap:anywhere}
+    .transactions-table .transaction-amount{font-weight:850;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .transactions-table .transaction-amount.positive{color:var(--success)}
+    .transactions-table .transaction-amount.negative{color:var(--bad)}
+    .transactions-empty{padding:22px!important;color:var(--muted);text-align:center!important}
+    .transactions-modal .actions{justify-content:flex-end;margin-top:16px}
     .release-modal{width:min(560px,100%);max-height:min(720px,92vh);overflow:auto;background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.04);padding:22px}
     .release-modal h2{font-size:20px;margin-bottom:8px}
     .release-list{display:grid;gap:10px;margin:16px 0}
@@ -364,6 +381,8 @@
       .detail-row{grid-template-columns:1fr;gap:3px}
       .release-backdrop{align-items:flex-start;padding:12px}
       .release-modal{max-height:calc(100vh - 24px);padding:18px}
+      .transactions-modal{max-height:calc(100vh - 24px);padding:18px}
+      .transactions-table-wrap{max-height:55vh}
       .success-backdrop{align-items:flex-start;padding:12px}
       .success-modal{margin-top:10px;padding:22px 16px 18px}
     }
@@ -387,7 +406,7 @@
       <div class="status auth-only">
         <div class="status-indicator">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
         <div class="balance-group">
-          <button class="pill balance-pill" id="balanceBtn" type="button" aria-pressed="false" title="Prikaži sve porudžbine">
+          <button class="pill balance-pill" id="balanceBtn" type="button" title="Prikaži istoriju transakcija">
             <span class="balance-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="3"/><path d="M3.5 9h17M7 4h10M15 14h2"/></svg></span>
             <span class="balance-caption">Balance</span><span class="mono balance-amount" id="balanceText">0 RSD</span>
           </button>
@@ -500,7 +519,7 @@
                 <div class="section-copy"><h2 id="historyTitle">Prethodne porudžbine</h2><p id="historyDescription">Pregled poslednjih porudžbina na ovom reseller nalogu.</p></div>
               </div>
             </div>
-            <button class="btn" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži notes" aria-label="Pretraži notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
+            <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži notes" aria-label="Pretraži notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
           </div>
           <div class="notes-tools">
             <div class="notes-search-wrap" id="notesSearchWrap">
@@ -531,6 +550,27 @@
         <button class="btn primary" id="confirmOrderBtn" type="button">Potvrdi porudžbinu</button>
         <button class="btn" id="cancelOrderBtn" type="button">Odustani</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="transactionsModal" role="dialog" aria-modal="true" aria-labelledby="transactionsTitle" aria-describedby="transactionsDescription">
+    <div class="modal transactions-modal">
+      <div class="transactions-modal-head">
+        <div>
+          <h2 id="transactionsTitle">Promene na balansu</h2>
+          <p id="transactionsDescription">Pregled uplata, porudžbina i drugih promena balansa na Vašem nalogu.</p>
+        </div>
+        <button class="btn transactions-close" id="closeTransactionsBtn" type="button" title="Zatvori" aria-label="Zatvori">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="transactions-table-wrap">
+        <table class="transactions-table" aria-label="Istorija transakcija">
+          <thead><tr><th>Datum</th><th>Vrsta</th><th>Opis / beleška</th><th>Iznos</th></tr></thead>
+          <tbody id="transactionsTableBody"><tr><td class="transactions-empty" colspan="4">Učitavanje transakcija...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="actions"><button class="btn" id="transactionsDoneBtn" type="button">Zatvori</button></div>
     </div>
   </div>
 
@@ -713,8 +753,8 @@
           <p>Ikona prodavnice pored cene prikazuje preporučenu minimalnu cenu za dalju prodaju.</p>
         </div>
         <div class="release-item">
-          <strong>Kompletna istorija porudžbina</strong>
-          <p>Klikni na Balance u vrhu panela da učitaš sve svoje porudžbine, umesto samo poslednjih 10.</p>
+          <strong>Istorija promena na balansu</strong>
+          <p>Izaberite Balance na vrhu panela za pregled uplata, porudžbina i opisa promena. Lista porudžbina ostaje odvojena.</p>
         </div>
         <div class="release-item">
           <strong>Admin Transactions</strong>
@@ -745,8 +785,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-resale-price-hints";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], showAllOrders: false, productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
+    const RELEASE_VERSION = "2026-10-06-balance-transaction-history";
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -805,14 +845,16 @@
     const twoFactorMsg = $("twoFactorMsg");
     const recoveryCodesBox = $("recoveryCodesBox");
     const historyList = $("historyList");
-    const historyTitle = $("historyTitle");
-    const historyDescription = $("historyDescription");
     const markAllPaidBtn = $("markAllPaidBtn");
     const notesSearchToggle = $("notesSearchToggle");
     const notesSearchWrap = $("notesSearchWrap");
     const notesSearchInput = $("notesSearchInput");
     const notesSearchClear = $("notesSearchClear");
     const notesSearchCount = $("notesSearchCount");
+    const transactionsModal = $("transactionsModal");
+    const transactionsTableBody = $("transactionsTableBody");
+    const closeTransactionsBtn = $("closeTransactionsBtn");
+    const transactionsDoneBtn = $("transactionsDoneBtn");
     const themeBtn = $("themeBtn");
     const orderProgress = $("orderProgress");
     const confirmModal = $("confirmModal");
@@ -1748,16 +1790,6 @@
       preserveScroll(() => { loadOrders(true); });
     }
 
-    function updateOrderHistoryMode(){
-      const showingAll = state.showAllOrders;
-      historyTitle.textContent = showingAll ? "Sve porudžbine" : "Prethodne porudžbine";
-      historyDescription.textContent = showingAll
-        ? "Kompletna evidencija porudžbina na ovom reseller nalogu."
-        : "Pregled poslednjih porudžbina na ovom reseller nalogu.";
-      balanceBtn.setAttribute("aria-pressed", String(showingAll));
-      balanceBtn.title = showingAll ? "Prikaži poslednjih 10 porudžbina" : "Prikaži sve porudžbine";
-    }
-
     function ordersMatchingNotes(){
       const query = normalizeSearch(state.notesSearch);
       if (!query) return state.orders;
@@ -1766,10 +1798,9 @@
 
     async function loadOrders(renderOnly = false){
       if (!renderOnly) {
-        const j = await api(`/api/orders.php${state.showAllOrders ? "?all=1" : ""}`);
+        const j = await api("/api/orders.php");
         state.orders = j.orders || [];
       }
-      updateOrderHistoryMode();
       const visibleOrders = ordersMatchingNotes();
       historyList.textContent = "";
       if (!state.orders.length){
@@ -1868,6 +1899,81 @@
         div.appendChild(noteBox);
         historyList.appendChild(div);
       });
+    }
+
+    function transactionTypeLabel(type){
+      const labels = {
+        ORDER: "Porudžbina",
+        ADMIN_TOPUP: "Uplata",
+        ADMIN_ADJUSTMENT: "Promena balansa",
+        ORDER_REFUND: "Povraćaj",
+        ORDER_REVERSAL: "Povraćaj porudžbine"
+      };
+      return labels[type] || type || "Transakcija";
+    }
+
+    function renderTransactions(transactions){
+      transactionsTableBody.textContent = "";
+      if (!transactions.length){
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.className = "transactions-empty";
+        cell.colSpan = 4;
+        cell.textContent = "Još nema evidentiranih transakcija.";
+        row.appendChild(cell);
+        transactionsTableBody.appendChild(row);
+        return;
+      }
+
+      transactions.forEach((transaction) => {
+        const row = document.createElement("tr");
+        appendText(row, "td", transaction.created_at ? dateTime(transaction.created_at) : "—");
+        appendText(row, "td", transactionTypeLabel(transaction.type));
+
+        const descriptionCell = document.createElement("td");
+        appendText(descriptionCell, "span", transaction.description || "Bez opisa", "transaction-description");
+        const orderNote = String(transaction.order_note || "").trim();
+        if (orderNote) appendText(descriptionCell, "span", `Beleška porudžbine: ${orderNote}`, "transaction-order-note");
+        row.appendChild(descriptionCell);
+
+        const amount = Number(transaction.amount_rsd);
+        const amountCell = document.createElement("td");
+        amountCell.className = "transaction-amount";
+        if (amount > 0) amountCell.classList.add("positive");
+        if (amount < 0) amountCell.classList.add("negative");
+        amountCell.textContent = `${amount > 0 ? "+" : ""}${price(amount)} RSD`;
+        row.appendChild(amountCell);
+        transactionsTableBody.appendChild(row);
+      });
+    }
+
+    async function loadTransactions(){
+      transactionsTableBody.textContent = "";
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.className = "transactions-empty";
+      cell.colSpan = 4;
+      cell.textContent = "Učitavanje transakcija...";
+      row.appendChild(cell);
+      transactionsTableBody.appendChild(row);
+      try{
+        const result = await api("/api/transactions.php");
+        state.transactions = result.transactions || [];
+        renderTransactions(state.transactions);
+      }catch(error){
+        cell.textContent = error.message || "Greška pri učitavanju transakcija.";
+      }
+    }
+
+    function openTransactionsModal(){
+      transactionsModal.classList.add("open");
+      closeTransactionsBtn.focus();
+      void loadTransactions();
+    }
+
+    function closeTransactionsModal(){
+      transactionsModal.classList.remove("open");
+      balanceBtn.focus();
     }
 
     async function sendVerificationCode(){
@@ -2114,9 +2220,8 @@
       state.productLetter = "";
       state.productTypeFilter = "";
       state.notesSearch = "";
+      state.transactions = [];
       productSearch.value = "";
-      state.showAllOrders = false;
-      updateOrderHistoryMode();
       notesSearchInput.value = "";
       notesSearchCount.textContent = "";
       setNotesSearchOpen(false);
@@ -2135,6 +2240,7 @@
       closeSettingsModal();
       closeTwoFactorLogin();
       closeMissingGame();
+      transactionsModal.classList.remove("open");
     }
 
     loginBtn.addEventListener("click", login);
@@ -2180,22 +2286,10 @@
       renderProductOptions();
       renderPrices();
     });
-    balanceBtn.addEventListener("click", async () => {
-      const previousMode = state.showAllOrders;
-      state.showAllOrders = !previousMode;
-      updateOrderHistoryMode();
-      balanceBtn.disabled = true;
-      try{
-        await loadOrders();
-        historyList.scrollIntoView({ behavior:"smooth", block:"start" });
-      }catch(e){
-        state.showAllOrders = previousMode;
-        updateOrderHistoryMode();
-        historyList.textContent = e.message;
-      }finally{
-        balanceBtn.disabled = false;
-      }
-    });
+    balanceBtn.addEventListener("click", openTransactionsModal);
+    closeTransactionsBtn.addEventListener("click", closeTransactionsModal);
+    transactionsDoneBtn.addEventListener("click", closeTransactionsModal);
+    transactionsModal.addEventListener("click", (event) => { if (event.target === transactionsModal) closeTransactionsModal(); });
     productPickerTrigger.addEventListener("click", () => {
       if (productPickerTrigger.disabled) return;
       const isOpen = productPicker.classList.toggle("open");
@@ -2248,6 +2342,7 @@
     cancel2faLoginBtn.addEventListener("click", () => logout().finally(closeTwoFactorLogin));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && confirmModal.classList.contains("open")) closeConfirmation();
+      if (event.key === "Escape" && transactionsModal.classList.contains("open")) closeTransactionsModal();
       if (event.key === "Escape" && requestGameModal.classList.contains("open")) closeGameRequest();
       if (event.key === "Escape" && missingGameModal.classList.contains("open")) closeMissingGame();
       if (event.key === "Escape" && settingsModal.classList.contains("open")) closeSettingsModal();
