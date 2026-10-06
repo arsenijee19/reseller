@@ -92,6 +92,7 @@ def panel(action: str, chat_id: int, **fields: Any) -> dict[str, Any]:
     data = json.dumps({"action": action, "chat_id": chat_id, **fields}).encode()
     request = urllib.request.Request(PANEL_API_URL, data=data, headers={
         "Authorization": f"Bearer {PANEL_API_TOKEN}",
+        "X-Panel-Token": PANEL_API_TOKEN,
         "Content-Type": "application/json",
         "Accept": "application/json",
     })

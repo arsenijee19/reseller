@@ -14,7 +14,17 @@ if (!table_exists($pdo, 'telegram_bot_config') || !table_exists($pdo, 'telegram_
 }
 $hash = (string)$pdo->query('SELECT api_token_hash FROM telegram_bot_config WHERE id = 1')->fetchColumn();
 $authorization = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+$requestHeaders = function_exists('getallheaders') ? getallheaders() : [];
+if ($authorization === '' && is_array($requestHeaders)) {
+  foreach ($requestHeaders as $name => $value) {
+    if (strcasecmp((string)$name, 'Authorization') === 0) {
+      $authorization = (string)$value;
+      break;
+    }
+  }
+}
 $provided = preg_match('/^Bearer\s+(.+)$/i', $authorization, $match) ? trim($match[1]) : '';
+if ($provided === '') $provided = trim((string)($_SERVER['HTTP_X_PANEL_TOKEN'] ?? ''));
 if ($hash === '' || $provided === '' || !hash_equals($hash, hash('sha256', $provided))) {
   json_response(['ok' => false, 'error' => 'Unauthorized'], 401);
 }

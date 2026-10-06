@@ -41,6 +41,8 @@ Kopiraj samo sadržaj `telegram-bot/` u `/opt/reseller-tg-bot/` i compose fajl k
 - `PUBLIC_WEBHOOK_URL`: `https://vps-03a19c11.vps.ovh.net:8443/telegram`.
 - `ALLOWED_TELEGRAM_USERNAME`: `arsoarso`; inbound commands/callbacks and notification targets are additionally checked against this username, while cPanel chat-ID allowlisting remains mandatory.
 
+Bot šalje panel token kao Bearer i kao `X-Panel-Token`; druga glava je kompatibilni fallback za cPanel/FastCGI konfiguracije koje uklanjaju `Authorization`.
+
 Napravi self-signed server sertifikat sa DNS imenom koje Telegram otvara; javni sertifikat se registruje direktno kod Telegrama, privatni ključ ostaje samo na VPS-u:
 
 ```sh
