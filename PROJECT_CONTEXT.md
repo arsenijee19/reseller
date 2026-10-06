@@ -251,6 +251,8 @@
 - Made the reseller Balance pill load the complete order history on demand.
 - Added Admin Transactions for audited manual balance entries and atomic reseller balance updates.
 - Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
+- Redesigned the reseller portal into a calmer two-column desktop layout with distinct order, verification-code, price-list, and history cards; retained the existing API/actions and made the type/letter filters keep the product picker open after selection.
+- Replaced the CSS-drawn resale-price shop glyph and notes-search text toggle with accessible inline SVG icons, preserving their current tooltip/search behavior.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.

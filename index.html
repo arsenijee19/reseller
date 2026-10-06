@@ -7,15 +7,15 @@
   <title>PlayWorld.rs - Reseller Portal</title>
   <style>
     :root{
-      --bg:#f5f7fb;
+      --bg:#eef2fa;
       --panel:#ffffff;
       --text:#101828;
       --muted:#667085;
       --line:#dfe4ec;
       --soft:#f8fafc;
-      --brand:#1769e0;
-      --brand-dark:#1156ba;
-      --accent:#16a085;
+      --brand:#315df4;
+      --brand-dark:#5142e8;
+      --accent:#6b46e8;
       --good:#138a43;
       --bad:#c32929;
       --warn:#b7791f;
@@ -56,11 +56,11 @@
       transition:background .18s var(--ease-fast),color .18s var(--ease-fast)
     }
     button,input,select,textarea{font:inherit}
-    .shell{max-width:1120px;margin:0 auto;padding:22px 16px 42px}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+    .shell{max-width:1440px;margin:0 auto;padding:26px 28px 48px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
     .brand{display:flex;align-items:center;gap:12px;min-width:0}
     .brand-copy{min-width:0}
-    .logo{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 10px 22px rgba(23,105,224,.2);flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:21px;line-height:1;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+    .logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(145deg,#315df4,#7845ec);box-shadow:0 10px 24px rgba(73,80,220,.24);flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:23px;line-height:1;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
     .brand:hover .logo{transform:translateY(-1px) scale(1.03);box-shadow:var(--glow)}
     h1,h2,h3,p{margin:0}
     h1{font-size:19px;line-height:1.2}
@@ -68,27 +68,61 @@
     h3{font-size:14px;margin-bottom:10px}
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .logout-icon-btn{width:42px;height:42px;flex:0 0 42px;padding:9px;border-radius:999px}
+    .status-indicator{display:inline-flex;align-items:center;gap:8px;padding:0 12px;color:#344054;font-size:13px;white-space:nowrap}
+    .status-indicator::before{content:"";width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.1)}
+    .balance-group{display:flex;align-items:center;gap:9px;padding:8px 9px 8px 12px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 4px 16px rgba(31,48,79,.04)}
+    .balance-pill{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;column-gap:10px;min-height:44px;padding:0 5px;border:0;background:transparent;text-align:left;cursor:pointer}
+    .balance-pill:hover{transform:none;box-shadow:none;border:0}
+    .balance-icon{grid-row:1 / 3;width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#dcfce7;color:#138a43}
+    .balance-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .balance-caption{color:#667085;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+    .balance-amount{font-size:19px;font-weight:850;letter-spacing:-.035em;color:var(--text)}
+    .balance-amount small{font-size:11px;letter-spacing:0;color:var(--muted)}
+    .paid-header-btn{min-height:40px;padding:8px 13px;border-radius:12px;background:#effcf4!important;border-color:#bbf0cc!important;color:#147a3b!important;box-shadow:none!important;white-space:nowrap}
+    .logout-icon-btn{width:46px;height:46px;flex:0 0 46px;padding:11px;border-radius:14px}
     .logout-icon-btn svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .auth-only{display:none!important}
     body.is-authenticated .status.auth-only{display:flex!important}
     body.is-authenticated aside.auth-only{display:block!important}
     body.is-authenticated .footer-actions.auth-only{display:block!important}
-    .pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--soft));border-radius:999px;padding:8px 14px;font-size:12px;color:var(--muted);white-space:nowrap;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
+    .pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:8px 14px;font-size:12px;color:var(--muted);white-space:nowrap;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
     .pill:hover{border-color:rgba(23,105,224,.28);box-shadow:0 8px 22px rgba(15,23,42,.08);transform:translateY(-1px)}
-    .balance-pill{cursor:pointer}
-    .balance-pill:focus-visible{outline:2px solid rgba(75,141,247,.72);outline-offset:2px}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--text)}
-    .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(370px,430px);gap:24px;align-items:start}
+    .main-column,.app-column{display:grid;gap:20px;min-width:0}
+    .app-column{align-content:start}
     body:not(.is-authenticated) .layout{grid-template-columns:minmax(0,520px);justify-content:center}
-    .panel{background:linear-gradient(180deg,var(--panel),rgba(248,250,252,.72));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease),opacity .18s var(--ease)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 28px rgba(31,48,79,.055);overflow:visible;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease),opacity .18s var(--ease)}
     :root[data-theme="dark"] .panel{background:linear-gradient(180deg,var(--panel),rgba(16,23,32,.82))}
     .panel:hover{border-color:rgba(23,105,224,.18);box-shadow:var(--shadow-hover)}
-    .section{padding:18px}
+    .section{padding:26px 28px}
     .section + .section{border-top:1px solid var(--line)}
-    .price-section{margin:14px 18px 18px;padding:18px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,var(--soft),rgba(23,105,224,.035));box-shadow:0 10px 26px rgba(15,23,42,.05)}
+    .section-heading{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    .section-heading .section-copy{min-width:0}
+    .section-heading h2{margin:0 0 4px}
+    .section-heading p{margin:0}
+    .section-icon{width:40px;height:40px;display:grid;place-items:center;flex:0 0 40px;border-radius:13px;background:#e8efff;color:#315df4}
+    .section-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .section-icon.purple{background:#f0eaff;color:#7041e8}
+    .section-icon.teal{background:#e2fbf5;color:#078675}
+    .section-icon.orange{background:#fff0de;color:#e35b0b}
+    .order-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+    .order-controls label{margin-top:0}
+    .order-controls .product-picker{min-width:0}
+    .order-controls > .btn{min-width:114px;min-height:52px;border-radius:12px}
+    .support-actions{align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+    .support-actions .support-label{margin-right:4px;color:var(--muted);font-size:12px}
+    .support-actions .btn{min-height:40px}
+    .verification-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:14px}
+    .verification-controls label{margin-top:0}
+    .verification-controls input{min-height:48px}
+    .verification-controls .btn{min-height:48px;white-space:nowrap}
+    .verification-help{margin-top:9px}
+    .price-section{margin:0;padding:26px 28px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 8px 28px rgba(31,48,79,.055)}
+    .price-section .section-head{margin-bottom:16px}
     .price-section h2{margin:0}
     .price-section .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .price-section .section-heading{margin-bottom:0}
     label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px}
     input,select,textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:10px 12px;outline:none;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease),transform .16s var(--ease)}
     textarea{min-height:112px;resize:vertical}
@@ -157,11 +191,9 @@
     .price-stack{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
     .price-original{text-decoration:line-through;color:var(--muted);font-size:12px;white-space:nowrap}
     .discount-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:rgba(20,128,74,.11);color:var(--success);font-size:11px;font-weight:800;white-space:nowrap}
-    .shop-price-tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid rgba(23,105,224,.2);border-radius:9px;background:rgba(23,105,224,.07);color:var(--brand);cursor:help;outline:none}
-    .shop-price-tip:hover,.shop-price-tip:focus-visible{border-color:rgba(23,105,224,.48);background:rgba(23,105,224,.14);box-shadow:0 6px 16px rgba(23,105,224,.16)}
-    .shop-icon{position:relative;display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:2px 2px 3px 3px;margin-top:4px}
-    .shop-icon::before{content:"";position:absolute;left:-2px;top:-6px;width:15px;height:6px;border:1.5px solid currentColor;border-bottom:0;border-radius:3px 3px 0 0;background:var(--panel);box-shadow:3px 0 0 -1.5px var(--panel),6px 0 0 -1.5px var(--panel),9px 0 0 -1.5px var(--panel)}
-    .shop-icon::after{content:"";position:absolute;left:5px;bottom:0;width:3px;height:7px;border-left:1.5px solid currentColor;border-right:1.5px solid currentColor}
+    .shop-price-tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid #c9e9dc;border-radius:11px;background:#f0fbf6;color:#168451;cursor:help;outline:none;transition:transform .16s var(--ease),background .16s var(--ease),box-shadow .16s var(--ease)}
+    .shop-price-tip:hover,.shop-price-tip:focus-visible{background:#e2f7ec;box-shadow:0 5px 14px rgba(22,132,81,.15);transform:translateY(-1px)}
+    .shop-icon{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .shop-price-tooltip{position:absolute;right:0;bottom:calc(100% + 9px);z-index:4;width:max-content;max-width:230px;display:grid;gap:3px;padding:9px 11px;border:1px solid rgba(23,105,224,.22);border-radius:10px;background:var(--panel);box-shadow:0 14px 32px rgba(15,23,42,.2);color:var(--text);font-size:11px;line-height:1.35;text-align:left;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(4px);transition:opacity .16s var(--ease),visibility .16s var(--ease),transform .16s var(--ease)}
     .shop-price-tooltip strong{font-size:11px;white-space:nowrap}
     .shop-price-tooltip span{color:var(--brand);font-size:13px;font-weight:900;white-space:nowrap}
@@ -169,6 +201,16 @@
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
+    .history-title{margin:0}
+    .history-head > .btn{width:40px;height:40px;min-height:40px;padding:9px;border-radius:12px;font-size:0}
+    .history-head > .btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .history-footer{display:grid;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+    .history-footer .btn{justify-self:start;min-height:38px;font-size:12px}
+    :root[data-theme="dark"] .status-indicator{color:var(--muted)}
+    :root[data-theme="dark"] .balance-icon{background:rgba(37,167,101,.17);color:#49d38b}
+    :root[data-theme="dark"] .paid-header-btn{background:rgba(37,167,101,.14)!important;border-color:rgba(73,211,139,.32)!important;color:#74e2a5!important}
+    :root[data-theme="dark"] .shop-price-tip{background:rgba(37,167,101,.13);border-color:rgba(73,211,139,.3);color:#74e2a5}
+    :root[data-theme="dark"] .shop-price-tip:hover,:root[data-theme="dark"] .shop-price-tip:focus-visible{background:rgba(37,167,101,.22)}
     .notes-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
     .notes-search-toggle{min-height:34px;padding:7px 10px;font-size:12px}
     .notes-search-wrap{display:none;position:relative;flex:1 1 220px;min-width:220px}
@@ -283,6 +325,9 @@
     @keyframes draw-check{to{stroke-dashoffset:0}}
     @keyframes success-pulse{0%{opacity:0;transform:scale(.72)}45%{opacity:1;transform:scale(1.08)}100%{opacity:.7;transform:scale(1)}}
     @keyframes success-settle{0%{transform:perspective(420px) rotateY(-28deg) rotateX(10deg) scale(.78);opacity:0}62%{transform:perspective(420px) rotateY(8deg) rotateX(-3deg) scale(1.06);opacity:1}100%{transform:perspective(420px) rotateY(0) rotateX(0) scale(1)}}
+    @media (max-width:1080px){
+      .layout{grid-template-columns:1fr}
+    }
     @media (max-width:860px){
       .shell{padding:16px 12px 32px}
       .topbar{align-items:flex-start;flex-direction:column}
@@ -291,12 +336,20 @@
       .status .theme-btn{flex:0 0 auto;min-width:58px;margin-left:auto}
       .layout{grid-template-columns:1fr}
       body:not(.is-authenticated) .layout{grid-template-columns:1fr}
+      .order-controls,.verification-controls{grid-template-columns:1fr}
+      .order-controls > .btn,.verification-controls .btn{width:100%}
+      .balance-group{flex:1 1 auto;justify-content:space-between;min-width:0}
+      .balance-pill{min-width:0}
+      .paid-header-btn{flex:0 0 auto!important;min-width:0!important}
+      .status-indicator{padding-left:0}
+      .section{padding:22px 20px}
+      .price-section{padding:22px 20px}
       input,select,textarea{font-size:16px}
       .btn{flex:1 1 auto;min-width:135px}
       .mini-btn{flex:0 0 auto;min-width:0}
       .footer-actions .btn{flex:0 0 auto;min-width:0}
-      .history-head{flex-direction:column}
-      .history-head .btn{flex:0 0 auto;min-width:0}
+      .history-head{flex-direction:row;align-items:flex-start}
+      .history-head .btn{flex:0 0 auto;min-width:40px}
       .notes-tools{align-items:stretch}
       .notes-search-wrap{flex-basis:100%;min-width:0}
       .notes-search-count{width:100%}
@@ -332,8 +385,14 @@
         </div>
       </div>
       <div class="status auth-only">
-        <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
-        <button class="pill balance-pill" id="balanceBtn" type="button" aria-pressed="false" title="Prikaži sve porudžbine">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></button>
+        <div class="status-indicator">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
+        <div class="balance-group">
+          <button class="pill balance-pill" id="balanceBtn" type="button" aria-pressed="false" title="Prikaži sve porudžbine">
+            <span class="balance-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="3"/><path d="M3.5 9h17M7 4h10M15 14h2"/></svg></span>
+            <span class="balance-caption">Balance</span><span class="mono balance-amount" id="balanceText">0 RSD</span>
+          </button>
+          <button class="btn good paid-header-btn" id="paidBtn" type="button">Uplatio sam</button>
+        </div>
         <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn whats-new-btn" id="accountSettingsBtn" type="button">Nalog</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
@@ -348,8 +407,8 @@
     </header>
 
     <div class="layout">
-      <section class="panel">
-        <div class="section" id="loginBox">
+      <div class="main-column">
+        <section class="panel section" id="loginBox">
           <h2>Prijava</h2>
           <p>Unesi reseller token koji si dobio od PlayWorld tima.</p>
           <label for="token">Token</label>
@@ -359,76 +418,91 @@
             <a class="btn" href="/admin.html">Admin panel</a>
           </div>
           <div class="msg" id="loginMsg"></div>
-        </div>
+        </section>
 
-        <div id="appBox" style="display:none">
-          <div class="section">
-            <h2>Nova porudžbina</h2>
-            <p>Pretraži i izaberi proizvod za novu porudžbinu.</p>
-            <label for="product">Proizvod</label>
-            <div class="product-picker" id="productPicker">
-              <input id="product" type="hidden" />
-              <button class="product-picker-trigger" id="productPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-                <span class="product-picker-value" id="productPickerValue"><strong>Izaberite proizvod</strong><span>Pretražite i izaberite igru</span></span>
-                <span class="product-picker-chevron" aria-hidden="true"></span>
-              </button>
-              <div class="product-picker-menu" id="productPickerMenu">
-                <div class="picker-search-wrap">
-                  <input id="productSearch" type="search" autocomplete="off" placeholder="Pretraži igre, FC27, FIFA, Crash..." aria-label="Pretraži proizvode" />
-                  <p class="meta search-count" id="productSearchCount"></p>
+        <div class="app-column" id="appBox" style="display:none">
+          <section class="panel">
+            <div class="section">
+              <div class="section-heading">
+                <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg></span>
+                <div class="section-copy"><h2>Nova porudžbina</h2><p>Pretraži i izaberi proizvod za novu porudžbinu.</p></div>
+              </div>
+              <div class="order-controls">
+                <div>
+                  <label for="product">Proizvod</label>
+                  <div class="product-picker" id="productPicker">
+                    <input id="product" type="hidden" />
+                    <button class="product-picker-trigger" id="productPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="product-picker-value" id="productPickerValue"><strong>Izaberite proizvod</strong><span>Pretražite i izaberite igru</span></span>
+                      <span class="product-picker-chevron" aria-hidden="true"></span>
+                    </button>
+                    <div class="product-picker-menu" id="productPickerMenu">
+                      <div class="picker-search-wrap">
+                        <input id="productSearch" type="search" autocomplete="off" placeholder="Pretraži igre, FC27, FIFA, Crash..." aria-label="Pretraži proizvode" />
+                        <p class="meta search-count" id="productSearchCount"></p>
+                      </div>
+                      <div class="picker-letters" id="productPickerLetters" aria-label="Filtriraj po početnom slovu"></div>
+                      <div class="picker-type-filters" id="productPickerTypes" aria-label="Filtriraj po tipu naloga"></div>
+                      <div class="product-picker-list" id="productPickerList" role="listbox"></div>
+                    </div>
+                  </div>
                 </div>
-                <div class="picker-letters" id="productPickerLetters" aria-label="Filtriraj po početnom slovu"></div>
-                <div class="picker-type-filters" id="productPickerTypes" aria-label="Filtriraj po tipu naloga"></div>
-                <div class="product-picker-list" id="productPickerList" role="listbox"></div>
+                <button class="btn primary" id="orderBtn">Poruči</button>
               </div>
-            </div>
-            <div class="actions">
-              <button class="btn primary" id="orderBtn">Poruči</button>
-              <button class="btn good" id="paidBtn">Uplatio sam</button>
-              <button class="btn" id="missingGameBtn" type="button">Igra mi nije stigla</button>
-              <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
-            </div>
-            <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
-            <div class="msg" id="orderMsg"></div>
-            <div class="msg" id="paidMsg"></div>
-          </div>
-
-          <div class="section">
-            <h2>Verifikacioni kod</h2>
-            <p>Unesite email PlayStation naloga. Kod šaljemo na email koji je vezan za Vaš reseller nalog.</p>
-            <label for="codeAccountEmail">Email PlayStation naloga</label>
-            <input id="codeAccountEmail" type="email" autocomplete="off" placeholder="psn-nalog@email.com" />
-            <p class="meta">Za isti PlayStation nalog možete poslati do 3 zahteva dnevno.</p>
-            <div class="actions">
-              <button class="btn primary" id="sendCodeBtn" type="button">Zatraži verifikacioni kod</button>
-            </div>
-            <div class="msg" id="codeMsg"></div>
-            <p class="meta">Ako kod ne stigne ili ne radi, javite se PlayWorld podršci.</p>
-          </div>
-
-          <div class="section price-section">
-            <div class="section-head">
-              <div>
-                <h2>Cenovnik</h2>
-                <p class="meta">Pregled cena za Vaš reseller nalog.</p>
+              <div class="actions support-actions">
+                <span class="support-label">Treba Vam pomoć?</span>
+                <button class="btn" id="missingGameBtn" type="button">Igra mi nije stigla</button>
+                <button class="btn" id="requestGameBtn" type="button">Zatraži igru</button>
               </div>
+              <div class="progress" id="orderProgress" aria-hidden="true"><div class="progress-bar"></div></div>
+              <div class="msg" id="orderMsg"></div>
+              <div class="msg" id="paidMsg"></div>
             </div>
-            <div class="prices" id="pricesList">Učitavanje...</div>
-          </div>
+          </section>
+
+          <section class="panel">
+            <div class="section">
+              <div class="section-heading">
+                <span class="section-icon purple" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg></span>
+                <div class="section-copy"><h2>Verifikacioni kod</h2><p>Unesite email PlayStation naloga. Kod šaljemo na email koji je vezan za Vaš reseller nalog.</p></div>
+              </div>
+              <div class="verification-controls">
+                <div>
+                  <label for="codeAccountEmail">Email PlayStation naloga</label>
+                  <input id="codeAccountEmail" type="email" autocomplete="off" placeholder="psn-nalog@email.com" />
+                </div>
+                <button class="btn primary" id="sendCodeBtn" type="button">Zatraži verifikacioni kod</button>
+              </div>
+              <p class="meta verification-help">Za isti PlayStation nalog možete poslati do 3 zahteva dnevno.</p>
+              <div class="msg" id="codeMsg"></div>
+              <p class="meta verification-help">Ako kod ne stigne ili ne radi, javite se PlayWorld podršci.</p>
+            </div>
+          </section>
+
+          <section class="panel section price-section">
+              <div class="section-head">
+                <div class="section-heading">
+                  <span class="section-icon teal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.4 7.4a1.7 1.7 0 0 1 0 2.4Z"/><circle cx="8" cy="8" r="1.2"/></svg></span>
+                  <div class="section-copy"><h2>Cenovnik</h2><p class="meta">Pregled cena za Vaš reseller nalog.</p></div>
+                </div>
+              </div>
+              <div class="prices" id="pricesList">Učitavanje...</div>
+          </section>
         </div>
-      </section>
+      </div>
 
       <aside class="panel auth-only">
         <div class="section">
           <div class="history-head">
             <div>
-              <h2 id="historyTitle">Prethodne porudžbine</h2>
-              <p id="historyDescription">Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
+              <div class="section-heading history-title">
+                <span class="section-icon orange" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3h6v4H9zM9 11h6M9 15h6"/></svg></span>
+                <div class="section-copy"><h2 id="historyTitle">Prethodne porudžbine</h2><p id="historyDescription">Pregled poslednjih porudžbina na ovom reseller nalogu.</p></div>
+              </div>
             </div>
-            <button class="btn" id="markAllPaidBtn" type="button" disabled>Označi sve kao plaćeno</button>
+            <button class="btn" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži notes" aria-label="Pretraži notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
           </div>
           <div class="notes-tools">
-            <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false">Pretraži notes</button>
             <div class="notes-search-wrap" id="notesSearchWrap">
               <input id="notesSearchInput" type="search" autocomplete="off" placeholder="Npr. Jovan, telefon ili napomena..." aria-label="Pretraži notes" />
               <button class="notes-search-clear" id="notesSearchClear" type="button" aria-label="Obriši pretragu">Obriši</button>
@@ -436,6 +510,9 @@
             <span class="meta notes-search-count" id="notesSearchCount"></span>
           </div>
           <div class="history-list" id="historyList">Uloguj se za pregled.</div>
+          <div class="history-footer">
+            <button class="btn" id="markAllPaidBtn" type="button" disabled>Označi sve kao plaćeno</button>
+          </div>
         </div>
       </aside>
     </div>
@@ -1392,14 +1469,24 @@
       allButton.className = "picker-letter" + (!state.productLetter ? " active" : "");
       allButton.type = "button";
       allButton.textContent = "Sve";
-      allButton.addEventListener("click", () => { state.productLetter = ""; renderProductOptions(); });
+      allButton.dataset.pickerLetter = "";
+      allButton.addEventListener("click", () => {
+        state.productLetter = "";
+        renderProductOptions();
+        productPickerLetters.querySelector('[data-picker-letter=""]')?.focus({ preventScroll:true });
+      });
       productPickerLetters.appendChild(allButton);
       allLetters.forEach((letter) => {
         const button = document.createElement("button");
         button.className = "picker-letter" + (state.productLetter === letter ? " active" : "");
         button.type = "button";
         button.textContent = letter;
-        button.addEventListener("click", () => { state.productLetter = letter; renderProductOptions(); });
+        button.dataset.pickerLetter = letter;
+        button.addEventListener("click", () => {
+          state.productLetter = letter;
+          renderProductOptions();
+          [...productPickerLetters.querySelectorAll(".picker-letter")].find((item) => item.dataset.pickerLetter === letter)?.focus({ preventScroll:true });
+        });
         productPickerLetters.appendChild(button);
       });
 
@@ -1413,9 +1500,15 @@
         const button = document.createElement("button");
         button.className = "picker-type-filter" + (state.productTypeFilter === value ? " active" : "");
         button.type = "button";
+        button.dataset.pickerType = value;
         button.setAttribute("aria-pressed", String(state.productTypeFilter === value));
         button.textContent = label;
-        button.addEventListener("click", () => { state.productTypeFilter = value; renderProductOptions(); renderPrices(); });
+        button.addEventListener("click", () => {
+          state.productTypeFilter = value;
+          renderProductOptions();
+          renderPrices();
+          [...productPickerTypes.querySelectorAll(".picker-type-filter")].find((item) => item.dataset.pickerType === value)?.focus({ preventScroll:true });
+        });
         productPickerTypes.appendChild(button);
       });
 
@@ -1475,7 +1568,7 @@
     function showAppShell(){
       setLoggedInUi(true);
       loginBox.style.display = "none";
-      appBox.style.display = "block";
+      appBox.style.display = "grid";
       setMainActionsEnabled(false);
       state.products = [];
       state.prices = new Map();
@@ -1540,9 +1633,15 @@
           shopTip.setAttribute("role", "img");
           shopTip.setAttribute("aria-label", `Preporučena minimalna prodajna cena: ${price(recommendedPrice)} ${p.currency || "RSD"}`);
           shopTip.title = `Preporučena minimalna prodajna cena: ${price(recommendedPrice)} ${p.currency || "RSD"}`;
-          const shopIcon = document.createElement("span");
+          const shopIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
           shopIcon.className = "shop-icon";
+          shopIcon.setAttribute("viewBox", "0 0 24 24");
           shopIcon.setAttribute("aria-hidden", "true");
+          ["M3 10v10h18V10", "M3 10 4.8 4h14.4L21 10", "M3 10a2.25 2.25 0 0 0 4.5 0 2.25 2.25 0 0 0 4.5 0 2.25 2.25 0 0 0 4.5 0 2.25 2.25 0 0 0 4.5 0", "M9 20v-6h6v6"].forEach((pathData) => {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", pathData);
+            shopIcon.appendChild(path);
+          });
           shopTip.appendChild(shopIcon);
           const tooltip = document.createElement("span");
           tooltip.className = "shop-price-tooltip";
@@ -1638,7 +1737,8 @@
     function setNotesSearchOpen(open){
       notesSearchWrap.classList.toggle("open", open);
       notesSearchToggle.setAttribute("aria-expanded", String(open));
-      notesSearchToggle.textContent = open ? "Zatvori pretragu" : "Pretraži notes";
+      notesSearchToggle.title = open ? "Zatvori pretragu" : "Pretraži notes";
+      notesSearchToggle.setAttribute("aria-label", notesSearchToggle.title);
       if (open) notesSearchInput.focus();
     }
 
@@ -2103,6 +2203,8 @@
       if (isOpen) productSearch.focus();
     });
     document.addEventListener("click", (event) => {
+      // Filter buttons are replaced while rendering, so their original click target is detached here.
+      if (event.target.closest(".picker-type-filter,.picker-letter")) return;
       if (!productPicker.contains(event.target)) closeProductPicker();
     });
     document.addEventListener("keydown", (event) => {
