@@ -30,6 +30,7 @@ try {
     "credential_changed_at" => (string)($row["credential_changed_at"] ?? ""),
     "security_2fa_reminded_at" => (string)($row["security_2fa_reminded_at"] ?? ""),
     "balance_rsd" => (int)$row["balance_rsd"],
+    "discount_percent" => normalized_discount_percent($row["discount_percent"] ?? 0),
     "csrf_token" => csrf_token()
   ]);
 } catch (Throwable $e) {

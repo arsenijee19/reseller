@@ -124,6 +124,9 @@
     .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line);border-radius:8px;font-size:13px;transition:background .14s var(--ease),transform .14s var(--ease)}
     .price-item:hover{background:rgba(23,105,224,.055);transform:translateX(2px)}
     .price-value{font-variant-numeric:tabular-nums;white-space:nowrap}
+    .price-stack{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .price-original{text-decoration:line-through;color:var(--muted);font-size:12px;white-space:nowrap}
+    .discount-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:rgba(20,128,74,.11);color:var(--success);font-size:11px;font-weight:800;white-space:nowrap}
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
@@ -281,6 +284,7 @@
       <div class="status auth-only">
         <div class="pill">Status:&nbsp;<span class="mono" id="statusText">offline</span></div>
         <div class="pill">Balance:&nbsp;<span class="mono" id="balanceText">0 RSD</span></div>
+        <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn whats-new-btn" id="accountSettingsBtn" type="button">Nalog</button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Promeni temu">☾</button>
       </div>
@@ -785,8 +789,22 @@
       const j = await api("/api/me.php");
       state.me = j;
       balanceText.textContent = price(j.balance_rsd) + " RSD";
+      renderDiscountBadge(j.discount_percent);
       fillProfileForms(j);
       return j;
+    }
+
+    function renderDiscountBadge(value){
+      const discount = Number(value || 0);
+      const badge = $("discountText");
+      if (!badge) return;
+      if (!Number.isFinite(discount) || discount <= 0) {
+        badge.style.display = "none";
+        badge.textContent = "";
+        return;
+      }
+      badge.textContent = `Popust: -${discount}%`;
+      badge.style.display = "inline-flex";
     }
 
     function fillProfileForms(profile){
@@ -1162,7 +1180,18 @@
         const row = document.createElement("div");
         row.className = "price-item";
         appendText(row, "span", `${p.product_name} (${p.account_type})`);
-        appendText(row, "b", `${price(p.price)} ${p.currency}`, "price-value");
+        const priceStack = document.createElement("span");
+        priceStack.className = "price-stack";
+        const basePrice = Number(p.base_price);
+        const currentPrice = `${price(p.price)} ${p.currency}`;
+        if (Number.isFinite(basePrice) && basePrice > Number(p.price)) {
+          appendText(priceStack, "span", `${price(basePrice)} ${p.currency}`, "price-original");
+          appendText(priceStack, "span", currentPrice, "price-value");
+          appendText(priceStack, "span", `-${p.discount_percent}%`, "discount-badge");
+        } else {
+          appendText(priceStack, "b", currentPrice, "price-value");
+        }
+        row.appendChild(priceStack);
         pricesList.appendChild(row);
       });
       if (!pricesList.children.length) pricesList.textContent = state.productSearch ? "Nema proizvoda za ovu pretragu." : "Cene nisu dostupne.";
@@ -1177,6 +1206,8 @@
         product_name: product.product_name,
         account_type: product.account_type,
         price: product.price,
+        base_price: product.base_price,
+        discount_percent: product.discount_percent || 0,
         currency: product.currency || "RSD",
         customer_email: state.me && state.me.email ? state.me.email : ""
       };
@@ -1187,7 +1218,8 @@
       [
         ["Proizvod", details.product_name],
         ["Tip naloga", details.account_type],
-        ["Cena", `${price(details.price)} ${details.currency}`],
+        ...(Number(details.discount_percent) > 0 ? [["Osnovna cena", `${price(details.base_price)} ${details.currency}`], ["Popust", `-${details.discount_percent}%`]] : []),
+        ["Cena za Vas", `${price(details.price)} ${details.currency}`],
         ["Isporuka", details.customer_email || "Email resellera"]
       ].forEach(([label, value]) => {
         const row = document.createElement("div");
@@ -1458,6 +1490,7 @@
         const me = await api("/api/me.php");
         state.me = me;
         balanceText.textContent = price(me.balance_rsd) + " RSD";
+        renderDiscountBadge(me.discount_percent);
         await enterAuthenticatedPanel(me);
       }catch(e){
         setStatus("offline");

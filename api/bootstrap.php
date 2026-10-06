@@ -251,6 +251,7 @@ function ensure_security_tables(PDO $pdo): void {
     'profile_completed_at DATETIME NULL',
     'credential_changed_at DATETIME NULL',
     'security_2fa_reminded_at DATETIME NULL',
+    'discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0',
   ] as $definition) {
     $column = strtok($definition, ' ');
     if ($column && !has_column($pdo, 'resellers', $column)) {
@@ -537,7 +538,7 @@ function audit_event(PDO $pdo, string $actorType, ?int $actorId, string $eventTy
 function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'balance_rsd', 'status'];
-  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
 
@@ -545,6 +546,16 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $stmt->execute([$resellerId]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   return $row ?: null;
+}
+
+function normalized_discount_percent($value): float {
+  $discount = (float)$value;
+  if (!is_finite($discount)) return 0.0;
+  return max(0.0, min(100.0, round($discount, 2)));
+}
+
+function discounted_price(int $basePrice, float $discountPercent): int {
+  return max(0, (int)round($basePrice * (100.0 - normalized_discount_percent($discountPercent)) / 100.0, 0, PHP_ROUND_HALF_UP));
 }
 
 function security_encryption_key(): string {
@@ -899,6 +910,8 @@ function order_notification(array $order): array {
   $productName = h_string($order['product_name'] ?? $order['product_id'] ?? 'Proizvod');
   $accountType = h_string($order['account_type'] ?? '');
   $price = (int)($order['price_rsd'] ?? 0);
+  $basePrice = (int)($order['base_price_rsd'] ?? $price);
+  $discountPercent = normalized_discount_percent($order['discount_percent'] ?? 0);
   $resellerEmail = normalize_email((string)($order['reseller_email'] ?? ''));
   $customerEmail = normalize_email((string)($order['buyer_email'] ?? $order['customer_email'] ?? $resellerEmail));
   $resellerName = h_string($order['reseller_name'] ?? $order['display_name'] ?? '');
@@ -908,7 +921,12 @@ function order_notification(array $order): array {
   $message .= "========================\n\n";
   $message .= "Proizvod: " . $productName . "\n";
   $message .= "Tip naloga: " . $accountType . "\n";
-  $message .= "Cena: " . $price . " RSD\n\n";
+  $message .= "Cena: " . $price . " RSD\n";
+  if ($discountPercent > 0 && $basePrice > $price) {
+    $message .= "Osnovna cena: " . $basePrice . " RSD\n";
+    $message .= "Reseller popust: -" . rtrim(rtrim(number_format($discountPercent, 2, '.', ''), '0'), '.') . "%\n";
+  }
+  $message .= "\n";
   $message .= "Reseller\n";
   if ($resellerName !== '') $message .= "Ime: " . $resellerName . "\n";
   $message .= "Email: " . $resellerEmail . "\n";

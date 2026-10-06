@@ -58,6 +58,7 @@ function update_order_delivery_state(PDO $pdo, int $orderId, string $status, arr
 
 $pdo = db();
 try {
+  ensure_security_tables($pdo);
   ensure_order_observability_tables($pdo);
 } catch (Throwable $ignored) {
   // Order creation must remain available even if a legacy DB user cannot create the observability tables.
@@ -69,6 +70,7 @@ if ($profile) {
   $reseller_phone = (string)($profile["phone"] ?? "");
 }
 $customer_email = normalize_email((string)($profile["email"] ?? $reseller_email));
+$discountPercent = normalized_discount_percent($profile["discount_percent"] ?? 0);
 if (!valid_email($customer_email)) {
   throw new RuntimeException("Email resellera nije validan. Otvorite Nalog i proverite email adresu.");
 }
@@ -89,8 +91,9 @@ try {
     throw new Exception("Currency must be RSD for wallet.");
   }
 
-  $price = (int)$p["price"];
-  if ($price <= 0) {
+  $basePrice = (int)$p["price"];
+  $price = discounted_price($basePrice, $discountPercent);
+  if ($basePrice <= 0 || $price <= 0) {
     throw new RuntimeException("Proizvod trenutno nema validnu cenu.", 422);
   }
   $desc  = "Order: ".$p["product_name"]." / ".$p["account_type"];
@@ -146,6 +149,8 @@ try {
     'reseller_name' => $reseller_name,
     'reseller_phone' => $reseller_phone,
     'buyer_email' => $customer_email,
+    'base_price_rsd' => $basePrice,
+    'discount_percent' => $discountPercent,
   ]);
   $orderEmailRecipients = $orderEmail['recipients'];
 
@@ -180,6 +185,8 @@ try {
     "product_name" => (string)$p["product_name"],
     "account_type" => (string)$p["account_type"],
     "price_rsd" => $price,
+    "base_price_rsd" => $basePrice,
+    "discount_percent" => $discountPercent,
     "currency" => (string)$p["currency"],
     "customer_email" => $customer_email,
     "ts" => gmdate("c")

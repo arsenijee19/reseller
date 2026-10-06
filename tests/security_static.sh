@@ -26,6 +26,8 @@ rg -q "Content-Security-Policy" .htaccess
 rg -q "Strict-Transport-Security" .htaccess
 rg -q "order_delivery_events" api/bootstrap.php api/order.php api/admin.php sql/2026-09-10_order_reliability.sql
 rg -q "payment_notice_requests" api/bootstrap.php api/payment_notice.php api/admin.php sql/2026-09-10_order_reliability.sql
+rg -q "discount_percent" api/bootstrap.php api/prices.php api/order.php api/admin.php index.html admin.html
+test -f sql/2026-10-06_reseller_discounts.sql
 rg -q "arsenijee19@gmail.com" api/bootstrap.php api/payment_notice.php api/order.php
 rg -q "support@licenca.rs" api/bootstrap.php api/payment_notice.php api/order.php
 test -f vendor/autoload.php

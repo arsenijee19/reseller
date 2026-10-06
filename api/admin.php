@@ -44,7 +44,7 @@ function fetch_resellers(PDO $pdo): array {
   ensure_security_tables($pdo);
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'status', 'balance_rsd'];
-  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at'] as $column) {
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
   $select[] = "(SELECT enabled_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_enabled_at";
@@ -867,6 +867,7 @@ try {
     $phone = normalize_phone((string)($input['phone'] ?? ''));
     $status = h_string($input['status'] ?? 'active');
     $balance = (int)($input['balance_rsd'] ?? 0);
+    $discount = normalized_discount_percent($input['discount_percent'] ?? 0);
     $newToken = (string)($input['new_token'] ?? '');
 
     if ($id <= 0 || !valid_email($email)) {
@@ -886,6 +887,10 @@ try {
 
     $fields = ['email = ?', 'status = ?', 'balance_rsd = ?'];
     $params = [$email, $status, $balance];
+    if (has_column($pdo, 'resellers', 'discount_percent')) {
+      $fields[] = 'discount_percent = ?';
+      $params[] = $discount;
+    }
     if (has_column($pdo, 'resellers', 'display_name')) {
       $fields[] = 'display_name = ?';
       $params[] = $displayName !== '' ? $displayName : null;
@@ -922,6 +927,7 @@ try {
     audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'reseller_updated', 'success', [
       'reseller_id' => $id,
       'credential_changed' => $newToken !== '',
+      'discount_percent' => $discount,
     ]);
 
     $diff = $balance - (int)$oldBalance;
@@ -940,6 +946,7 @@ try {
     $displayName = trim((string)($input['display_name'] ?? ''));
     $status = h_string($input['status'] ?? 'active') ?: 'active';
     $balance = (int)($input['balance_rsd'] ?? 0);
+    $discount = normalized_discount_percent($input['discount_percent'] ?? 0);
     $token = (string)($input['token'] ?? '');
 
     if ($displayName === '') {
@@ -981,6 +988,10 @@ try {
     $columns = column_names($pdo, 'resellers');
     $fields = ['email', 'token_hash', 'status', 'balance_rsd'];
     $params = [$email, password_hash($token, PASSWORD_DEFAULT), $status, $balance];
+    if (in_array('discount_percent', $columns, true)) {
+      $fields[] = 'discount_percent';
+      $params[] = $discount;
+    }
     if (in_array('phone', $columns, true)) {
       $fields[] = 'phone';
       $params[] = $phone !== '' ? $phone : null;

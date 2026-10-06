@@ -163,6 +163,7 @@
 - Installation steps:
   - cPanel live web root is `/home/psigrersrs/reseller.psigre.rs`.
   - Preferred deployment is cPanel Git Version Control with the repository cloned outside the live web root, then deployed via `.cpanel.yml`.
+  - Run `sql/2026-10-06_reseller_discounts.sql` in phpMyAdmin when applying the reseller discount feature; the application also adds the column automatically through its existing schema helper.
   - `.cpanel.yml` copies `index.html`, `admin.html`, `.htaccess`, versioned PHP API files, `api/.htaccess`, and SQL migrations into the live web root without deleting server-only files such as `api/config.local.php`.
   - Create `api/config.local.php` from `api/config.example.php` on cPanel and fill in private values.
   - Run `sql/2026-06-13_admin_panel.sql` in phpMyAdmin.
@@ -182,6 +183,7 @@
 ## Important Business Logic
 - Reseller orders:
   - Product price is loaded from `product_prices` by `product_id`.
+  - Admin can assign each reseller a `0-100%` discount. The reseller sees the discounted catalog price, while the server recalculates it during order creation and stores the final charged price.
   - Currency must be `RSD`.
   - New order creates a random `request_id`.
   - Reseller UI no longer asks for buyer email; `orders.buyer_email` and n8n `customer_email` are populated from the reseller profile email.
@@ -265,6 +267,7 @@
 - Refreshed Admin panel UI/UX with centered navigation, dashboard summary cards, softer visual hierarchy, updated table/form styling, and responsive spacing.
 - Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
 - Added admin-created reseller flow with required display name/token, optional email/phone/balance, temporary internal email auto-fill, initial token hashing, and first-login personal email enforcement.
+- Added per-reseller percentage discounts with Admin editing, discounted reseller catalog display, server-side order recalculation, and final-price notification data.
 - Added admin TOTP 2FA with pending login challenge, encrypted secret storage, hashed recovery codes, management UI, audit records, and rate limiting.
 - Added explicit admin 2FA setup steps and disabled confirmation until a setup key has been generated.
 - Added transaction-safe admin order cancellation with exact balance reversal, immutable financial history, cancellation metadata, audit logging, canceled-row styling, and duplicate-reversal protection.

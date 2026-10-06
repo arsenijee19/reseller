@@ -16,7 +16,10 @@ if (!isset($_SESSION["reseller_id"])) {
 
 try {
   $pdo = db();
+  ensure_security_tables($pdo);
   require_completed_profile($pdo, (int)$_SESSION["reseller_id"]);
+  $profile = reseller_profile($pdo, (int)$_SESSION["reseller_id"]);
+  $discountPercent = normalized_discount_percent($profile['discount_percent'] ?? 0);
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $stmt = $pdo->query("
@@ -26,9 +29,15 @@ try {
     ORDER BY product_name, account_type
   ");
 
-  $prices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $prices = array_map(static function (array $row) use ($discountPercent): array {
+    $basePrice = (int)$row['price'];
+    $row['base_price'] = $basePrice;
+    $row['price'] = discounted_price($basePrice, $discountPercent);
+    $row['discount_percent'] = $discountPercent;
+    return $row;
+  }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
-  echo json_encode(["ok"=>true, "prices"=>$prices]);
+  echo json_encode(["ok"=>true, "prices"=>$prices, "discount_percent"=>$discountPercent]);
 } catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(["ok"=>false, "error"=>"Greška pri učitavanju cenovnika."]);

@@ -453,6 +453,7 @@
               <div><label for="newResellerEmail">Email opcionalno</label><input id="newResellerEmail" type="email" placeholder="Može prazno" /></div>
               <div><label for="newResellerPhone">Telefon opcionalno</label><input id="newResellerPhone" type="tel" placeholder="Može prazno" /></div>
               <div><label for="newResellerBalance">Početni balance</label><input id="newResellerBalance" type="number" value="0" /></div>
+              <div><label for="newResellerDiscount">Popust (%)</label><input id="newResellerDiscount" type="number" min="0" max="100" step="0.01" value="0" /></div>
               <div class="full"><label for="newResellerToken">Početni token/šifra</label><input id="newResellerToken" type="text" placeholder="Najmanje 12 karaktera" /></div>
               <div class="form-actions"><button class="btn good" id="createResellerBtn" type="button">Dodaj resellera</button></div>
             </div>
@@ -944,7 +945,7 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Popust (%)","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
       (state.data.resellers || []).forEach((r) => {
         const row = body.insertRow();
@@ -957,13 +958,14 @@
         text(row.insertCell(), "span", r.two_factor_enabled_at ? `uključen (${r.recovery_codes_remaining || 0} recovery)` : "nije uključen", "muted");
         const status = input(r.status || "active", "compact"); status.dataset.field = "status"; row.insertCell().appendChild(status);
         const balance = input(r.balance_rsd || 0, "compact"); balance.dataset.field = "balance_rsd"; balance.type = "number"; row.insertCell().appendChild(balance);
+        const discount = input(r.discount_percent || 0, "compact"); discount.dataset.field = "discount_percent"; discount.type = "number"; discount.min = "0"; discount.max = "100"; discount.step = "0.01"; row.insertCell().appendChild(discount);
         const token = input("", "wide"); token.dataset.field = "new_token"; token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
         const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
         save.addEventListener("click", async () => {
           try{
             save.disabled = true;
             await ensureAdminStepUp();
-            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, new_token:token.value }) });
+            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, discount_percent:discount.value, new_token:token.value }) });
             showToast("ok", "Reseller je ažuriran.");
             state.data = result;
             renderWithUiState(() => render());
@@ -1563,11 +1565,13 @@
           email:$("newResellerEmail").value.trim(),
           phone:$("newResellerPhone").value.trim(),
           balance_rsd:$("newResellerBalance").value,
+          discount_percent:$("newResellerDiscount").value,
           token:$("newResellerToken").value
         }) });
         state.data = result;
         ["newResellerName","newResellerEmail","newResellerPhone","newResellerToken"].forEach((id) => $(id).value = "");
         $("newResellerBalance").value = "0";
+        $("newResellerDiscount").value = "0";
         renderWithUiState(() => render());
         showToast("ok", "Novi reseller je dodat.");
       }catch(e){
@@ -1740,7 +1744,7 @@
     ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") changeAdminPassword(); });
     });
-    ["newResellerName","newResellerEmail","newResellerPhone","newResellerBalance","newResellerToken"].forEach((id) => {
+    ["newResellerName","newResellerEmail","newResellerPhone","newResellerBalance","newResellerDiscount","newResellerToken"].forEach((id) => {
       $(id).addEventListener("keydown", (event) => { if(event.key === "Enter") createReseller(); });
     });
     ["admin2faCurrentPassword","admin2faSetupCode"].forEach((id) => {
