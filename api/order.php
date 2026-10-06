@@ -29,6 +29,7 @@ $reseller_id = (int)$reseller["id"];
 $reseller_email = (string)$reseller["email"];
 $reseller_name = "";
 $reseller_phone = "";
+$responseSent = false;
 
 function update_order_delivery_state(PDO $pdo, int $orderId, string $status, array $payload = [], string $notes = ''): void {
   $sets = [];
@@ -139,6 +140,27 @@ try {
 
   $pdo->commit();
 
+  // Return as soon as the order and wallet charge are durable. PHP-FPM can
+  // continue email/webhook work after the browser has received this response.
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+  }
+  if (function_exists('fastcgi_finish_request')) {
+    ignore_user_abort(true);
+    @set_time_limit(30);
+    echo json_encode([
+      "ok"=>true,
+      "request_id"=>$request_id,
+      "charged_rsd"=>$price,
+      "balance_rsd"=>$newBal,
+      "email_ok"=>null,
+      "n8n_ok"=>null,
+      "delivery_status"=>"processing"
+    ], JSON_UNESCAPED_UNICODE);
+    fastcgi_finish_request();
+    $responseSent = true;
+  }
+
   $orderEmail = order_notification([
     'product_id' => $product_id,
     'product_name' => (string)$p['product_name'],
@@ -219,18 +241,24 @@ try {
     // A notification/status write must never turn a committed order into a false client error.
   }
 
-  echo json_encode([
-    "ok"=>true,
-    "request_id"=>$request_id,
-    "charged_rsd"=>$price,
-    "balance_rsd"=>$newBal,
-    "email_ok"=>$mailResult["ok"],
-    "n8n_ok"=>$n8n["ok"],
-    "n8n_code"=>$n8n["code"],
-    "delivery_status"=>$n8n["ok"] ? "delivered" : "delivery_failed"
-  ]);
+  if (!$responseSent) {
+    echo json_encode([
+      "ok"=>true,
+      "request_id"=>$request_id,
+      "charged_rsd"=>$price,
+      "balance_rsd"=>$newBal,
+      "email_ok"=>$mailResult["ok"],
+      "n8n_ok"=>$n8n["ok"],
+      "n8n_code"=>$n8n["code"],
+      "delivery_status"=>$n8n["ok"] ? "delivered" : "delivery_failed"
+    ], JSON_UNESCAPED_UNICODE);
+  }
 
 } catch (Throwable $e) {
+  if ($responseSent) {
+    error_log('Order post-commit processing failed for order request ' . ($request_id ?? 'unknown') . ': ' . safe_public_error($e->getMessage()));
+    exit;
+  }
   if ($pdo->inTransaction()) $pdo->rollBack();
   $status = (int)$e->getCode();
   if ($status < 400 || $status > 499) $status = 500;

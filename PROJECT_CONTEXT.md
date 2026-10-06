@@ -21,6 +21,7 @@
   - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
+  - On PHP-FPM, order creation returns as soon as the order and wallet charge are committed; email and n8n delivery continue after the response and update the existing delivery audit records. Non-FPM PHP keeps the synchronous fallback.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
@@ -209,6 +210,7 @@
   - Wallet transaction type `ORDER` is inserted with negative amount.
   - Reseller balance is decreased by product price.
   - Order status is updated to `pending_delivery`, then `delivered` or `delivery_failed` when the n8n webhook responds if the status columns exist.
+  - The order endpoint uses `fastcgi_finish_request()` when available so slow email/webhook calls do not keep the reseller waiting after a committed order; the PHP-FPM worker still completes and records those side effects.
   - `order_delivery_events` stores one current email event and one current n8n event per order, including status, attempts, HTTP code, recipients, and sanitized error text. This is operational observability, not a replacement for the financial order/wallet records.
   - n8n delivery can use product fields from the PHP payload, so newly added admin products do not require a hardcoded n8n map when sheet names match the product/account type.
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
@@ -331,6 +333,7 @@
 - Forced reseller profile popup for legacy/internal `@playworld.rs` emails until the reseller saves a personal email for future deliveries and verification codes.
 - Reduced admin/reseller scroll jumping by removing aggressive admin message scrolling and preserving scroll around reseller select feedback.
 - Added durable order notification observability: database-backed payment notices, separate email/n8n delivery status, admin history, and protected resend actions.
+- Reduced reseller order wait on PHP-FPM by returning immediately after the atomic order, wallet transaction, and balance update commit; email and n8n notifications continue and retain their delivery audit/status updates.
 - Hardened order charging with a locked balance read and atomic balance update; reseller balances may go negative, while notification failures remain separate from the financial commit.
 - Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
