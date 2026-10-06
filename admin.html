@@ -171,6 +171,11 @@
     @media (min-width:861px){
       .view{min-height:520px}
     }
+    .scroll-top-btn{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:60;display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid var(--line);border-radius:15px;background:var(--panel);color:var(--brand);box-shadow:0 10px 28px rgba(18,32,51,.16);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(9px);transition:opacity .2s var(--ease),visibility .2s,transform .2s var(--ease),box-shadow .2s var(--ease)}
+    .scroll-top-btn.is-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}
+    .scroll-top-btn:hover{transform:translateY(-2px);box-shadow:0 13px 32px rgba(18,32,51,.2)}
+    .scroll-top-btn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    @media(max-width:560px){.scroll-top-btn{right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));width:44px;height:44px;border-radius:14px}}
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
       .btn:hover,.tab:hover,.panel:hover,.form-panel:hover{transform:none!important}
@@ -803,6 +808,9 @@
       </div>
     </section>
   </main>
+  <button class="btn scroll-top-btn" id="scrollTopBtn" type="button" aria-label="Vrati se na vrh stranice" title="Na vrh">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 7-7 7 7"/><path d="M12 7v13"/></svg>
+  </button>
   <div class="admin-modal-backdrop login-progress-backdrop" id="loginProgress" role="status" aria-live="polite" aria-hidden="true">
     <div class="admin-modal login-progress-card"><span class="login-progress-spinner" aria-hidden="true"></span><div class="login-progress-copy"><strong>Prijava u toku</strong><span id="loginProgressText">Proveravamo podatke...</span></div></div>
   </div>
@@ -2312,6 +2320,12 @@
       })
       .catch(() => setLoggedIn(false))
       .finally(() => document.body.classList.remove("session-checking"));
+    const scrollTopBtn = $("scrollTopBtn");
+    window.addEventListener("scroll", () => scrollTopBtn.classList.toggle("is-visible", window.scrollY > 420), { passive:true });
+    scrollTopBtn.addEventListener("click", () => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top:0, behavior:reduceMotion ? "auto" : "smooth" });
+    });
     setTheme(defaultTheme());
   </script>
 </body>
