@@ -472,6 +472,15 @@
     .login-header-row h2{margin:0}
     .login-section{padding:24px}
     .login-section>p{margin-bottom:16px}
+    .login-token-field{position:relative}
+    .login-token-field input{padding-right:48px}
+    .token-visibility{position:absolute;right:7px;top:50%;display:grid;place-items:center;width:36px;height:36px;padding:7px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;transform:translateY(-50%);transition:background .14s var(--ease),color .14s var(--ease)}
+    .token-visibility:hover{background:var(--soft);color:var(--text)}
+    .token-visibility:focus-visible{outline:2px solid rgba(75,141,247,.72);outline-offset:1px}
+    .token-visibility svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .token-visibility .eye-slash{display:none}
+    .token-visibility[aria-pressed="true"] .eye-slash{display:block}
+    .login-token-error{margin-top:8px;color:var(--bad);font-size:12px;font-weight:700}
     .login-actions{display:grid;grid-template-columns:1fr;margin-top:14px}
     .login-actions .btn{width:100%;min-height:48px}
     .login-switch{margin:0;text-align:center}
@@ -603,12 +612,20 @@
         <section class="panel section login-section" id="loginBox">
           <div class="login-header-row"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8m-3 3 3 3m-6 0 2 2"/></svg></span><h2>Prijava</h2></div>
           <p>Unesi reseller token koji si dobio od PlayWorld tima.</p>
-          <label for="token">Token</label>
-          <input id="token" type="password" autocomplete="current-password" placeholder="Unesi token" />
-          <div class="actions login-actions">
-            <button class="btn primary" id="loginBtn">Uloguj se</button>
-          </div>
-          <div class="msg" id="loginMsg"></div>
+          <form id="resellerLoginForm" method="post" autocomplete="on">
+            <input type="text" name="username" autocomplete="username" value="reseller" hidden />
+            <label for="token">Token</label>
+            <div class="login-token-field">
+              <input id="token" name="password" type="password" autocomplete="current-password" placeholder="Unesi token" required />
+              <button class="token-visibility" id="tokenVisibilityBtn" type="button" aria-label="Prikaži token" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/><path class="eye-slash" d="m4 4 16 16"/></svg>
+              </button>
+            </div>
+            <div class="login-token-error" id="loginMsg" role="alert" aria-live="assertive" hidden></div>
+            <div class="actions login-actions">
+              <button class="btn primary" id="loginBtn" type="submit">Uloguj se</button>
+            </div>
+          </form>
         </section>
         <p class="login-switch">Administrator? <a href="/admin.html">Admin prijava</a></p>
 
@@ -968,6 +985,7 @@
     const tokenInput = $("token");
     const loginBtn = $("loginBtn");
     const loginMsg = $("loginMsg");
+    const tokenVisibilityBtn = $("tokenVisibilityBtn");
     const productSearch = $("productSearch");
     const productSearchCount = $("productSearchCount");
     const productSelect = $("product");
@@ -1119,8 +1137,8 @@
       balanceAnimationFrame = window.requestAnimationFrame(tick);
     }
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
-    function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
-    function hide(el){ el.style.display = "none"; el.textContent = ""; el.className = "msg"; }
+    function show(el,type,text){ el.className = el === loginMsg ? "login-token-error" : "msg " + type; el.textContent = text; el.hidden = false; el.style.display = "block"; }
+    function hide(el){ el.style.display = "none"; el.hidden = true; el.textContent = ""; el.className = el === loginMsg ? "login-token-error" : "msg"; }
     function showLoginProgress(message){
       $("loginProgressText").textContent = message;
       $("loginProgress").classList.add("open");
@@ -2560,7 +2578,7 @@
         hideLoginProgress();
         if (sessionStarted && !e.panelLoad) await logout();
         markField(tokenInput, "bad");
-        show(loginMsg, "bad", e.message);
+        show(loginMsg, "bad", /pogrešan token|token.*(neispravan|nije ispravan)/i.test(e.message) ? "Token nije ispravan." : e.message);
       }finally{
         hideLoginProgress();
         loginBtn.disabled = false;
@@ -2730,7 +2748,14 @@
       transactionsModal.classList.remove("open");
     }
 
-    loginBtn.addEventListener("click", login);
+    $("resellerLoginForm").addEventListener("submit", (event) => { event.preventDefault(); login(); });
+    tokenVisibilityBtn.addEventListener("click", () => {
+      const visible = tokenInput.type === "password";
+      tokenInput.type = visible ? "text" : "password";
+      tokenVisibilityBtn.setAttribute("aria-pressed", String(visible));
+      tokenVisibilityBtn.setAttribute("aria-label", visible ? "Sakrij token" : "Prikaži token");
+      tokenInput.focus();
+    });
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
     missingGameBtn.addEventListener("click", () => openMissingGame().catch((e) => show(missingGameMsg, "bad", e.message)));
