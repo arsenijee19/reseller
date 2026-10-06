@@ -445,10 +445,22 @@
     .price-variant .discount-badge{font-size:9px;padding:2px 5px}
     .price-variant-details{grid-column:1/-1;padding:9px 10px;border-radius:10px;background:rgba(16,163,127,.08);color:#08796b;font-size:12px;line-height:1.45}
     .price-variant-details[hidden]{display:none}
+    .delivery-offer{display:none;align-items:center;gap:10px;margin-top:12px;padding:11px 12px;border:1px solid rgba(49,93,244,.16);border-radius:13px;background:linear-gradient(110deg,rgba(49,93,244,.055),rgba(107,70,232,.045))}
+    .delivery-offer.visible{display:none}
+    .delivery-offer-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px;background:#e7edff;color:#315df4}
+    .delivery-offer-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .delivery-offer-copy{display:grid;gap:2px;min-width:0;flex:1}
+    .delivery-offer-copy strong{font-size:12px}
+    .delivery-offer-copy span{overflow-wrap:anywhere;color:var(--muted);font-size:12px}
+    .delivery-offer-edit{flex:0 0 auto;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:var(--brand);font-size:12px;font-weight:800;cursor:pointer}
+    .delivery-offer-edit:hover{background:rgba(49,93,244,.08)}
+    :root[data-theme="dark"] .delivery-offer{border-color:rgba(91,147,255,.2);background:linear-gradient(110deg,rgba(91,147,255,.1),rgba(112,65,232,.08))}
+    :root[data-theme="dark"] .delivery-offer-icon{background:rgba(91,147,255,.17);color:#a9c5ff}
     :root[data-theme="dark"] .price-variant-details{background:rgba(53,208,170,.12);color:#73dfc5}
     :root[data-theme="dark"] .platform-badge{background:rgba(91,147,255,.2);color:#a9c5ff}
     :root[data-theme="dark"] .platform-badge.ps4{background:rgba(56,189,248,.16);color:#88d8ff}
     @media(max-width:860px){
+      .delivery-offer.visible{display:flex}
       .shell{padding:16px 12px 36px}
       .topbar{flex-direction:row;align-items:center;gap:10px;margin-bottom:16px}
       .brand{align-items:center}
@@ -559,6 +571,11 @@
                   </div>
                 </div>
                 <button class="btn primary" id="orderBtn">Poruči</button>
+              </div>
+              <div class="delivery-offer" id="deliveryOffer" aria-live="polite" aria-hidden="true">
+                <span class="delivery-offer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span>
+                <span class="delivery-offer-copy"><strong>Isporuka igre na email</strong><span id="deliveryOfferEmail"></span></span>
+                <button class="delivery-offer-edit" id="deliveryEmailEditBtn" type="button">Promeni</button>
               </div>
               <div class="actions support-actions">
                 <span class="support-label">Treba Vam pomoć?</span>
@@ -795,8 +812,12 @@
   <div class="release-backdrop" id="releaseModal" role="dialog" aria-modal="true" aria-labelledby="releaseTitle">
     <div class="release-modal">
       <h2 id="releaseTitle">Novo u reseller panelu</h2>
-      <p>Dodali smo novi sigurnosni update i lakši rad sa porudžbinama.</p>
+      <p>Dodali smo novi sigurnosni update i olakšali pregled porudžbina i isporuke.</p>
       <div class="release-list">
+        <div class="release-item">
+          <strong>Email isporuke pri izboru igre</strong>
+          <p>Nakon izbora igre na telefonu odmah možete proveriti adresu isporuke i po potrebi je promeniti, bez prekidanja skrolovanja.</p>
+        </div>
         <div class="release-item">
           <strong>Kontakt podaci naloga</strong>
           <p>Panel će tražiti email i telefon resellera kako bi verifikacioni kodovi i provere stizali na pravu adresu.</p>
@@ -878,8 +899,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-balance-transaction-history";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
+    const RELEASE_VERSION = "2026-10-06-mobile-delivery-email";
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -899,6 +920,9 @@
     const productPickerTypes = $("productPickerTypes");
     const productPickerList = $("productPickerList");
     const orderBtn = $("orderBtn");
+    const deliveryOffer = $("deliveryOffer");
+    const deliveryOfferEmail = $("deliveryOfferEmail");
+    const deliveryEmailEditBtn = $("deliveryEmailEditBtn");
     const paidBtn = $("paidBtn");
     const missingGameBtn = $("missingGameBtn");
     const requestGameBtn = $("requestGameBtn");
@@ -1460,6 +1484,7 @@
         if (!payload.phone) throw new Error("Unesite broj telefona.");
         const updated = await api("/api/profile.php", { method:"POST", body:JSON.stringify(payload) });
         state.me = Object.assign({}, state.me || {}, updated);
+        updateDeliveryOffer();
         fillProfileForms(state.me);
         currentToken.value = "";
         newToken.value = "";
@@ -1589,6 +1614,7 @@
     function chooseProduct(productId){
       const product = state.products.find((item) => String(item.id) === String(productId));
       if (!product) return;
+      if (productPicker.classList.contains("open")) state.deliveryOfferProductId = String(product.id);
       productSelect.value = String(product.id);
       const priced = state.prices.get(String(product.id)) || {};
       productPickerValue.textContent = "";
@@ -1596,6 +1622,20 @@
       appendText(productPickerValue, "span", `${productType(product)}${priced.price ? " · " + price(priced.price) + " " + (priced.currency || "RSD") : ""}`);
       closeProductPicker();
       productSelect.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
+    function updateDeliveryOffer(){
+      const selectedId = String(productSelect.value || "");
+      if (!selectedId || selectedId !== state.deliveryOfferProductId) {
+        deliveryOffer.classList.remove("visible");
+        deliveryOffer.setAttribute("aria-hidden", "true");
+        return;
+      }
+      const email = String(state.me && state.me.email || "").trim();
+      deliveryOfferEmail.textContent = email || "Email isporuke nije podešen u nalogu.";
+      deliveryEmailEditBtn.textContent = email ? "Promeni" : "Podesi";
+      deliveryOffer.classList.add("visible");
+      deliveryOffer.setAttribute("aria-hidden", "false");
     }
 
     function renderProductOptions(){
@@ -2343,6 +2383,8 @@
       state.prices = new Map();
       state.orders = [];
       state.me = null;
+      state.deliveryOfferProductId = "";
+      updateDeliveryOffer();
       state.productSearch = "";
       state.productLetter = "";
       state.productTypeFilter = "";
@@ -2448,6 +2490,7 @@
     });
     productSelect.addEventListener("change", () => {
       preserveScroll(() => {
+        updateDeliveryOffer();
         productPickerTrigger.classList.remove("is-selecting");
         void productPickerTrigger.offsetWidth;
         productPickerTrigger.classList.add("is-selecting");
@@ -2455,6 +2498,7 @@
       });
     });
     releaseBtn.addEventListener("click", openReleaseNotes);
+    deliveryEmailEditBtn.addEventListener("click", () => accountSettingsBtn.click());
     themeBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("loginThemeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     confirmOrderBtn.addEventListener("click", submitConfirmedOrder);
