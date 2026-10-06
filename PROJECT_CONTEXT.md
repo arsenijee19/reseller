@@ -55,7 +55,7 @@
   - Admin order filters, active tab, table scroll positions, focused row controls, and local mutation feedback survive dashboard refreshes.
   - Reseller ordering now shows a premium animated success modal after successful order creation instead of a basic success message.
   - Reseller verification-code responses render as modern status cards with badges and structured details instead of multiline system text.
-  - Reseller landing/login view hides reseller-only controls until a valid session is restored or login succeeds.
+  - Reseller landing view keeps the login form hidden during the initial session check; an existing session opens directly into the ready panel, while an expired session reveals the login form afterward.
   - Expired session/CSRF errors are shown as user-friendly refresh-and-login-again messages.
   - Every committed order records separate email and n8n delivery events in `order_delivery_events`; failed order emails can be resent from Admin → Porudžbine.
 - Partially implemented functionality:
@@ -237,6 +237,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Reseller refresh now starts in a session-check state rather than briefly rendering the login form; the authenticated panel is revealed after session and panel data restoration, and the login form appears only when the session is not valid.
 - Initial live project snapshot was committed and pushed to GitHub before modifications.
 - Added shared PHP security/bootstrap helpers.
 - Added admin API and `/admin.html`.
