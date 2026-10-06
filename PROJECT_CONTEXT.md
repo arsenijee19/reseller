@@ -244,6 +244,7 @@
 - Added reseller-facing product search for order selection and price list filtering.
 - Replaced the classic reseller product select with a grouped, searchable product picker that keeps letter filters, price previews, and the existing order selection flow.
 - Added quick product-type filters for PS5 Primary, PS4 Primary, and PS4 / PS5 Secondary below the picker letter filters; they combine with text and letter search.
+- Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.

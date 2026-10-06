@@ -20,6 +20,8 @@ rg -q 'Promise\.all\(\[loadCatalog\(\), loadOrders\(\)\]\)' index.html
 rg -q 'failure\.panelLoad = true' index.html
 rg -q 'cache:"no-store"' index.html
 rg -q 'discountPercent' index.html api/prices.php api/order.php
+rg -q 'recommendedResalePrice' index.html
+rg -q 'shop-price-tip' index.html
 
 if rg -n 'innerHTML|insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then
   echo "Unsafe DOM/eval pattern found" >&2
