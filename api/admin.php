@@ -940,6 +940,7 @@ try {
     $email = h_string($input['email'] ?? '');
     $phone = normalize_phone((string)($input['phone'] ?? ''));
     $status = h_string($input['status'] ?? 'active');
+    $balanceInputPresent = array_key_exists('balance_rsd', $input);
     $balance = (int)($input['balance_rsd'] ?? 0);
     $discount = normalized_discount_percent($input['discount_percent'] ?? 0);
     $newToken = (string)($input['new_token'] ?? '');
@@ -968,8 +969,12 @@ try {
       throw new RuntimeException('Reseller nije pronađen.');
     }
 
-    $fields = ['email = ?', 'status = ?', 'balance_rsd = ?'];
-    $params = [$email, $status, $balance];
+    $fields = ['email = ?', 'status = ?'];
+    $params = [$email, $status];
+    if ($balanceInputPresent) {
+      $fields[] = 'balance_rsd = ?';
+      $params[] = $balance;
+    }
     $fields[] = 'discount_percent = ?';
     $params[] = $discount;
     if (has_column($pdo, 'resellers', 'display_name')) {
@@ -1016,7 +1021,7 @@ try {
       'admin_notes_changed' => $hasAdminNotesInput,
     ]);
 
-    $diff = $balance - (int)$oldBalance;
+    $diff = $balanceInputPresent ? $balance - (int)$oldBalance : 0;
     if ($diff !== 0) {
       $tx = $pdo->prepare("INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, 'ADMIN_ADJUSTMENT', ?, ?)");
       $tx->execute([$id, $diff, 'Admin balance adjustment']);

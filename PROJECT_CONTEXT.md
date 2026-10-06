@@ -48,6 +48,8 @@
   - Reseller and admin UIs support light/dark mode with the selected theme stored locally in the browser.
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
+  - Admin reseller and product screens use read-only reseller tables and grouped product cards; reseller editing and audited balance adjustments are handled in a side drawer, while product prices remain inline-editable.
+  - Admin password, TOTP 2FA, and passkey controls are grouped under Settings; the admin dashboard shows a warning when admin 2FA is disabled.
   - Admin refresh checks the existing session before revealing authentication UI, opening the loaded dashboard directly for a valid session and showing login only when needed.
   - Reseller and admin password/token and 2FA submissions show a blocking progress modal while the server verifies credentials and the panel loads.
   - Reseller and admin login now share a branded header, consistent icon-only theme control, centered authentication cards, and clear links between login screens.
@@ -280,6 +282,8 @@
 - Added an inline mobile delivery-email confirmation after a reseller manually selects a product slot, including an account-settings shortcut; preserved the existing order confirmation/submit flow and scroll position.
 - Added a reseller-scoped transaction history dialog that displays admin-entered transaction descriptions and related order notes; kept the surrounding recent-orders list independent.
 - Standardized admin form field sizing, dropdown affordances, button geometry, form spacing, and responsive layouts; aligned the Transactions entry form into one balanced desktop row without changing its action or API.
+- Redesigned Admin → Reselleri and Proizvodi around compact readable tables, filters, grouped product cards, inline price editing, status toggles, and a destructive-action menu; moved reseller editing into a side drawer and balance changes into audited wallet transactions.
+- Moved admin password, 2FA, and Passkey management into Podešavanja; added a visible 2FA reminder and localized admin navigation labels.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.

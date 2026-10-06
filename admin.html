@@ -417,6 +417,30 @@
       .topbar .actions #refreshBtn,.topbar .actions #logoutBtn{width:40px;min-width:40px;padding:9px}
     }
     @media(prefers-reduced-motion:reduce){.session-restore-spinner{animation-duration:1.8s}}
+    /* Admin workspace refresh: quiet navigation, readable tables, focused editing. */
+    .admin-brand{display:flex;align-items:center;gap:12px;min-width:0}.admin-brand .portal-logo{width:44px;height:44px;flex:0 0 44px}.admin-brand-copy{display:grid;gap:2px}.admin-brand-copy strong{font-size:18px;letter-spacing:-.03em}.admin-brand-copy span{color:var(--muted);font-size:12px}
+    .topbar{position:relative;top:auto;z-index:1;margin:0 0 12px;padding:0;background:transparent;border:0;backdrop-filter:none}
+    .tabs{position:static;top:auto;z-index:auto;justify-content:flex-start;width:100%;max-width:none;gap:4px;margin:0 0 18px;padding:6px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 8px 24px rgba(18,32,51,.05);backdrop-filter:none;overflow-x:auto}
+    .tab{flex:0 0 auto;gap:7px;min-height:42px;padding:9px 13px;border-radius:10px;white-space:nowrap}.tab.active{box-shadow:none}.tab-count{display:inline-grid;place-items:center;min-width:21px;height:20px;padding:0 5px;border-radius:999px;background:rgba(15,99,216,.09);color:var(--brand);font-size:10px;font-variant-numeric:tabular-nums}.tab.active .tab-count{background:rgba(255,255,255,.2);color:#fff}
+    .security-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:12px 16px;border:1px solid rgba(217,119,6,.24);border-radius:14px;background:#fff8eb;color:#9a4310}.security-banner-copy{display:flex;align-items:center;gap:10px;min-width:0;font-size:13px}.security-banner-copy strong{white-space:nowrap}.security-banner .btn{background:#c2410c;border-color:#c2410c}:root[data-theme="dark"] .security-banner{border-color:rgba(217,119,6,.28);background:rgba(217,119,6,.12);color:#fdba74}
+    .view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}.view-toolbar-copy{min-width:0}.view-toolbar-copy h2{margin:0 0 4px}.view-toolbar-copy p{margin:0}.view-toolbar-controls{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}.view-search{width:min(100%,300px);min-width:220px}
+    .segmented-filters{display:flex;align-items:center;gap:3px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.segment-filter{min-height:34px;padding:7px 10px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer}.segment-filter[aria-pressed="true"]{background:var(--panel);border-color:var(--line);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.08)}
+    .collapsible-form{margin:0 0 16px;padding:0;overflow:hidden}.collapsible-form>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;cursor:pointer;list-style:none;font-weight:800}.collapsible-form>summary::-webkit-details-marker{display:none}.collapsible-form>summary::after{content:"+";display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--brand);font-size:20px;line-height:1}.collapsible-form[open]>summary::after{content:"−"}.collapsible-form-content{padding:0 18px 18px;border-top:1px solid var(--line)}
+    .reseller-table{min-width:850px}.reseller-table th,.reseller-table td{padding:12px 14px}.reseller-identity{display:flex;align-items:center;gap:10px;min-width:190px}.reseller-avatar{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:50%;background:#e1e9ff;color:#4338b8;font-weight:850}.reseller-avatar[data-tone="mint"]{background:#d8faf3;color:#08796b}.reseller-avatar[data-tone="orange"]{background:#ffedd5;color:#b45309}.reseller-identity-copy{display:grid;gap:3px;min-width:0}.reseller-identity-copy strong{font-size:13px}.reseller-identity-copy span{color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+    .state-badge{display:inline-flex;align-items:center;min-height:23px;padding:4px 8px;border-radius:999px;background:#edf2f7;color:#526174;font-size:10px;font-weight:800;white-space:nowrap}.state-badge.good{background:#ddf8e8;color:#147a3b}.state-badge.warn{background:#fff0d6;color:#a84708}.state-badge.info{background:#e0ebff;color:#1746b1}.reseller-balance{font-size:12px;font-variant-numeric:tabular-nums;font-weight:850;white-space:nowrap}.reseller-balance.positive{color:#147a3b}.reseller-balance.negative{color:#c52232}.reseller-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;white-space:nowrap}.reseller-actions .btn{min-height:35px;padding:7px 10px;font-size:11px}.icon-action{width:36px;min-width:36px;padding:8px}.reseller-table tr.profile-pending td{background:rgba(255,247,237,.65)}:root[data-theme="dark"] .reseller-table tr.profile-pending td{background:rgba(217,119,6,.07)}
+    .table-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;color:var(--muted);font-size:12px}.table-footer strong{color:var(--danger)}
+    .drawer-backdrop{position:fixed;inset:0;z-index:70;display:flex;justify-content:flex-end;background:rgba(9,16,27,.42);backdrop-filter:blur(3px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s var(--ease),visibility 0s linear .18s}.drawer-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .18s var(--ease),visibility 0s}.reseller-drawer{display:flex;flex-direction:column;width:min(520px,100%);height:100%;background:var(--panel);border-left:1px solid var(--line);box-shadow:-20px 0 60px rgba(12,22,38,.18);transform:translateX(24px);transition:transform .22s var(--ease)}.drawer-backdrop.open .reseller-drawer{transform:translateX(0)}
+    .drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px 16px;border-bottom:1px solid var(--line)}.drawer-title{display:flex;align-items:center;gap:12px;min-width:0}.drawer-title .reseller-avatar{width:42px;height:42px;flex-basis:42px}.drawer-title-copy{min-width:0}.drawer-title-copy h2{margin:0 0 7px;font-size:18px}.drawer-badges{display:flex;gap:5px;flex-wrap:wrap}.drawer-close{width:40px;min-width:40px;height:40px;padding:8px}.drawer-content{flex:1;overflow:auto;padding:18px 22px 24px}.drawer-section-title{margin:19px 0 9px;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase}.drawer-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.drawer-fields .full{grid-column:1/-1}
+    .balance-adjustment{padding:14px 15px;border:1px solid rgba(197,34,50,.18);border-radius:14px;background:rgba(197,34,50,.045)}.balance-adjustment.positive{border-color:rgba(20,128,74,.2);background:rgba(20,128,74,.045)}.balance-adjustment-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.balance-adjustment-top span{font-size:11px;font-weight:750;color:var(--muted)}.balance-adjustment-top strong{font-size:19px;font-variant-numeric:tabular-nums;color:var(--danger)}.balance-adjustment.positive .balance-adjustment-top strong{color:var(--good)}.drawer-adjustment-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px}.drawer-adjustment-fields label{margin-top:0}.drawer-adjustment-fields input{background:var(--panel)}.drawer-help{margin-top:9px;font-size:11px}.drawer-switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:13px}.drawer-switch-copy{display:grid;gap:3px}.drawer-switch-copy strong{font-size:13px}.drawer-switch-copy span{color:var(--muted);font-size:11px}
+    .switch-control{position:relative;width:44px;height:25px;flex:0 0 44px}.switch-control input{position:absolute;width:1px;height:1px;opacity:0}.switch-track{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:background .16s ease}.switch-track::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.2);transition:transform .16s ease}.switch-control input:checked+.switch-track{background:#16a34a}.switch-control input:checked+.switch-track::after{transform:translateX(19px)}.switch-control input:focus-visible+.switch-track{outline:2px solid var(--brand);outline-offset:2px}.drawer-footer{display:flex;justify-content:flex-end;gap:9px;padding:13px 22px;border-top:1px solid var(--line);background:var(--panel)}.drawer-footer .btn.primary{flex:1}
+    .product-group-list{display:grid;gap:14px}.product-group-card{overflow:visible;border:1px solid var(--line);border-radius:17px;background:var(--panel);box-shadow:0 6px 20px rgba(18,32,51,.035)}.product-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.product-group-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}.product-group-title strong{font-size:14px}.product-group-title .muted{font-size:11px}.platform-chip{padding:3px 7px;border-radius:6px;background:#e0ebff;color:#3848c4;font-size:10px;font-weight:850}.platform-chip.ps4{background:#e1f4ff;color:#1478a7}.product-group-head .btn{min-height:34px;padding:7px 10px;font-size:11px}.product-table{min-width:820px}.product-table th,.product-table td{padding:9px 14px}.product-table th{font-size:10px}.product-slot{font-weight:750;white-space:nowrap}.product-id{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+    .product-price-cell{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.product-price-field{display:flex;align-items:center;width:152px;min-width:152px;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.product-price-field input{min-width:0;width:100%;min-height:38px;padding:8px 10px;border:0;border-radius:0;background:transparent;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}.product-price-field input:focus{box-shadow:none}.product-price-field span{align-self:stretch;display:grid;place-items:center;padding:0 9px;border-left:1px solid var(--line);background:var(--soft);color:var(--muted);font-size:10px}.product-price-save{min-height:34px;padding:6px 10px;font-size:11px}.product-price-change{flex-basis:100%;margin-top:-2px;color:var(--muted);font-size:10px}.product-price-change a{color:var(--brand);cursor:pointer;text-decoration:underline}.product-status-cell{white-space:nowrap}.product-status-switch{position:relative;display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--good);font-size:11px;font-weight:750;cursor:pointer}.product-status-switch::before{content:"";width:34px;height:19px;border-radius:999px;background:#16a34a}.product-status-switch::after{content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .16s ease}.product-status-switch[data-active="false"]{color:var(--muted)}.product-status-switch[data-active="false"]::before{background:#cbd5e1}.product-status-switch[data-active="false"]::after{transform:translateX(15px)}
+    .product-menu-cell{position:relative;text-align:right}.product-menu-trigger{width:36px;min-width:36px;height:36px;min-height:36px;padding:7px;font-size:17px}.product-menu{position:fixed;z-index:80;display:none;min-width:145px;padding:5px;border:1px solid var(--line);border-radius:11px;background:var(--panel);box-shadow:0 12px 28px rgba(12,22,38,.17)}.product-menu.open{display:grid}.product-menu button{width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:var(--text);text-align:left;font-size:12px;cursor:pointer}.product-menu button:hover{background:var(--soft)}.product-menu button.danger{color:var(--danger)}
+    .product-new-wrap{margin-bottom:14px}.product-new-toggle{display:flex;justify-content:space-between;align-items:center;gap:14px;width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);cursor:pointer}.product-new-toggle strong{font-size:13px}.product-new-toggle span{color:var(--muted);font-size:11px}.product-new-wrap[open] .product-new-toggle{border-radius:14px 14px 0 0}.product-new-form{padding:16px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;background:var(--panel)}
+    .product-price-change button{padding:0;border:0;background:none;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
+    #view-settings .security-panel,#view-settings .passkey-panel{margin-top:14px}
+    @media(max-width:860px){.tabs{justify-content:flex-start;border-radius:13px}.view-toolbar{align-items:stretch;flex-direction:column}.view-toolbar-controls{justify-content:flex-start}.view-search{width:100%;min-width:0}.security-banner{align-items:flex-start}.security-banner-copy{align-items:flex-start;flex-direction:column;gap:3px}.security-banner>.btn{flex:0 0 auto}.drawer-head{padding:17px 16px 14px}.drawer-content{padding:15px 16px 20px}.drawer-footer{padding:12px 16px}.product-group-card{overflow:hidden}.product-group-head{align-items:flex-start}}
+    @media(max-width:560px){.shell{padding:14px 10px 28px}.admin-brand-copy strong{font-size:16px}.admin-brand .portal-logo{width:40px;height:40px;flex-basis:40px}.topbar .actions{gap:6px}.topbar .actions .btn{flex:0 0 40px;width:40px;min-width:40px;padding:8px}.topbar .actions .btn#logoutBtn{flex:0 0 auto;width:auto;min-width:40px}.tabs{gap:2px;padding:4px}.tab{min-height:38px;padding:8px 10px;font-size:11px}.security-banner{padding:10px}.security-banner-copy{font-size:11px}.security-banner-copy strong{white-space:normal}.view-toolbar-controls{align-items:stretch}.segmented-filters{width:100%;justify-content:space-between}.segment-filter{flex:1;padding-inline:6px}.view-toolbar-controls>.btn{width:100%}.reseller-drawer{width:100%}.drawer-fields,.drawer-adjustment-fields{grid-template-columns:1fr}.drawer-fields .full{grid-column:auto}.drawer-title-copy h2{font-size:16px}.drawer-footer .btn{min-width:0}.product-group-head{padding:12px}.product-group-head .btn{flex:0 0 auto;min-width:0}.product-table{min-width:680px}}
   </style>
 </head>
 <body class="session-checking">
@@ -455,9 +479,9 @@
 
     <section id="adminPanel" class="hidden">
       <header class="topbar">
-        <div class="topbar-title">
-          <h1>PlayWorld.rs Admin</h1>
-          <p>Kontrola korisnika, balance-a, proizvoda i porudžbina.</p>
+        <div class="admin-brand">
+          <span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 8.2h9.6a3.5 3.5 0 0 1 3.4 2.7l1 4.5a2.1 2.1 0 0 1-3.4 2l-2.2-1.8H8.4l-2.2 1.8a2.1 2.1 0 0 1-3.4-2l1-4.5a3.5 3.5 0 0 1 3.4-2.7Z"/><path d="M8 11v4m-2-2h4m5-1h.01M18 14h.01"/></svg></span>
+          <div class="admin-brand-copy"><strong>PlayWorld.rs Admin</strong><span>Reselleri, proizvodi, cene i porudžbine</span></div>
         </div>
         <div class="actions">
           <button class="btn icon-control" id="themeBtn" type="button" aria-label="Uključi dark mode" title="Uključi dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg></button>
@@ -468,8 +492,13 @@
 
       <nav class="tabs" id="tabs"></nav>
       <div class="msg" id="adminMsg"></div>
+      <div class="security-banner hidden" id="admin2faBanner">
+        <div class="security-banner-copy"><strong>Admin 2FA nije uključen.</strong><span>Preporučujemo da ga uključite radi zaštite balansa i porudžbina.</span></div>
+        <button class="btn danger" id="admin2faBannerBtn" type="button">Aktiviraj 2FA</button>
+      </div>
       <div class="admin-summary" id="adminSummary"></div>
 
+      <div class="section view hidden" id="view-settings">
       <div class="form-panel account-panel">
         <div class="section-head">
           <div class="section-title">
@@ -558,64 +587,55 @@
         <div id="passkeyList" class="passkey-list"></div>
         <div class="msg" id="passkeyMsg"></div>
       </div>
+      </div>
 
       <div class="panel">
         <div class="section view" id="view-resellers">
-          <div class="section-head">
-            <div class="section-title">
-              <h2>Reselleri i balance</h2>
-              <p>Email, status, trenutno stanje i promena tokena/šifre za reseller login. Admin beleška ostaje vidljiva samo ovde.</p>
+          <div class="view-toolbar">
+            <div class="view-toolbar-copy"><h2>Reselleri</h2><p>Status, 2FA i trenutni balans svakog naloga.</p></div>
+            <div class="view-toolbar-controls">
+              <input class="view-search" id="resellerSearch" type="search" placeholder="Ime, email, telefon..." autocomplete="off" aria-label="Pretraga resellera" />
+              <div class="segmented-filters" role="group" aria-label="Filtriraj resellere">
+                <button class="segment-filter" type="button" data-reseller-filter="all" aria-pressed="true">Svi</button>
+                <button class="segment-filter" type="button" data-reseller-filter="negative" aria-pressed="false">U minusu</button>
+                <button class="segment-filter" type="button" data-reseller-filter="no2fa" aria-pressed="false">Bez 2FA</button>
+              </div>
+              <button class="btn primary" id="newResellerToggle" type="button">＋ Novi reseller</button>
             </div>
           </div>
-          <div class="form-panel" style="margin-bottom:16px">
-            <div class="section-head">
-              <div class="section-title">
-                <h2>Novi reseller</h2>
-                <p>Dovoljno je da unesete ime i početni token. Email i telefon reseller obavezno dopunjava iz svog panela pri prvom ulazu.</p>
-              </div>
-            </div>
+          <div class="form-panel hidden" id="newResellerPanel">
+            <div class="section-head"><div class="section-title"><h3>Novi reseller</h3><p>Dovoljno je ime i početni token. Email i telefon može da dopuni reseller.</p></div><button class="btn icon-control" id="closeNewResellerBtn" type="button" aria-label="Zatvori">×</button></div>
             <div class="form-grid">
               <div><label for="newResellerName">Ime</label><input id="newResellerName" type="text" placeholder="Ime ili naziv" /></div>
-              <div><label for="newResellerEmail">Email opcionalno</label><input id="newResellerEmail" type="email" placeholder="Može prazno" /></div>
-              <div><label for="newResellerPhone">Telefon opcionalno</label><input id="newResellerPhone" type="tel" placeholder="Može prazno" /></div>
-              <div><label for="newResellerBalance">Početni balance</label><input id="newResellerBalance" type="number" value="0" /></div>
+              <div><label for="newResellerEmail">Email (opciono)</label><input id="newResellerEmail" type="email" placeholder="Može prazno" /></div>
+              <div><label for="newResellerPhone">Telefon (opciono)</label><input id="newResellerPhone" type="tel" placeholder="Može prazno" /></div>
+              <div><label for="newResellerBalance">Početni balans</label><input id="newResellerBalance" type="number" value="0" /></div>
               <div><label for="newResellerDiscount">Popust (%)</label><input id="newResellerDiscount" type="number" min="0" max="100" step="0.01" value="0" /></div>
-              <div class="full"><label for="newResellerToken">Početni token/šifra</label><input id="newResellerToken" type="text" placeholder="Najmanje 12 karaktera" /></div>
+              <div class="full"><label for="newResellerToken">Početni token/šifra</label><input id="newResellerToken" type="password" placeholder="Najmanje 12 karaktera" autocomplete="new-password" /></div>
               <div class="form-actions"><button class="btn good" id="createResellerBtn" type="button">Dodaj resellera</button></div>
             </div>
           </div>
-          <div class="table-wrap"><table id="resellersTable"></table></div>
+          <div class="table-wrap"><table id="resellersTable" class="reseller-table"></table><div class="table-footer" id="resellerTableFooter"></div></div>
         </div>
 
         <div class="section view hidden" id="view-products">
-          <div class="product-layout">
-            <div class="form-panel">
-              <div class="section-head">
-                <div class="section-title">
-                  <h2>Novi proizvod</h2>
-                  <p>Forma prati kolone iz baze.</p>
-                </div>
+          <div class="view-toolbar">
+            <div class="view-toolbar-copy"><h2>Proizvodi i cene</h2><p id="productSearchCount">Promenite cenu i sačuvajte direktno u istom redu.</p></div>
+            <div class="view-toolbar-controls">
+              <input class="view-search" id="productSearch" type="search" placeholder="Naziv, product_id, tip naloga..." autocomplete="off" aria-label="Pretraga proizvoda" />
+              <div class="segmented-filters" role="group" aria-label="Filtriraj proizvode">
+                <button class="segment-filter" type="button" data-product-filter="all" aria-pressed="true">Svi</button>
+                <button class="segment-filter" type="button" data-product-filter="ps4" aria-pressed="false">PS4</button>
+                <button class="segment-filter" type="button" data-product-filter="ps5" aria-pressed="false">PS5</button>
+                <button class="segment-filter" type="button" data-product-filter="inactive" aria-pressed="false">Neaktivni</button>
               </div>
-              <div id="newProductForm"></div>
-              <div class="form-actions"><button class="btn good" id="createProductBtn">Dodaj proizvod</button></div>
-            </div>
-            <div>
-              <div class="section-head">
-                <div class="section-title">
-                  <h2>Proizvodi i cene</h2>
-                  <p>Izmeni bilo koje polje postojeće strukture proizvoda.</p>
-                </div>
-              </div>
-              <div class="table-toolbar">
-                <div class="search-field">
-                  <label for="productSearch">Pretraga proizvoda</label>
-                  <input id="productSearch" type="search" placeholder="Naziv, product_id, tip naloga, cena..." autocomplete="off" />
-                </div>
-                <p class="muted" id="productSearchCount"></p>
-              </div>
-              <div class="table-wrap"><table id="productsTable"></table></div>
             </div>
           </div>
+          <details class="product-new-wrap" id="newProductDetails">
+            <summary class="product-new-toggle"><span><strong>Novi proizvod</strong><br /><span>Dodajte novu igru ili varijantu.</span></span><span>＋</span></summary>
+            <div class="product-new-form"><div id="newProductForm"></div><div class="form-actions"><button class="btn primary" id="createProductBtn" type="button">Dodaj proizvod</button></div></div>
+          </details>
+          <div id="productsGrouped" class="product-group-list"></div>
         </div>
 
         <div class="section view hidden" id="view-orders">
@@ -649,7 +669,7 @@
         <div class="section view hidden" id="view-transactions">
           <div class="section-head">
             <div class="section-title">
-              <h2>Transactions</h2>
+              <h2>Transakcije</h2>
               <p>Ručno evidentiraj uplate i druge promene balansa. Pozitivan iznos dodaje sredstva, negativan ih oduzima.</p>
             </div>
           </div>
@@ -745,6 +765,42 @@
           <div id="schemaBox" class="grid"></div>
         </div>
       </div>
+      <div class="drawer-backdrop" id="resellerDrawerBackdrop" aria-hidden="true">
+        <aside class="reseller-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerResellerTitle">
+          <header class="drawer-head">
+            <div class="drawer-title"><span class="reseller-avatar" id="drawerAvatar">?</span><div class="drawer-title-copy"><h2 id="drawerResellerTitle">Reseller</h2><div class="drawer-badges" id="drawerBadges"></div></div></div>
+            <button class="btn drawer-close" id="closeResellerDrawer" type="button" aria-label="Zatvori panel">×</button>
+          </header>
+          <div class="drawer-content">
+            <section class="balance-adjustment" id="drawerBalancePanel">
+              <div class="balance-adjustment-top"><span>Trenutni balans</span><strong id="drawerBalanceValue">0 RSD</strong></div>
+              <div class="drawer-adjustment-fields">
+                <div><label for="drawerBalanceAmount">Dodaj / oduzmi</label><input id="drawerBalanceAmount" type="number" step="1" placeholder="npr. 5000 ili -500" /></div>
+                <div><label for="drawerBalanceReason">Razlog</label><input id="drawerBalanceReason" type="text" maxlength="255" placeholder="Uplata, korekcija..." /></div>
+                <div class="full"><label for="drawerBalanceType">Tip transakcije</label><select id="drawerBalanceType"><option value="ADMIN_TOPUP">Admin dopuna</option><option value="PAYMENT_RECEIVED">Evidencija uplate</option><option value="ADMIN_ADJUSTMENT">Ispravka balansa</option><option value="BONUS">Bonus / kompenzacija</option></select></div>
+                <div class="full"><button class="btn primary" id="drawerBalanceSubmit" type="button">Evidentiraj promenu</button></div>
+              </div>
+              <p class="muted drawer-help">Svaka promena se evidentira u Transakcijama.</p>
+            </section>
+            <div class="drawer-section-title">Podaci</div>
+            <div class="drawer-fields">
+              <div class="full"><label for="drawerName">Ime</label><input id="drawerName" type="text" maxlength="120" /></div>
+              <div class="full"><label for="drawerEmail">Email</label><input id="drawerEmail" type="email" /></div>
+              <div><label for="drawerPhone">Telefon</label><input id="drawerPhone" type="tel" /></div>
+              <div><label for="drawerDiscount">Popust (%)</label><input id="drawerDiscount" type="number" min="0" max="100" step="0.01" /></div>
+              <div class="full"><label for="drawerAdminNotes">Admin beleška</label><textarea id="drawerAdminNotes" maxlength="5000" placeholder="Vidi samo admin..."></textarea></div>
+            </div>
+            <div class="drawer-section-title">Pristup</div>
+            <label for="drawerNewToken">Novi token / šifra</label><input id="drawerNewToken" type="password" autocomplete="new-password" placeholder="Ostavite prazno bez promene" />
+            <div class="drawer-switch-row" style="margin-top:12px">
+              <div class="drawer-switch-copy"><strong>Nalog aktivan</strong><span>Isključite da privremeno blokirate poručivanje.</span></div>
+              <label class="switch-control" aria-label="Nalog aktivan"><input id="drawerActive" type="checkbox" /><span class="switch-track"></span></label>
+            </div>
+            <div class="msg" id="drawerResellerMsg"></div>
+          </div>
+          <footer class="drawer-footer"><button class="btn" id="cancelResellerEdit" type="button">Otkaži</button><button class="btn primary" id="saveResellerEdit" type="button">Sačuvaj izmene</button></footer>
+        </aside>
+      </div>
     </section>
   </main>
   <div class="admin-modal-backdrop login-progress-backdrop" id="loginProgress" role="status" aria-live="polite" aria-hidden="true">
@@ -771,15 +827,16 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", admin2faPending:false, admin2faManageMode:"", adminTwoFactorEnabled:false, filters:{} };
+    const state = { csrf:"", data:null, tab:"resellers", productSearch:"", productFilter:"all", resellerSearch:"", resellerFilter:"all", editingResellerId:null, admin2faPending:false, admin2faManageMode:"", adminTwoFactorEnabled:false, filters:{} };
     const tabs = [
       ["resellers","Reselleri"],
       ["products","Proizvodi"],
       ["orders","Porudžbine"],
       ["payment_notices","Uplate"],
-      ["transactions","Transactions"],
-      ["inventory","Inventory"],
-      ["database","Baza"]
+      ["transactions","Transakcije"],
+      ["inventory","Inventar"],
+      ["database","Baza"],
+      ["settings","Podešavanja"]
     ];
 
     function showMsg(type,text){
@@ -941,6 +998,7 @@
     function renderAdminTwoFactorStatus(info){
       const enabled = !!(info && info.enabled);
       state.adminTwoFactorEnabled = enabled;
+      $("admin2faBanner").classList.toggle("hidden", enabled);
       $("admin2faStatusText").textContent = enabled
         ? `Admin 2FA je uključen${info.last_used_at ? " - poslednja potvrda: " + info.last_used_at : ""}. Recovery kodova: ${info.recovery_codes_remaining || 0}.`
         : "Admin 2FA nije uključen. Preporuka: aktivirajte ga zbog zaštite porudžbina, balance-a i Inventory podešavanja.";
@@ -1091,17 +1149,21 @@
       tabs.forEach(([id,label]) => {
         const btn = document.createElement("button");
         btn.className = "tab" + (state.tab === id ? " active" : "");
-        btn.textContent = label;
+        btn.appendChild(document.createTextNode(label));
+        const count = id === "resellers" ? (state.data && state.data.resellers || []).length : id === "products" ? (state.data && state.data.products || []).length : 0;
+        if (count) text(btn, "span", count, "tab-count");
         btn.addEventListener("click", () => { state.tab = id; render(); });
         box.appendChild(btn);
       });
       document.querySelectorAll(".view").forEach((el) => el.classList.add("hidden"));
       $("view-" + state.tab).classList.remove("hidden");
+      $("adminSummary").classList.toggle("hidden", state.tab !== "resellers");
     }
 
     function renderSummary(){
       const box = $("adminSummary");
       if (!box || !state.data) return;
+      box.classList.toggle("hidden", state.tab !== "resellers");
       const resellers = state.data.resellers || [];
       const products = state.data.products || [];
       const orders = state.data.orders || [];
@@ -1130,42 +1192,130 @@
       const table = $("resellersTable");
       table.textContent = "";
       const thead = table.createTHead().insertRow();
-      ["ID","Ime","Email","Telefon","Status profila","2FA","Status","Balance","Popust (%)","Admin beleška","Nova šifra/token","Akcija"].forEach((h) => text(thead.insertCell(), "strong", h));
+      ["Reseller","Telefon","Profil","2FA","Status","Popust","Balans","Akcije"].forEach((h) => text(thead.insertCell(), "strong", h));
       const body = table.createTBody();
-      (state.data.resellers || []).forEach((r) => {
+      const resellers = state.data.resellers || [];
+      const query = normalizeSearch(state.resellerSearch);
+      document.querySelectorAll("[data-reseller-filter]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.resellerFilter === state.resellerFilter)));
+      const visible = resellers.filter((r) => {
+        const has2fa = !!r.two_factor_enabled_at;
+        if (state.resellerFilter === "negative" && Number(r.balance_rsd) >= 0) return false;
+        if (state.resellerFilter === "no2fa" && has2fa) return false;
+        return !query || normalizeSearch([r.display_name, r.email, r.phone, r.id].join(" ")).includes(query);
+      });
+      visible.forEach((r, index) => {
         const row = body.insertRow();
         row.dataset.recordId = `reseller-${r.id}`;
-        text(row.insertCell(), "span", r.id);
-        const name = input(r.display_name || "", "wide"); name.dataset.field = "display_name"; row.insertCell().appendChild(name);
-        const email = input(r.email, "wide"); email.dataset.field = "email"; row.insertCell().appendChild(email);
-        const phone = input(r.phone || "", "wide"); phone.dataset.field = "phone"; phone.placeholder = "+381..."; row.insertCell().appendChild(phone);
-        text(row.insertCell(), "span", r.profile_completed_at ? "završen" : "nije završen", "muted");
-        text(row.insertCell(), "span", r.two_factor_enabled_at ? `uključen (${r.recovery_codes_remaining || 0} recovery)` : "nije uključen", "muted");
-        const status = input(r.status || "active", "compact"); status.dataset.field = "status"; row.insertCell().appendChild(status);
-        const balance = input(r.balance_rsd || 0, "compact"); balance.dataset.field = "balance_rsd"; balance.type = "number"; row.insertCell().appendChild(balance);
-        const discount = input(r.discount_percent || 0, "compact"); discount.dataset.field = "discount_percent"; discount.type = "number"; discount.min = "0"; discount.max = "100"; discount.step = "0.01"; row.insertCell().appendChild(discount);
-        const adminNotes = textarea(r.admin_notes || ""); adminNotes.className = "admin-note"; adminNotes.dataset.field = "admin_notes"; adminNotes.placeholder = "Interna beleška samo za admina..."; row.insertCell().appendChild(adminNotes);
-        const token = input("", "wide"); token.dataset.field = "new_token"; token.type = "password"; token.placeholder = "Ostavi prazno bez promene"; row.insertCell().appendChild(token);
-        const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
-        save.addEventListener("click", async () => {
-          try{
-            save.disabled = true;
-            await ensureAdminStepUp();
-            const result = await api("update_reseller", { method:"POST", body:JSON.stringify({ id:r.id, display_name:name.value, email:email.value, phone:phone.value, status:status.value, balance_rsd:balance.value, discount_percent:discount.value, admin_notes:adminNotes.value, new_token:token.value }) });
-            showToast("ok", "Reseller je ažuriran.");
-            state.data = result;
-            renderWithUiState(() => render());
-          }catch(e){
-            showToast("bad", e.message);
-          }finally{
-            save.disabled = false;
-          }
-        });
+        if (!r.profile_completed_at) row.classList.add("profile-pending");
+        const identityCell = row.insertCell();
+        const identity = document.createElement("div"); identity.className = "reseller-identity";
+        const avatar = text(identity, "span", String(r.display_name || r.email || "?").trim().charAt(0).toUpperCase() || "?", "reseller-avatar");
+        avatar.dataset.tone = ["mint", "orange"][index % 2];
+        const identityCopy = document.createElement("div"); identityCopy.className = "reseller-identity-copy";
+        text(identityCopy, "strong", `${r.display_name || "[Ime]"} #${r.id}`);
+        text(identityCopy, "span", r.email || "[email]");
+        identity.appendChild(identityCopy); identityCell.appendChild(identity);
+        text(row.insertCell(), "span", r.phone || "—");
+        text(row.insertCell(), "span", r.profile_completed_at ? "Završen" : "Nije završen", `state-badge ${r.profile_completed_at ? "good" : "warn"}`);
+        text(row.insertCell(), "span", r.two_factor_enabled_at ? `Uključen · ${r.recovery_codes_remaining || 0} rec.` : "Isključen", `state-badge ${r.two_factor_enabled_at ? "good" : ""}`);
+        const active = String(r.status || "active").toLowerCase() === "active";
+        text(row.insertCell(), "span", active ? "Aktivan" : "Neaktivan", `state-badge ${active ? "info" : ""}`);
+        text(row.insertCell(), "span", `${Number(r.discount_percent || 0)}%`, "muted");
+        const balance = Number(r.balance_rsd || 0);
+        text(row.insertCell(), "strong", `${money(balance)} RSD`, `reseller-balance ${balance < 0 ? "negative" : "positive"}`);
         const actionBox = document.createElement("div");
-        actionBox.className = "table-actions";
-        actionBox.appendChild(save);
+        actionBox.className = "reseller-actions";
+        const topup = document.createElement("button"); topup.className = "btn good"; topup.type = "button"; topup.textContent = "Dopuni";
+        topup.addEventListener("click", () => openResellerDrawer(r, true));
+        const edit = document.createElement("button"); edit.className = "btn icon-action"; edit.type = "button"; edit.textContent = "✎"; edit.title = "Izmeni resellera"; edit.setAttribute("aria-label", `Izmeni ${r.display_name || r.email}`);
+        edit.addEventListener("click", () => openResellerDrawer(r));
+        actionBox.append(topup, edit);
         row.insertCell().appendChild(actionBox);
       });
+      const footer = $("resellerTableFooter");
+      const debt = resellers.reduce((sum, r) => sum + Math.min(0, Number(r.balance_rsd || 0)), 0);
+      footer.replaceChildren();
+      const summary = text(footer, "span", `Prikazano ${visible.length} od ${resellers.length} · ukupno u minusu: `);
+      text(summary, "strong", `${money(Math.abs(debt))} RSD`);
+      if (!visible.length) {
+        const row = body.insertRow(); const cell = row.insertCell(); cell.colSpan = 8;
+        text(cell, "span", "Nema resellera za izabranu pretragu ili filter.", "muted");
+      }
+    }
+
+    function openResellerDrawer(reseller, focusBalance = false){
+      state.editingResellerId = Number(reseller.id);
+      $("drawerAvatar").textContent = String(reseller.display_name || reseller.email || "?").trim().charAt(0).toUpperCase() || "?";
+      $("drawerResellerTitle").textContent = `${reseller.display_name || "[Ime]"} #${reseller.id}`;
+      const badges = $("drawerBadges"); badges.replaceChildren();
+      const resellerActive = String(reseller.status || "active").toLowerCase() === "active";
+      [[resellerActive ? "Aktivan" : "Neaktivan", resellerActive ? "info" : ""], [reseller.profile_completed_at ? "Profil završen" : "Profil nije završen", reseller.profile_completed_at ? "good" : "warn"], [reseller.two_factor_enabled_at ? "2FA uključen" : "2FA isključen", reseller.two_factor_enabled_at ? "good" : ""]].forEach(([label, tone]) => text(badges, "span", label, `state-badge ${tone}`));
+      $("drawerBalanceValue").textContent = `${money(reseller.balance_rsd || 0)} RSD`;
+      $("drawerName").value = reseller.display_name || "";
+      $("drawerEmail").value = reseller.email || "";
+      $("drawerPhone").value = reseller.phone || "";
+      $("drawerDiscount").value = reseller.discount_percent || 0;
+      $("drawerAdminNotes").value = reseller.admin_notes || "";
+      $("drawerNewToken").value = "";
+      $("drawerActive").checked = String(reseller.status || "active").toLowerCase() === "active";
+      $("drawerBalanceAmount").value = "";
+      $("drawerBalancePanel").classList.remove("positive");
+      $("drawerBalanceReason").value = "";
+      $("drawerBalanceType").value = focusBalance ? "ADMIN_TOPUP" : "ADMIN_ADJUSTMENT";
+      $("drawerResellerMsg").style.display = "none";
+      $("resellerDrawerBackdrop").classList.add("open");
+      $("resellerDrawerBackdrop").setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      setTimeout(() => $(focusBalance ? "drawerBalanceAmount" : "drawerName").focus(), 30);
+    }
+
+    function closeResellerDrawer(){
+      $("resellerDrawerBackdrop").classList.remove("open");
+      $("resellerDrawerBackdrop").setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      state.editingResellerId = null;
+    }
+
+    async function saveResellerDrawer(){
+      const id = state.editingResellerId;
+      const reseller = (state.data.resellers || []).find((item) => Number(item.id) === Number(id));
+      if (!reseller) return;
+      const button = $("saveResellerEdit"); button.disabled = true; button.textContent = "Čuvam...";
+      try{
+        await ensureAdminStepUp();
+        state.data = await api("update_reseller", { method:"POST", body:JSON.stringify({
+          id, display_name:$("drawerName").value.trim(), email:$("drawerEmail").value.trim(), phone:$("drawerPhone").value.trim(),
+          status:$("drawerActive").checked ? "active" : "inactive",
+          discount_percent:$("drawerDiscount").value, admin_notes:$("drawerAdminNotes").value, new_token:$("drawerNewToken").value
+        }) });
+        closeResellerDrawer();
+        renderWithUiState(() => render());
+        showToast("ok", "Reseller je ažuriran.");
+      }catch(error){
+        const message = $("drawerResellerMsg"); message.className = "msg bad"; message.textContent = error.message; message.style.display = "block";
+      }finally{ button.disabled = false; button.textContent = "Sačuvaj izmene"; }
+    }
+
+    async function submitDrawerBalance(){
+      const id = state.editingResellerId;
+      const amount = Number($("drawerBalanceAmount").value);
+      const reason = $("drawerBalanceReason").value.trim();
+      const button = $("drawerBalanceSubmit");
+      if (!Number.isInteger(amount) || amount === 0 || !reason) {
+        const message = $("drawerResellerMsg"); message.className = "msg bad"; message.textContent = "Unesite iznos različit od nule i razlog promene."; message.style.display = "block"; return;
+      }
+      button.disabled = true; button.textContent = "Evidentiram...";
+      try{
+        await ensureAdminStepUp();
+        state.data = await api("add_transaction", { method:"POST", body:JSON.stringify({ reseller_id:id, amount_rsd:amount, type:$("drawerBalanceType").value, description:reason }) });
+        const updated = (state.data.resellers || []).find((item) => Number(item.id) === Number(id));
+        if (updated) $("drawerBalanceValue").textContent = `${money(updated.balance_rsd || 0)} RSD`;
+        $("drawerBalanceAmount").value = ""; $("drawerBalanceReason").value = "";
+        renderWithUiState(() => render());
+        showToast("ok", "Promena balansa je evidentirana u Transakcijama.");
+      }catch(error){
+        const message = $("drawerResellerMsg"); message.className = "msg bad"; message.textContent = error.message; message.style.display = "block";
+      }finally{ button.disabled = false; button.textContent = "Evidentiraj promenu"; }
     }
 
     function editableForColumn(column, value){
@@ -1174,6 +1324,14 @@
       const el = input(value);
       if (["price","price_rsd","balance_rsd"].includes(name)) el.type = "number";
       return el;
+    }
+
+    function productColumnLabel(name){
+      const labels = {
+        product_id:"ID proizvoda", product_name:"Naziv igre", account_type:"Tip naloga", price:"Cena (RSD)", price_rsd:"Cena (RSD)",
+        currency:"Valuta", status:"Status", is_active:"Aktivan", notes:"Beleška", created_at:"Kreirano", updated_at:"Izmenjeno"
+      };
+      return labels[name] || name.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
     }
 
     function productColumns(){
@@ -1189,7 +1347,7 @@
         const field = document.createElement("div");
         if ((c.DATA_TYPE || "").includes("text")) field.className = "full";
         const label = document.createElement("label");
-        label.textContent = c.COLUMN_NAME;
+        label.textContent = productColumnLabel(c.COLUMN_NAME);
         const el = editableForColumn(c, cleanDefault(c.COLUMN_DEFAULT));
         el.dataset.column = c.COLUMN_NAME;
         field.appendChild(label);
@@ -1199,90 +1357,158 @@
       box.appendChild(grid);
     }
 
+    function productGroupTitle(product){
+      const raw = String(product.product_name || product.product_id || "Proizvod").trim();
+      const accountType = String(product.account_type || "").trim();
+      const escaped = accountType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const withoutType = escaped ? raw.replace(new RegExp(`\\s*\\(?\\s*${escaped}\\s*\\)?$`, "i"), "") : raw;
+      return withoutType.replace(/\s*\(?\s*PS[45](?:\s*[\/+&]\s*PS[45])?\s*\)?\s*$/i, "").replace(/[\s\-–(]+$/, "") || raw;
+    }
+
+    function productIsActive(product){
+      if (product.status != null) return !["inactive", "disabled", "0"].includes(String(product.status).toLowerCase());
+      if (product.is_active != null) return Number(product.is_active) !== 0;
+      return true;
+    }
+
+    function openProductCreate(groupTitle = ""){
+      const details = $("newProductDetails"); details.open = true;
+      const nameField = $("newProductForm").querySelector('[data-column="product_name"]');
+      if (nameField && groupTitle) nameField.value = groupTitle;
+      const typeField = $("newProductForm").querySelector('[data-column="account_type"]');
+      requestAnimationFrame(() => (groupTitle ? typeField : nameField)?.focus());
+      details.scrollIntoView({ behavior:"smooth", block:"center" });
+    }
+
     function renderProducts(){
       renderNewProduct();
       const columns = productColumns();
-      const table = $("productsTable");
       const products = state.data.products || [];
       const search = normalizeSearch(state.productSearch);
-      const filteredProducts = search
-        ? products.filter((p) => columns.some((c) => normalizeSearch(p[c.COLUMN_NAME]).includes(search)))
-        : products;
+      document.querySelectorAll("[data-product-filter]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.productFilter === state.productFilter)));
+      const filteredProducts = products.filter((product) => {
+        const active = productIsActive(product);
+        const platforms = normalizeSearch(`${product.product_name || ""} ${product.account_type || ""}`);
+        if (state.productFilter === "inactive" && active) return false;
+        if (state.productFilter === "ps4" && !platforms.includes("ps4")) return false;
+        if (state.productFilter === "ps5" && !platforms.includes("ps5")) return false;
+        return !search || columns.some((column) => normalizeSearch(product[column.COLUMN_NAME]).includes(search));
+      });
       const searchInput = $("productSearch");
       if (searchInput && document.activeElement !== searchInput) searchInput.value = state.productSearch;
-      const count = $("productSearchCount");
-      if (count) count.textContent = search ? `${filteredProducts.length} od ${products.length} proizvoda` : `${products.length} proizvoda`;
-      table.textContent = "";
-      const thead = table.createTHead().insertRow();
-      columns.forEach((c) => text(thead.insertCell(), "strong", c.COLUMN_NAME));
-      text(thead.insertCell(), "strong", "Akcije");
-      const body = table.createTBody();
-      if (!filteredProducts.length) {
-        const row = body.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = columns.length + 1;
-        text(cell, "span", search ? "Nema proizvoda za ovu pretragu." : "Nema proizvoda.", "muted");
-        return;
+      $("productSearchCount").textContent = `${filteredProducts.length} varijanti${search ? ` od ${products.length}` : ""} · grupisano po igri`;
+      const grouped = new Map();
+      filteredProducts.forEach((product) => {
+        const title = productGroupTitle(product);
+        const key = normalizeSearch(title);
+        if (!grouped.has(key)) grouped.set(key, { title, products:[] });
+        grouped.get(key).products.push(product);
+      });
+      const container = $("productsGrouped"); container.textContent = "";
+      if (!grouped.size) {
+        text(container, "p", search ? "Nema proizvoda za ovu pretragu." : "Nema proizvoda.", "muted"); return;
       }
-      filteredProducts.forEach((p) => {
-        const row = body.insertRow();
-        row.dataset.recordId = `product-${p.product_id}`;
-        const controls = {};
-        columns.forEach((c) => {
-          const control = editableForColumn(c, p[c.COLUMN_NAME]);
-          control.dataset.column = c.COLUMN_NAME;
-          controls[c.COLUMN_NAME] = control;
-          row.insertCell().appendChild(control);
+      grouped.forEach((group) => {
+        const card = document.createElement("article"); card.className = "product-group-card";
+        const head = document.createElement("header"); head.className = "product-group-head";
+        const title = document.createElement("div"); title.className = "product-group-title";
+        text(title, "strong", group.title);
+        const platforms = new Set();
+        group.products.forEach((product) => (`${product.product_name || ""} ${product.account_type || ""}`).match(/PS[45]/gi) || []).forEach((platform) => platforms.add(platform.toUpperCase()));
+        [...platforms].sort().forEach((platform) => text(title, "span", platform, `platform-chip ${platform.toLowerCase()}`));
+        text(title, "span", `· ${group.products.length} ${group.products.length === 1 ? "varijanta" : "varijante"}`, "muted");
+        const addVariant = document.createElement("button"); addVariant.className = "btn"; addVariant.type = "button"; addVariant.textContent = "+ Varijanta";
+        addVariant.addEventListener("click", () => openProductCreate(group.title));
+        head.append(title, addVariant); card.appendChild(head);
+
+        const wrap = document.createElement("div"); wrap.className = "table-wrap";
+        const table = document.createElement("table"); table.className = "product-table";
+        const header = table.createTHead().insertRow();
+        ["Tip naloga", "ID proizvoda", "Cena", "Status", ""].forEach((label) => text(header.insertCell(), "strong", label));
+        const body = table.createTBody();
+        group.products.forEach((product) => {
+          const row = body.insertRow(); row.dataset.recordId = `product-${product.product_id}`;
+          text(row.insertCell(), "span", product.account_type || "Cena", "product-slot");
+          text(row.insertCell(), "code", product.product_id || "[product_id]", "product-id mono");
+
+          const priceCell = row.insertCell(); priceCell.className = "product-price-cell";
+          const priceWrap = document.createElement("div"); priceWrap.className = "product-price-field";
+          const priceKey = Object.hasOwn(product, "price") ? "price" : "price_rsd";
+          const initialPriceValue = String(product[priceKey] ?? 0);
+          const originalPrice = Number(initialPriceValue || 0);
+          const priceInput = input(initialPriceValue); priceInput.type = "number"; priceInput.step = "1"; priceInput.setAttribute("aria-label", `Cena za ${product.account_type || product.product_id}`);
+          const currency = text(priceWrap, "span", product.currency || "RSD");
+          priceWrap.insertBefore(priceInput, currency);
+          const savePrice = document.createElement("button"); savePrice.className = "btn primary product-price-save hidden"; savePrice.type = "button"; savePrice.textContent = "Sačuvaj";
+          const change = document.createElement("div"); change.className = "product-price-change hidden";
+          const oldValue = text(change, "span", `bilo ${money(originalPrice)} · `);
+          const cancel = text(change, "button", "otkaži"); cancel.type = "button";
+          const updateDirty = () => {
+            const dirty = priceInput.value !== initialPriceValue;
+            savePrice.classList.toggle("hidden", !dirty);
+            change.classList.toggle("hidden", !dirty);
+          };
+          priceInput.addEventListener("input", updateDirty);
+          cancel.addEventListener("click", () => { priceInput.value = initialPriceValue; updateDirty(); });
+          savePrice.addEventListener("click", async () => {
+            const amount = Number(priceInput.value);
+            if (!Number.isFinite(amount) || amount < 0) { showToast("bad", "Unesite validnu cenu."); return; }
+            savePrice.disabled = true; savePrice.textContent = "Čuvam...";
+            try{
+              state.data = await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:product.product_id, fields:{ product_id:product.product_id, [priceKey]:priceInput.value } }) });
+              renderWithUiState(() => render()); showToast("ok", "Cena proizvoda je sačuvana.");
+            }catch(error){ showToast("bad", error.message); }
+            finally{ savePrice.disabled = false; savePrice.textContent = "Sačuvaj"; }
+          });
+          priceCell.append(priceWrap, savePrice, change);
+
+          const statusCell = row.insertCell(); statusCell.className = "product-status-cell";
+          const active = productIsActive(product);
+          const statusButton = document.createElement("button"); statusButton.className = "product-status-switch"; statusButton.type = "button"; statusButton.dataset.active = String(active); statusButton.textContent = active ? "Aktivan" : "Neaktivan";
+          statusButton.setAttribute("aria-pressed", String(active)); statusButton.setAttribute("aria-label", `${active ? "Deaktiviraj" : "Aktiviraj"} ${product.product_name || product.product_id}`);
+          statusButton.addEventListener("click", async () => {
+            if (!columns.some((column) => ["status", "is_active"].includes(column.COLUMN_NAME))) {
+              showToast("bad", "Aktivni status nije podržan u trenutnoj strukturi baze."); return;
+            }
+            statusButton.disabled = true;
+            try{
+              const nextActive = !active;
+              const statusFields = { product_id:product.product_id };
+              if (columns.some((column) => column.COLUMN_NAME === "status")) statusFields.status = nextActive ? "active" : "inactive";
+              else statusFields.is_active = nextActive ? "1" : "0";
+              state.data = await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:product.product_id, fields:statusFields }) });
+              renderWithUiState(() => render()); showToast("ok", `Proizvod je ${active ? "deaktiviran" : "aktiviran"}.`);
+            }catch(error){ showToast("bad", error.message); statusButton.disabled = false; }
+          });
+          statusCell.appendChild(statusButton);
+
+          const menuCell = row.insertCell(); menuCell.className = "product-menu-cell";
+          const menuButton = document.createElement("button"); menuButton.className = "btn product-menu-trigger"; menuButton.type = "button"; menuButton.textContent = "⋯"; menuButton.setAttribute("aria-label", "Još opcija");
+          const menu = document.createElement("div"); menu.className = "product-menu";
+          const deleteButton = document.createElement("button"); deleteButton.className = "danger"; deleteButton.type = "button"; deleteButton.textContent = "Obriši proizvod…";
+          deleteButton.addEventListener("click", async () => {
+            menu.classList.remove("open");
+            if (!confirm(`Trajno obrisati „${product.product_name || product.product_id}“ (${product.product_id})? Za proizvode sa istorijom porudžbina preporučujemo deaktivaciju.`)) return;
+            deleteButton.disabled = true;
+            try{ state.data = await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:product.product_id }) }); renderWithUiState(() => render()); showToast("ok", "Proizvod je obrisan."); }
+            catch(error){ showToast("bad", error.message); deleteButton.disabled = false; }
+          });
+          menu.appendChild(deleteButton);
+          menuButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            document.querySelectorAll(".product-menu.open").forEach((openMenu) => { if (openMenu !== menu) openMenu.classList.remove("open"); });
+            menu.classList.toggle("open");
+            if (menu.classList.contains("open")) {
+              const rect = menuButton.getBoundingClientRect();
+              const menuHeight = menu.offsetHeight;
+              const top = rect.bottom + menuHeight + 8 <= window.innerHeight ? rect.bottom + 4 : Math.max(8, rect.top - menuHeight - 4);
+              const left = Math.min(window.innerWidth - menu.offsetWidth - 8, Math.max(8, rect.right - menu.offsetWidth));
+              menu.style.top = `${top}px`; menu.style.left = `${left}px`;
+            }
+          });
+          menuCell.append(menuButton, menu); body.appendChild(row);
         });
-        const actions = document.createElement("div");
-        actions.className = "table-actions";
-        const save = document.createElement("button"); save.className = "btn primary"; save.textContent = "Sačuvaj";
-        save.addEventListener("click", async () => {
-          try{
-            save.disabled = true;
-            const fields = {};
-            Object.keys(controls).forEach((key) => fields[key] = controls[key].value);
-            const result = await api("save_product", { method:"POST", body:JSON.stringify({ mode:"update", original_product_id:p.product_id, fields }) });
-            showToast("ok", "Proizvod je sačuvan.");
-            state.data = result;
-            renderWithUiState(() => render());
-          }catch(e){
-            showToast("bad", e.message);
-          }finally{
-            save.disabled = false;
-          }
-        });
-        const off = document.createElement("button"); off.className = "btn"; off.textContent = "Deaktiviraj";
-        off.addEventListener("click", async () => {
-          try{
-            off.disabled = true;
-            const result = await api("deactivate_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-            showToast("ok", "Proizvod je deaktiviran.");
-            state.data = result;
-            renderWithUiState(() => render());
-          }catch(e){
-            showToast("bad", e.message);
-          }finally{
-            off.disabled = false;
-          }
-        });
-        const del = document.createElement("button"); del.className = "btn danger"; del.textContent = "Obriši";
-        del.addEventListener("click", async () => {
-          if (!confirm("Obrisati proizvod? Deaktivacija je bezbednija ako postoje stare porudžbine.")) return;
-          try{
-            del.disabled = true;
-            const result = await api("delete_product", { method:"POST", body:JSON.stringify({ product_id:p.product_id }) });
-            showToast("ok", "Proizvod je obrisan.");
-            state.data = result;
-            renderWithUiState(() => render());
-          }catch(e){
-            showToast("bad", e.message);
-          }finally{
-            del.disabled = false;
-          }
-        });
-        actions.append(save, off, del);
-        row.insertCell().appendChild(actions);
+        wrap.appendChild(table); card.append(head, wrap); container.appendChild(card);
       });
     }
 
@@ -1943,6 +2169,35 @@
     $("adminPassword").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
     $("admin2faLoginCode").addEventListener("keydown", (event) => { if(event.key === "Enter") login(); });
     $("productSearch").addEventListener("input", (event) => { state.productSearch = event.target.value; renderProducts(); });
+    $("resellerSearch").addEventListener("input", (event) => { state.resellerSearch = event.target.value; renderResellers(); });
+    document.querySelectorAll("[data-reseller-filter]").forEach((button) => button.addEventListener("click", () => {
+      state.resellerFilter = button.dataset.resellerFilter;
+      document.querySelectorAll("[data-reseller-filter]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      renderResellers();
+    }));
+    document.querySelectorAll("[data-product-filter]").forEach((button) => button.addEventListener("click", () => {
+      state.productFilter = button.dataset.productFilter;
+      document.querySelectorAll("[data-product-filter]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      renderProducts();
+    }));
+    $("newResellerToggle").addEventListener("click", () => {
+      $("newResellerPanel").classList.toggle("hidden");
+      if (!$("newResellerPanel").classList.contains("hidden")) $("newResellerName").focus();
+    });
+    $("closeNewResellerBtn").addEventListener("click", () => $("newResellerPanel").classList.add("hidden"));
+    $("admin2faBannerBtn").addEventListener("click", () => {
+      state.tab = "settings"; render(); startAdminTwoFactorSetup();
+      $("view-settings").scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+    $("closeResellerDrawer").addEventListener("click", closeResellerDrawer);
+    $("cancelResellerEdit").addEventListener("click", closeResellerDrawer);
+    $("resellerDrawerBackdrop").addEventListener("click", (event) => { if (event.target === $("resellerDrawerBackdrop")) closeResellerDrawer(); });
+    $("saveResellerEdit").addEventListener("click", saveResellerDrawer);
+    $("drawerBalanceSubmit").addEventListener("click", submitDrawerBalance);
+    $("drawerBalanceAmount").addEventListener("input", () => $("drawerBalancePanel").classList.toggle("positive", Number($("drawerBalanceAmount").value) > 0));
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeResellerDrawer(); document.querySelectorAll(".product-menu.open").forEach((menu) => menu.classList.remove("open")); } });
+    document.addEventListener("click", (event) => { if (!event.target.closest(".product-menu-cell")) document.querySelectorAll(".product-menu.open").forEach((menu) => menu.classList.remove("open")); });
+    document.addEventListener("scroll", () => document.querySelectorAll(".product-menu.open").forEach((menu) => menu.classList.remove("open")), true);
     $("refreshBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("logoutBtn").addEventListener("click", async () => {
       await api("logout", { method:"POST", body:JSON.stringify({}) });
