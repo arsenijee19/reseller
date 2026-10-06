@@ -112,6 +112,9 @@
     .picker-letters{display:flex;gap:5px;flex-wrap:wrap;padding:0 2px 10px}
     .picker-letter{min-width:30px;min-height:30px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}
     .picker-letter:hover,.picker-letter.active{border-color:var(--brand);background:rgba(23,105,224,.1);color:var(--brand)}
+    .picker-type-filters{display:flex;gap:6px;flex-wrap:wrap;padding:0 2px 10px;border-bottom:1px solid rgba(23,105,224,.12)}
+    .picker-type-filter{min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer;transition:border-color .14s var(--ease),background .14s var(--ease),color .14s var(--ease),transform .14s var(--ease)}
+    .picker-type-filter:hover,.picker-type-filter.active{border-color:var(--brand);background:rgba(23,105,224,.1);color:var(--brand);transform:translateY(-1px)}
     .product-picker-list{display:grid;gap:10px}
     .product-group{display:grid;gap:5px}
     .product-group-title{padding:4px 5px;color:var(--brand);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
@@ -364,6 +367,7 @@
                   <p class="meta search-count" id="productSearchCount"></p>
                 </div>
                 <div class="picker-letters" id="productPickerLetters" aria-label="Filtriraj po početnom slovu"></div>
+                <div class="picker-type-filters" id="productPickerTypes" aria-label="Filtriraj po tipu naloga"></div>
                 <div class="product-picker-list" id="productPickerList" role="listbox"></div>
               </div>
             </div>
@@ -612,6 +616,10 @@
           <strong>Novi izbor proizvoda</strong>
           <p>Igre su sada grupisane po početnom slovu i biraju se kroz moderni meni sa ugrađenom pretragom.</p>
         </div>
+        <div class="release-item">
+          <strong>Brzi filteri po tipu naloga</strong>
+          <p>Ispod slova sada možeš jednim klikom da prikažeš samo PS5 Primary, PS4 Primary ili PS4 / PS5 Secondary igre.</p>
+        </div>
       </div>
       <div class="actions">
         <button class="btn primary" id="dismissReleaseBtn" type="button">Razumem</button>
@@ -637,8 +645,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-product-picker-notes-search";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", notesSearch: "", pendingOrder: null, me: null };
+    const RELEASE_VERSION = "2026-10-06-product-type-filters";
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -654,6 +662,7 @@
     const productPickerTrigger = $("productPickerTrigger");
     const productPickerValue = $("productPickerValue");
     const productPickerLetters = $("productPickerLetters");
+    const productPickerTypes = $("productPickerTypes");
     const productPickerList = $("productPickerList");
     const orderBtn = $("orderBtn");
     const paidBtn = $("paidBtn");
@@ -1298,7 +1307,19 @@
     }
 
     function visibleProducts(){
-      return filteredProducts().filter((product) => !state.productLetter || productLetter(product) === state.productLetter);
+      return filteredProducts().filter((product) => {
+        if (state.productLetter && productLetter(product) !== state.productLetter) return false;
+        return matchesProductType(product);
+      });
+    }
+
+    function matchesProductType(product){
+      if (!state.productTypeFilter) return true;
+      const type = normalizeSearch(productType(product));
+      if (state.productTypeFilter === "ps5 primary") return type.includes("ps5") && type.includes("primary");
+      if (state.productTypeFilter === "ps4 primary") return type.includes("ps4") && type.includes("primary");
+      if (state.productTypeFilter === "ps4 ps5 secondary") return type.includes("ps4") && type.includes("ps5") && type.includes("secondary");
+      return true;
     }
 
     function productLabel(product){
@@ -1337,7 +1358,8 @@
       const current = productSelect.value;
       const filtered = filteredProducts();
       const products = visibleProducts();
-      const allLetters = [...new Set(filtered.map(productLetter))].sort((a, b) => a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b));
+      const typeFiltered = filtered.filter(matchesProductType);
+      const allLetters = [...new Set(typeFiltered.map(productLetter))].sort((a, b) => a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b));
 
       productPickerLetters.textContent = "";
       const allButton = document.createElement("button");
@@ -1355,9 +1377,26 @@
         productPickerLetters.appendChild(button);
       });
 
+      productPickerTypes.textContent = "";
+      [
+        ["", "Svi tipovi"],
+        ["ps5 primary", "PS5 Primary"],
+        ["ps4 primary", "PS4 Primary"],
+        ["ps4 ps5 secondary", "PS4 / PS5 Secondary"]
+      ].forEach(([value, label]) => {
+        const button = document.createElement("button");
+        button.className = "picker-type-filter" + (state.productTypeFilter === value ? " active" : "");
+        button.type = "button";
+        button.setAttribute("aria-pressed", String(state.productTypeFilter === value));
+        button.textContent = label;
+        button.addEventListener("click", () => { state.productTypeFilter = value; renderProductOptions(); renderPrices(); });
+        productPickerTypes.appendChild(button);
+      });
+
       productPickerList.textContent = "";
       if (!products.length) {
-        appendText(productPickerList, "div", state.productSearch ? "Nema proizvoda za ovu pretragu." : "Proizvodi se učitavaju...", "product-picker-empty");
+        const hasPickerFilter = state.productSearch || state.productLetter || state.productTypeFilter;
+        appendText(productPickerList, "div", hasPickerFilter ? "Nema proizvoda za izabrane filtere." : "Proizvodi se učitavaju...", "product-picker-empty");
       } else {
         const groups = new Map();
         products.forEach((product) => {
@@ -1393,7 +1432,7 @@
       const selectedStillVisible = products.some((product) => String(product.id) === String(current));
       if (!current && firstVisible) chooseProduct(firstVisible.id);
       if (current && !state.products.some((product) => String(product.id) === String(current))) productSelect.value = "";
-      if (productSearchCount) productSearchCount.textContent = state.productSearch || state.productLetter
+      if (productSearchCount) productSearchCount.textContent = state.productSearch || state.productLetter || state.productTypeFilter
         ? `${products.length} od ${state.products.length} proizvoda`
         : `${state.products.length} proizvoda`;
       if (selectedStillVisible && current) {
@@ -1911,6 +1950,7 @@
       state.me = null;
       state.productSearch = "";
       state.productLetter = "";
+      state.productTypeFilter = "";
       state.notesSearch = "";
       productSearch.value = "";
       notesSearchInput.value = "";
