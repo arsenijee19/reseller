@@ -12,6 +12,13 @@ node --check /tmp/reseller-index-security.js
 composer validate --no-check-publish >/dev/null
 git diff --check
 
+if rg -n '(^|[^.[:alnum:]_])text\(' index.html; then
+  echo "Undefined bare text() helper call found in index.html" >&2
+  exit 1
+fi
+rg -q 'Promise\.all\(\[loadCatalog\(\), loadOrders\(\)\]\)' index.html
+rg -q 'failure\.panelLoad = true' index.html
+
 if rg -n 'innerHTML|insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then
   echo "Unsafe DOM/eval pattern found" >&2
   exit 1

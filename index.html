@@ -1103,13 +1103,21 @@
     async function verifyTwoFactorLogin(){
       hide(twoFactorLoginMsg);
       verify2faLoginBtn.disabled = true;
+      let challengeCompleted = false;
       try{
         await api("/api/2fa.php?action=challenge", { method:"POST", body:JSON.stringify({ code:twoFactorLoginCode.value }) });
+        challengeCompleted = true;
         closeTwoFactorLogin();
         const me = await loadMe();
         await enterAuthenticatedPanel(me);
       }catch(e){
-        show(twoFactorLoginMsg, "bad", e.message);
+        if (challengeCompleted || e.panelLoad) {
+          if (!e.panelLoad) await logout();
+          closeTwoFactorLogin();
+          show(loginMsg, "bad", e.panelLoad ? e.message : "Prijava nije završena. Pokušajte ponovo.");
+        } else {
+          show(twoFactorLoginMsg, "bad", e.message);
+        }
       }finally{
         verify2faLoginBtn.disabled = false;
       }
@@ -1142,36 +1150,34 @@
       setMainActionsEnabled(false);
       pricesList.textContent = "Učitavanje cenovnika...";
       historyList.textContent = "Učitavanje porudžbina...";
-
-      loadCatalog()
-        .then(() => setMainActionsEnabled(true))
-        .catch((e) => {
-          pricesList.textContent = "Cenovnik trenutno nije dostupan.";
-          show(orderMsg, "bad", e.message);
-          setMainActionsEnabled(true);
-        });
-
-      loadOrders().catch(() => {
-        historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
-      });
+      await Promise.all([loadCatalog(), loadOrders()]);
+      setMainActionsEnabled(true);
     }
 
     async function enterAuthenticatedPanel(profile){
-      setStatus("online");
-      showAppShell();
-      fillProfileForms(profile);
+      try{
+        showAppShell();
+        fillProfileForms(profile);
 
-      if (!profile.profile_completed || !hasCompleteContact(profile)) {
-        setMainActionsEnabled(false);
-        pricesList.textContent = "Dovršite podešavanja naloga za prikaz cenovnika.";
-        historyList.textContent = "Dovršite podešavanja naloga za pregled porudžbina.";
-        openProfileModal();
-        return;
+        if (!profile.profile_completed || !hasCompleteContact(profile)) {
+          setStatus("online");
+          setMainActionsEnabled(false);
+          pricesList.textContent = "Dovršite podešavanja naloga za prikaz cenovnika.";
+          historyList.textContent = "Dovršite podešavanja naloga za pregled porudžbina.";
+          openProfileModal();
+          return;
+        }
+
+        closeProfileModal();
+        await loadProtectedData();
+        setStatus("online");
+        maybeOpenReleaseNotes();
+      }catch(e){
+        await logout();
+        const failure = new Error("Panel nije uspeo da učita proizvode i porudžbine. Ulogujte se ponovo.");
+        failure.panelLoad = true;
+        throw failure;
       }
-
-      closeProfileModal();
-      await loadProtectedData();
-      maybeOpenReleaseNotes();
     }
 
     function profilePayload(prefix, completeOnboarding){
@@ -1211,15 +1217,24 @@
         show(msg, "ok", completeOnboarding ? "Podešavanja su sačuvana. Panel je spreman." : "Podešavanja su sačuvana.");
         if (completeOnboarding) {
           closeProfileModal();
-          await loadMe();
-          await loadProtectedData();
+          try{
+            await loadMe();
+            await loadProtectedData();
+          }catch(e){
+            await logout();
+            const failure = new Error("Panel nije uspeo da učita proizvode i porudžbine. Ulogujte se ponovo.");
+            failure.panelLoad = true;
+            throw failure;
+          }
+          setStatus("online");
           maybeOpenReleaseNotes();
         } else {
           await loadMe();
           closeSettingsModal();
         }
       }catch(e){
-        show(msg, "bad", e.message);
+        if (e.panelLoad) show(loginMsg, "bad", e.message);
+        else show(msg, "bad", e.message);
       }finally{
         btn.disabled = false;
         btn.textContent = original;
@@ -1342,7 +1357,7 @@
 
       productPickerList.textContent = "";
       if (!products.length) {
-        text(productPickerList, "div", state.productSearch ? "Nema proizvoda za ovu pretragu." : "Proizvodi se učitavaju...", "product-picker-empty");
+        appendText(productPickerList, "div", state.productSearch ? "Nema proizvoda za ovu pretragu." : "Proizvodi se učitavaju...", "product-picker-empty");
       } else {
         const groups = new Map();
         products.forEach((product) => {
@@ -1353,7 +1368,7 @@
         groups.forEach((groupProducts, letter) => {
           const group = document.createElement("section");
           group.className = "product-group";
-          text(group, "div", letter, "product-group-title");
+          appendText(group, "div", letter, "product-group-title");
           groupProducts.forEach((product) => {
             const priced = state.prices.get(String(product.id)) || {};
             const option = document.createElement("button");
@@ -1741,6 +1756,7 @@
       hide(loginMsg);
       loginBtn.disabled = true;
       loginBtn.textContent = "Učitavanje...";
+      let sessionStarted = false;
       try{
         const token = tokenInput.value.trim();
         markField(tokenInput, token ? "ok" : "bad");
@@ -1751,9 +1767,11 @@
           openTwoFactorLogin();
           return;
         }
+        sessionStarted = true;
         const me = await loadMe();
         await enterAuthenticatedPanel(me);
       }catch(e){
+        if (sessionStarted && !e.panelLoad) await logout();
         markField(tokenInput, "bad");
         show(loginMsg, "bad", e.message);
       }finally{
@@ -1771,6 +1789,7 @@
         await enterAuthenticatedPanel(me);
       }catch(e){
         setStatus("offline");
+        if (e.panelLoad) show(loginMsg, "bad", e.message);
       }
     }
 
