@@ -41,6 +41,14 @@ class CommandParserTests(unittest.TestCase):
         self.assertFalse(bot.is_allowed_username("someone_else"))
         self.assertFalse(bot.is_allowed_username(None))
 
+    def test_start_is_handled_without_panel_access_only_for_allowed_username(self):
+        allowed = {"text": "/start", "from": {"username": "arsoarso"}}
+        blocked = {"text": "/start", "from": {"username": "someone_else"}}
+        ordinary = {"text": "/help", "from": {"username": "arsoarso"}}
+        self.assertTrue(bot.is_allowed_start_message(allowed))
+        self.assertFalse(bot.is_allowed_start_message(blocked))
+        self.assertFalse(bot.is_allowed_start_message(ordinary))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -87,6 +87,12 @@ def is_allowed_username(username: str | None) -> bool:
     return bool(username) and username.lstrip("@").casefold() == ALLOWED_TELEGRAM_USERNAME
 
 
+def is_allowed_start_message(message: dict[str, Any]) -> bool:
+    command, _ = parse_command(str(message.get("text") or ""))
+    sender = message.get("from") or {}
+    return command == "start" and is_allowed_username(sender.get("username"))
+
+
 def panel(action: str, chat_id: int, **fields: Any) -> dict[str, Any]:
     global LAST_API_CALL
     data = json.dumps({"action": action, "chat_id": chat_id, **fields}).encode()
@@ -549,6 +555,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 return
             update = json.loads(self.rfile.read(length).decode("utf-8"))
             update_id = int(update.get("update_id", -1))
+            message = update.get("message") or {}
+            if is_allowed_start_message(message):
+                handle_message(message)
+                self.send_response(200); self.end_headers(); self.wfile.write(b"ok"); return
             panel("heartbeat", 0, service="webhook")
             # Telegram's chat id scopes every update; the gateway claims the update id before side effects.
             chat_id = int((update.get("message") or update.get("callback_query", {}).get("message") or {}).get("chat", {}).get("id", 0))
