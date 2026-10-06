@@ -417,6 +417,9 @@
     .account-icon-btn{font-size:0}
     .reseller-login-theme{display:none}
     body:not(.is-authenticated) .reseller-login-theme{display:inline-flex}
+    body:not(.is-authenticated) .topbar{position:relative;justify-content:center}
+    body:not(.is-authenticated) .brand{justify-content:center}
+    body:not(.is-authenticated) .reseller-login-theme{position:absolute;top:50%;right:0;transform:translateY(-50%)}
     body.is-authenticated .brand p{font-size:12px}
     .panel,.price-section{border-radius:var(--card-radius)}
     .section,.price-section{padding:24px}
