@@ -153,6 +153,14 @@
     .history-list{display:grid;gap:10px;margin-top:12px}
     .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
+    .notes-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .notes-search-toggle{min-height:34px;padding:7px 10px;font-size:12px}
+    .notes-search-wrap{display:none;position:relative;flex:1 1 220px;min-width:220px}
+    .notes-search-wrap.open{display:block;animation:message-in .18s var(--ease)}
+    .notes-search-wrap input{min-height:36px;padding:8px 64px 8px 11px;font-size:12px}
+    .notes-search-clear{position:absolute;right:6px;top:50%;min-height:27px;padding:4px 8px;border:0;border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer;transform:translateY(-50%)}
+    .notes-search-clear:hover{background:rgba(23,105,224,.1);color:var(--brand)}
+    .notes-search-count{min-width:72px}
     .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease),background .16s var(--ease)}
     .history-item:nth-child(even){background:var(--soft)}
     .history-item:hover{border-color:rgba(23,105,224,.26);box-shadow:0 12px 28px rgba(15,23,42,.08);transform:translateY(-1px)}
@@ -273,6 +281,9 @@
       .footer-actions .btn{flex:0 0 auto;min-width:0}
       .history-head{flex-direction:column}
       .history-head .btn{flex:0 0 auto;min-width:0}
+      .notes-tools{align-items:stretch}
+      .notes-search-wrap{flex-basis:100%;min-width:0}
+      .notes-search-count{width:100%}
       .payment-row{align-items:flex-start;flex-direction:column}
       .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
@@ -392,6 +403,14 @@
               <p>Pregled poslednjih porudžbina na ovom reseller nalogu.</p>
             </div>
             <button class="btn" id="markAllPaidBtn" type="button" disabled>Označi sve kao plaćeno</button>
+          </div>
+          <div class="notes-tools">
+            <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false">Pretraži notes</button>
+            <div class="notes-search-wrap" id="notesSearchWrap">
+              <input id="notesSearchInput" type="search" autocomplete="off" placeholder="Npr. Jovan, telefon ili napomena..." aria-label="Pretraži notes" />
+              <button class="notes-search-clear" id="notesSearchClear" type="button" aria-label="Obriši pretragu">Obriši</button>
+            </div>
+            <span class="meta notes-search-count" id="notesSearchCount"></span>
           </div>
           <div class="history-list" id="historyList">Uloguj se za pregled.</div>
         </div>
@@ -562,6 +581,10 @@
           <p>Uz svaku porudžbinu možeš da upišeš telefon kupca, email naloga ili internu napomenu.</p>
         </div>
         <div class="release-item">
+          <strong>Brza pretraga notes-a</strong>
+          <p>Otvori pretragu iznad prethodnih porudžbina i pronađi belešku po imenu kupca ili drugoj napomeni.</p>
+        </div>
+        <div class="release-item">
           <strong>Plaćeno / nije plaćeno</strong>
           <p>Svaku porudžbinu možeš da označiš kao plaćenu, a oznaku možeš i da poništiš.</p>
         </div>
@@ -606,8 +629,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-product-picker-search";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", pendingOrder: null, me: null };
+    const RELEASE_VERSION = "2026-10-06-product-picker-notes-search";
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", notesSearch: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -665,6 +688,11 @@
     const recoveryCodesBox = $("recoveryCodesBox");
     const historyList = $("historyList");
     const markAllPaidBtn = $("markAllPaidBtn");
+    const notesSearchToggle = $("notesSearchToggle");
+    const notesSearchWrap = $("notesSearchWrap");
+    const notesSearchInput = $("notesSearchInput");
+    const notesSearchClear = $("notesSearchClear");
+    const notesSearchCount = $("notesSearchCount");
     const themeBtn = $("themeBtn");
     const orderProgress = $("orderProgress");
     const confirmModal = $("confirmModal");
@@ -1479,17 +1507,47 @@
       successModal.classList.remove("open");
     }
 
-    async function loadOrders(){
-      const j = await api("/api/orders.php");
-      state.orders = j.orders || [];
+    function setNotesSearchOpen(open){
+      notesSearchWrap.classList.toggle("open", open);
+      notesSearchToggle.setAttribute("aria-expanded", String(open));
+      notesSearchToggle.textContent = open ? "Zatvori pretragu" : "Pretraži notes";
+      if (open) notesSearchInput.focus();
+    }
+
+    function clearNotesSearch(){
+      state.notesSearch = "";
+      notesSearchInput.value = "";
+      preserveScroll(() => { loadOrders(true); });
+    }
+
+    function ordersMatchingNotes(){
+      const query = normalizeSearch(state.notesSearch);
+      if (!query) return state.orders;
+      return state.orders.filter((order) => normalizeSearch(order.reseller_notes || "").includes(query));
+    }
+
+    async function loadOrders(renderOnly = false){
+      if (!renderOnly) {
+        const j = await api("/api/orders.php");
+        state.orders = j.orders || [];
+      }
+      const visibleOrders = ordersMatchingNotes();
       historyList.textContent = "";
       if (!state.orders.length){
         historyList.textContent = "Još nema prethodnih porudžbina.";
         markAllPaidBtn.disabled = true;
+        notesSearchCount.textContent = "";
         return;
       }
       markAllPaidBtn.disabled = false;
-      state.orders.forEach((order) => {
+      notesSearchCount.textContent = state.notesSearch
+        ? `${visibleOrders.length} od ${state.orders.length} porudžbina`
+        : "";
+      if (!visibleOrders.length) {
+        historyList.textContent = "Nema porudžbina sa tim tekstom u notes-u.";
+        return;
+      }
+      visibleOrders.forEach((order) => {
         const div = document.createElement("div");
         div.className = "history-item";
         const name = order.product_name || order.product_id;
@@ -1555,7 +1613,9 @@
           saveNote.disabled = true;
           saveNote.textContent = "Čuvam...";
           try{
-            await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:noteInput.value.trim() }) });
+            const nextNotes = noteInput.value.trim();
+            await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:nextNotes }) });
+            order.reseller_notes = nextNotes;
             noteStatus.textContent = "Sačuvano.";
           }catch(e){
             noteStatus.textContent = e.message;
@@ -1809,7 +1869,11 @@
       state.me = null;
       state.productSearch = "";
       state.productLetter = "";
+      state.notesSearch = "";
       productSearch.value = "";
+      notesSearchInput.value = "";
+      notesSearchCount.textContent = "";
+      setNotesSearchOpen(false);
       productSelect.value = "";
       productPickerTrigger.disabled = true;
       closeProductPicker();
@@ -1850,6 +1914,20 @@
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
     requestGameBtn.addEventListener("click", openGameRequest);
     logoutBtn.addEventListener("click", logout);
+    notesSearchToggle.addEventListener("click", () => {
+      const isOpen = notesSearchWrap.classList.contains("open");
+      if (isOpen) {
+        clearNotesSearch();
+        setNotesSearchOpen(false);
+      } else {
+        setNotesSearchOpen(true);
+      }
+    });
+    notesSearchInput.addEventListener("input", (event) => {
+      state.notesSearch = event.target.value;
+      preserveScroll(() => { loadOrders(true); });
+    });
+    notesSearchClear.addEventListener("click", clearNotesSearch);
     productSearch.addEventListener("input", (event) => {
       state.productSearch = event.target.value;
       state.productLetter = "";
