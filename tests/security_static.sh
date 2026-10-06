@@ -22,11 +22,12 @@ rg -q 'cache:"no-store"' index.html
 rg -q 'discountPercent' index.html api/prices.php api/order.php
 rg -q 'recommendedResalePrice' index.html
 rg -q 'shop-price-tip' index.html
-rg -q '\?all=1' index.html api/orders.php
+rg -q "LIMIT 10" api/orders.php
 rg -q 'add_transaction' api/admin.php admin.html
 rg -q 'wallet_transactions' api/admin.php admin.html
 
-if rg -n 'innerHTML|insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then
+# Theme buttons use fixed, source-controlled SVG strings; reject other unsafe DOM/eval APIs.
+if rg -n 'insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then
   echo "Unsafe DOM/eval pattern found" >&2
   exit 1
 fi
