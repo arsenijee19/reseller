@@ -243,6 +243,9 @@
 
 ## Recent Changes
 - Added accessible sign-in progress overlays to reseller/admin credential and 2FA submissions, with status text updated between verification and panel initialization.
+- Compact reseller order history cards: payment badges sit beside the price, paid/unpaid filters combine with Notes search, and notes editors open only on demand; order names no longer repeat platform labels.
+- Simplified reseller balance header spacing and matched the payment-notice button size to neighboring controls; support actions now have equal-width colored buttons.
+- Reduced reseller price-cell padding and show each recommended minimum resale price inline beneath its catalog price.
 - Centered the reseller login brand in the header while leaving the theme button anchored at the right edge.
 - Admin refresh now suppresses the login form during session restoration; a valid session reveals the dashboard after its data loads, while an expired session reveals login.
 - Reseller refresh now starts in a session-check state rather than briefly rendering the login form; the authenticated panel is revealed after session and panel data restoration, and the login form appears only when the session is not valid.

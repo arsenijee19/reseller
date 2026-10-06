@@ -76,15 +76,15 @@
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .status-indicator{display:inline-flex;align-items:center;gap:8px;padding:0 12px;color:#344054;font-size:13px;white-space:nowrap}
     .status-indicator::before{content:"";width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.1)}
-    .balance-group{display:flex;align-items:center;gap:9px;padding:8px 9px 8px 12px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 4px 16px rgba(31,48,79,.04)}
+    .balance-group{display:flex;align-items:center;gap:10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
     .balance-pill{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;column-gap:10px;min-height:44px;padding:0 5px;border:0;background:transparent;text-align:left;cursor:pointer}
     .balance-pill:hover{transform:none;box-shadow:none;border:0}
     .balance-icon{grid-row:1 / 3;width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#dcfce7;color:#138a43}
     .balance-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .balance-caption{color:#667085;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-    .balance-amount{font-size:19px;font-weight:850;letter-spacing:-.035em;color:var(--text)}
+    .balance-amount{display:inline-flex;align-items:baseline;gap:4px;font-size:19px;font-weight:850;letter-spacing:-.035em;color:var(--text)}
     .balance-amount small{font-size:11px;letter-spacing:0;color:var(--muted)}
-    .paid-header-btn{min-height:40px;padding:8px 13px;border-radius:12px;background:#effcf4!important;border-color:#bbf0cc!important;color:#147a3b!important;box-shadow:none!important;white-space:nowrap}
+    .paid-header-btn{min-height:40px;padding:8px 13px;border-radius:12px;background:#effcf4!important;border-color:#bbf0cc!important;color:#147a3b!important;box-shadow:none!important;white-space:nowrap;font-size:15px}
     .logout-icon-btn{width:46px;height:46px;flex:0 0 46px;padding:11px;border-radius:14px}
     .logout-icon-btn svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .auth-only{display:none!important}
@@ -204,7 +204,11 @@
     .shop-price-tooltip strong{font-size:11px;white-space:nowrap}
     .shop-price-tooltip span{color:var(--brand);font-size:13px;font-weight:900;white-space:nowrap}
     .shop-price-tip:hover .shop-price-tooltip,.shop-price-tip:focus-visible .shop-price-tooltip{opacity:1;visibility:visible;transform:translateY(0)}
-    .history-list{display:grid;gap:10px;margin-top:12px}
+    .history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:12px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
+    .history-filter{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:36px;padding:6px 8px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font-size:12px;font-weight:750;cursor:pointer}
+    .history-filter[aria-pressed="true"]{border-color:var(--line);background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.08)}
+    .history-filter-count{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+    .history-list{display:grid;gap:9px;margin-top:12px}
     .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
     .history-title{margin:0}
@@ -225,16 +229,28 @@
     .notes-search-clear{position:absolute;right:6px;top:50%;min-height:27px;padding:4px 8px;border:0;border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer;transform:translateY(-50%)}
     .notes-search-clear:hover{background:rgba(23,105,224,.1);color:var(--brand)}
     .notes-search-count{min-width:72px}
-    .history-item{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease),background .16s var(--ease)}
+    .history-item{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px 12px;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease),background .16s var(--ease)}
     .history-item:nth-child(even){background:var(--soft)}
     .history-item:hover{border-color:rgba(23,105,224,.26);box-shadow:0 12px 28px rgba(15,23,42,.08);transform:translateY(-1px)}
-    .history-item strong{display:block;font-size:14px;margin-bottom:5px}
-    .payment-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--soft);transition:border-color .16s var(--ease),background .16s var(--ease),box-shadow .16s var(--ease)}
-    .payment-row.is-paid{border-color:rgba(19,138,67,.28);background:rgba(19,138,67,.11)}
-    .payment-row.is-unpaid{border-color:rgba(195,41,41,.18);background:rgba(195,41,41,.055)}
-    .payment-row .btn{min-height:34px;padding:7px 10px;font-size:12px}
+    .history-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .history-item-main{display:grid;gap:4px;min-width:0}
+    .history-item-main strong{font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+    .history-order-meta{display:flex;flex-wrap:wrap;gap:5px;color:var(--muted);font-size:11px;line-height:1.3}
+    .history-order-price{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:0 0 auto;white-space:nowrap}
+    .history-order-price strong{font-size:13px;font-variant-numeric:tabular-nums}
+    .history-paid-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+    .history-paid-badge.is-paid{background:rgba(20,128,74,.11);color:#147a3b}
+    .history-paid-badge.is-unpaid{background:#fff0d6;color:#a84708}
+    :root[data-theme="dark"] .history-paid-badge.is-paid{background:rgba(37,167,101,.17);color:#74e2a5}
+    :root[data-theme="dark"] .history-paid-badge.is-unpaid{background:rgba(217,119,6,.18);color:#fdba74}
+    .history-note-preview{max-width:100%;overflow:hidden;color:var(--muted);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+    .history-item-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+    .history-item-actions .btn{min-height:30px;padding:6px 9px;font-size:11px}
+    .history-payment-action{white-space:nowrap}
+    .history-note-toggle{margin-left:auto}
     .note-editor{display:grid;gap:8px;margin-top:10px}
-    .note-editor textarea{min-height:74px}
+    .note-editor[hidden]{display:none}
+    .note-editor textarea{min-height:66px}
     .note-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
     .note-actions .btn{min-height:34px;padding:7px 10px;font-size:12px}
     .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -380,11 +396,12 @@
       .footer-actions .btn{flex:0 0 auto;min-width:0}
       .history-head{flex-direction:row;align-items:flex-start}
       .history-head .btn{flex:0 0 auto;min-width:40px}
+      .history-item-head{gap:8px}
+      .history-order-price{align-items:flex-end;flex-direction:column;gap:4px}
+      .history-item-actions .btn{flex:0 0 auto;min-width:0}
       .notes-tools{align-items:stretch}
       .notes-search-wrap{flex-basis:100%;min-width:0}
       .notes-search-count{width:100%}
-      .payment-row{align-items:flex-start;flex-direction:column}
-      .payment-row .btn{flex:0 0 auto;min-width:0}
       .note-actions .btn{flex:0 0 auto;min-width:0}
       .code-result-head{flex-direction:column}
       .code-detail-grid{grid-template-columns:1fr}
@@ -416,7 +433,7 @@
     .status{gap:10px}
     .status-indicator{font-size:13px}
     .status-indicator .mono{text-transform:capitalize}
-    .balance-group{padding:5px 6px 5px 10px;border-radius:16px}
+    .balance-group{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
     .balance-caption{letter-spacing:.08em}
     .balance-pill{grid-template-columns:38px auto;grid-template-rows:auto auto}
     .theme-btn,.logout-icon-btn,.account-icon-btn{width:44px;height:44px;min-width:44px;min-height:44px;flex:0 0 44px;padding:10px;border-radius:12px}
@@ -442,9 +459,13 @@
     .login-switch{margin:0;text-align:center}
     .login-switch a{color:var(--brand);font-weight:750}
     body.is-authenticated .login-switch{display:none}
-    .support-actions{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px}
+    .support-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .support-actions .support-label{grid-column:1/-1;margin:0}
-    .support-actions .btn{min-width:0;width:100%;padding-inline:10px}
+    .support-actions .btn{flex:none;min-width:0;width:100%;padding-inline:10px}
+    .support-actions #missingGameBtn{border-color:#fed7aa;background:#fff7ed;color:#c2410c}
+    .support-actions #requestGameBtn{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
+    :root[data-theme="dark"] .support-actions #missingGameBtn{border-color:rgba(251,146,60,.32);background:rgba(234,88,12,.12);color:#fdba74}
+    :root[data-theme="dark"] .support-actions #requestGameBtn{border-color:rgba(167,139,250,.3);background:rgba(109,40,217,.13);color:#c4b5fd}
     .price-group{padding:13px 14px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
     .price-search{width:min(100%,280px);min-height:44px;background:var(--soft)}
     .price-group-head{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:9px}
@@ -456,7 +477,7 @@
     .platform-badge.ps4{background:#e3f4ff;color:#1672a5}
     .price-variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:9px}
     .price-variant-wrap{position:relative;min-width:0}
-    .price-variant{display:grid;width:100%;align-content:start;gap:4px;min-width:0;min-height:68px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);text-align:left;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
+    .price-variant{display:grid;width:100%;align-content:start;gap:2px;min-width:0;min-height:60px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);text-align:left;cursor:pointer;transition:background .16s var(--ease),border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
     .price-variant:hover{border-color:rgba(49,93,244,.35);background:rgba(49,93,244,.045);box-shadow:0 5px 14px rgba(49,93,244,.08)}
     .price-variant[aria-expanded="true"]{border-color:rgba(49,93,244,.48);background:rgba(49,93,244,.08);box-shadow:0 0 0 2px rgba(49,93,244,.09)}
     .price-variant:focus-visible{outline:2px solid rgba(49,93,244,.72);outline-offset:2px}
@@ -464,6 +485,7 @@
     .price-variant:active{transform:scale(.985)}
     .price-variant-label{font-size:11px;color:var(--muted);line-height:1.25}
     .price-variant strong{font-size:14px;font-variant-numeric:tabular-nums;line-height:1.2;letter-spacing:-.01em}
+    .price-minimum{color:var(--muted);font-size:10px;line-height:1.2}
     .price-variant .price-original{font-size:10px}
     .price-variant .discount-badge{font-size:9px;padding:2px 5px}
     .price-variant-details{position:absolute;top:calc(100% + 7px);left:50%;width:max-content;max-width:min(320px,calc(100vw - 40px));padding:10px 12px;border:1px solid rgba(16,163,127,.18);border-radius:11px;background:var(--panel);box-shadow:0 12px 28px rgba(16,24,40,.16);color:#08796b;font-size:12px;line-height:1.45;text-align:center;transform:translate(-50%,4px);z-index:6}
@@ -492,7 +514,7 @@
       .brand p{font-size:11px}
       .status{width:auto;justify-content:flex-end;gap:7px}
       .status-indicator{display:none}
-      .balance-group{position:absolute;top:72px;left:12px;right:12px;justify-content:space-between;min-height:68px;padding:8px 10px}
+      .balance-group{position:absolute;top:72px;left:12px;right:12px;justify-content:space-between;min-height:0;padding:0;border:0;background:transparent;box-shadow:none}
       .balance-pill{flex:1;min-width:0}
       body.is-authenticated .layout{padding-top:78px}
       .status .pill#discountText{display:none!important}
@@ -537,7 +559,7 @@
         <div class="balance-group">
           <button class="pill balance-pill" id="balanceBtn" type="button" title="Prikaži istoriju transakcija">
             <span class="balance-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="3"/><path d="M3.5 9h17M7 4h10M15 14h2"/></svg></span>
-            <span class="balance-caption">Balans</span><span class="mono balance-amount" id="balanceText">0 RSD</span>
+            <span class="balance-caption">Balans</span><span class="mono balance-amount"><span id="balanceText">0</span><small>RSD</small></span>
           </button>
           <button class="btn good paid-header-btn" id="paidBtn" type="button">Uplatio sam</button>
         </div>
@@ -666,6 +688,11 @@
               <button class="notes-search-clear" id="notesSearchClear" type="button" aria-label="Obriši pretragu">Obriši</button>
             </div>
             <span class="meta notes-search-count" id="notesSearchCount"></span>
+          </div>
+          <div class="history-filters" id="historyFilters" role="group" aria-label="Filtriraj porudžbine">
+            <button class="history-filter" type="button" data-history-filter="all" aria-pressed="true">Sve <span class="history-filter-count">0</span></button>
+            <button class="history-filter" type="button" data-history-filter="unpaid" aria-pressed="false">Neplaćeno <span class="history-filter-count">0</span></button>
+            <button class="history-filter" type="button" data-history-filter="paid" aria-pressed="false">Plaćeno <span class="history-filter-count">0</span></button>
           </div>
           <div class="history-list" id="historyList">Uloguj se za pregled.</div>
           <div class="history-footer">
@@ -937,7 +964,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const RELEASE_VERSION = "2026-10-06-mobile-catalog-slots";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", pendingOrder: null, deliveryOfferProductId: "", me: null };
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -1000,6 +1027,7 @@
     const recoveryCodesBox = $("recoveryCodesBox");
     const historyList = $("historyList");
     const markAllPaidBtn = $("markAllPaidBtn");
+    const historyFilters = $("historyFilters");
     const notesSearchToggle = $("notesSearchToggle");
     const notesSearchWrap = $("notesSearchWrap");
     const notesSearchInput = $("notesSearchInput");
@@ -1103,6 +1131,12 @@
     }
     function price(value){ const n = Number(value); return Number.isFinite(n) ? n.toLocaleString("sr-RS") : value; }
     function dateTime(value){ const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString("sr-RS"); }
+    function compactOrderDateTime(value){
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value || "";
+      const time = d.toLocaleTimeString("sr-RS", { hour:"2-digit", minute:"2-digit", hourCycle:"h23" });
+      return `${d.getDate()}. ${d.getMonth() + 1}. ${time}`;
+    }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
     function normalizeSearch(value){
       return String(value == null ? "" : value)
@@ -1234,7 +1268,7 @@
     async function loadMe(){
       const j = await api("/api/me.php");
       state.me = j;
-      balanceText.textContent = price(j.balance_rsd) + " RSD";
+      balanceText.textContent = price(j.balance_rsd);
       renderDiscountBadge(j.discount_percent);
       fillProfileForms(j);
       return j;
@@ -1904,6 +1938,7 @@
               appendText(cell, "span", `-${product.discount_percent}%`, "discount-badge");
             }
             const recommended = recommendedResalePrice(Number(product.price));
+            appendText(cell, "span", `Min. ${price(recommended)}`, "price-minimum");
             const recommendation = document.createElement("div");
             recommendation.className = "price-variant-details";
             recommendation.id = detailsId;
@@ -2072,12 +2107,31 @@
       return state.orders.filter((order) => normalizeSearch(order.reseller_notes || "").includes(query));
     }
 
+    function renderHistoryFilters(noteMatchedOrders){
+      const counts = {
+        all: noteMatchedOrders.length,
+        unpaid: noteMatchedOrders.filter((order) => Number(order.reseller_paid) !== 1).length,
+        paid: noteMatchedOrders.filter((order) => Number(order.reseller_paid) === 1).length
+      };
+      historyFilters.querySelectorAll("[data-history-filter]").forEach((button) => {
+        const filter = button.dataset.historyFilter;
+        button.setAttribute("aria-pressed", String(state.ordersFilter === filter));
+        button.querySelector(".history-filter-count").textContent = counts[filter];
+      });
+      return noteMatchedOrders.filter((order) => {
+        if (state.ordersFilter === "paid") return Number(order.reseller_paid) === 1;
+        if (state.ordersFilter === "unpaid") return Number(order.reseller_paid) !== 1;
+        return true;
+      });
+    }
+
     async function loadOrders(renderOnly = false){
       if (!renderOnly) {
         const j = await api("/api/orders.php");
         state.orders = j.orders || [];
       }
-      const visibleOrders = ordersMatchingNotes();
+      const noteMatchedOrders = ordersMatchingNotes();
+      const visibleOrders = renderHistoryFilters(noteMatchedOrders);
       historyList.textContent = "";
       if (!state.orders.length){
         historyList.textContent = "Još nema prethodnih porudžbina.";
@@ -2090,33 +2144,64 @@
         ? `${visibleOrders.length} od ${state.orders.length} porudžbina`
         : "";
       if (!visibleOrders.length) {
-        historyList.textContent = "Nema porudžbina sa tim tekstom u notes-u.";
+        historyList.textContent = state.notesSearch
+          ? "Nema porudžbina koje odgovaraju pretrazi notes-a i izabranom filteru."
+          : "Nema porudžbina u ovoj kategoriji.";
         return;
       }
       visibleOrders.forEach((order) => {
         const div = document.createElement("div");
         div.className = "history-item";
-        const name = order.product_name || order.product_id;
-        const type = order.account_type ? ` (${order.account_type})` : "";
-        appendText(div, "strong", name + type);
-        appendText(div, "div", `Cena: ${price(order.price_rsd)} RSD`, "meta");
-        appendText(div, "div", `Poručeno: ${dateTime(order.created_at)}`, "meta");
-        const paymentRow = document.createElement("div");
-        paymentRow.className = "payment-row";
+        const rawName = String(order.product_name || order.product_id);
+        const accountType = String(order.account_type || "").trim();
+        const accountSuffix = accountType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const withoutAccountType = accountSuffix
+          ? rawName.replace(new RegExp(`\\s*\\(?\\s*${accountSuffix}\\s*\\)*\\s*$`, "i"), "")
+          : rawName;
+        const name = withoutAccountType.replace(/[\s\-–(]+$/, "").replace(/\s*\(?\s*PS[45](?:\s*[\/+&]\s*PS[45])?\s*\)?\s*$/i, "").replace(/[\s\-–(]+$/, "") || rawName;
+        const head = document.createElement("div");
+        head.className = "history-item-head";
+        const main = document.createElement("div");
+        main.className = "history-item-main";
+        appendText(main, "strong", name);
+        const metaParts = [accountType, compactOrderDateTime(order.created_at)].filter(Boolean);
+        appendText(main, "div", metaParts.join(" · "), "history-order-meta");
+        const priceStatus = document.createElement("div");
+        priceStatus.className = "history-order-price";
+        appendText(priceStatus, "strong", `${price(order.price_rsd)} RSD`);
         const paymentStatus = document.createElement("span");
-        paymentStatus.className = "meta";
+        paymentStatus.className = "history-paid-badge";
         const paymentBtn = document.createElement("button");
-        paymentBtn.className = "btn";
+        paymentBtn.className = "btn mini-btn history-payment-action";
         paymentBtn.type = "button";
         const renderPayment = (paid, paidAt) => {
-          paymentRow.classList.toggle("is-paid", paid);
-          paymentRow.classList.toggle("is-unpaid", !paid);
-          paymentStatus.textContent = paid
-            ? `Interno: plaćeno${paidAt ? " (" + dateTime(paidAt) + ")" : ""}`
-            : "Interno: nije označeno kao plaćeno";
+          paymentStatus.className = `history-paid-badge ${paid ? "is-paid" : "is-unpaid"}`;
+          paymentStatus.textContent = paid ? "Plaćeno" : "Neplaćeno";
+          paymentStatus.title = paid && paidAt ? `Plaćeno ${dateTime(paidAt)}` : "";
           paymentBtn.textContent = paid ? "Poništi plaćeno" : "Označi plaćeno";
         };
         renderPayment(Number(order.reseller_paid) === 1, order.reseller_paid_at || "");
+        priceStatus.append(paymentStatus);
+        head.append(main, priceStatus);
+        div.appendChild(head);
+
+        const notePreview = document.createElement("div");
+        notePreview.className = "history-note-preview";
+        notePreview.hidden = !String(order.reseller_notes || "").trim();
+        notePreview.textContent = order.reseller_notes || "";
+        if (!notePreview.hidden) notePreview.title = order.reseller_notes;
+        div.appendChild(notePreview);
+
+        const actions = document.createElement("div");
+        actions.className = "history-item-actions";
+        const noteToggle = document.createElement("button");
+        noteToggle.className = "btn mini-btn history-note-toggle";
+        noteToggle.type = "button";
+        noteToggle.textContent = String(order.reseller_notes || "").trim() ? "Uredi belešku" : "Dodaj belešku";
+        noteToggle.setAttribute("aria-expanded", "false");
+        actions.append(paymentBtn, noteToggle);
+        div.appendChild(actions);
+
         paymentBtn.addEventListener("click", async () => {
           const isPaid = Number(order.reseller_paid) === 1;
           const nextPaid = !isPaid;
@@ -2130,16 +2215,19 @@
             order.reseller_paid = nextPaid ? 1 : 0;
             order.reseller_paid_at = nextPaid ? new Date().toISOString() : "";
             renderPayment(nextPaid, order.reseller_paid_at);
+            renderHistoryFilters(ordersMatchingNotes());
+            if ((state.ordersFilter === "paid" && !nextPaid) || (state.ordersFilter === "unpaid" && nextPaid)) {
+              preserveScroll(() => { loadOrders(true); });
+            }
           }catch(e){
             alert(e.message);
           }finally{
             paymentBtn.disabled = false;
           }
         });
-        paymentRow.append(paymentStatus, paymentBtn);
-        div.appendChild(paymentRow);
         const noteBox = document.createElement("div");
         noteBox.className = "note-editor";
+        noteBox.hidden = true;
         const noteLabel = document.createElement("label");
         noteLabel.textContent = "Notes";
         const noteInput = document.createElement("textarea");
@@ -2151,7 +2239,7 @@
         const noteStatus = document.createElement("span");
         noteStatus.className = "meta";
         const saveNote = document.createElement("button");
-        saveNote.className = "btn";
+        saveNote.className = "btn mini-btn";
         saveNote.type = "button";
         saveNote.textContent = "Sačuvaj notes";
         saveNote.addEventListener("click", async () => {
@@ -2162,6 +2250,11 @@
             const nextNotes = noteInput.value.trim();
             await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:nextNotes }) });
             order.reseller_notes = nextNotes;
+            notePreview.textContent = nextNotes;
+            notePreview.hidden = !nextNotes;
+            notePreview.title = nextNotes;
+            noteToggle.textContent = nextNotes ? "Uredi belešku" : "Dodaj belešku";
+            renderHistoryFilters(ordersMatchingNotes());
             noteStatus.textContent = "Sačuvano.";
           }catch(e){
             noteStatus.textContent = e.message;
@@ -2172,6 +2265,12 @@
         });
         noteActions.append(noteStatus, saveNote);
         noteBox.append(noteLabel, noteInput, noteActions);
+        noteToggle.addEventListener("click", () => {
+          const open = noteBox.hidden;
+          noteBox.hidden = !open;
+          noteToggle.setAttribute("aria-expanded", String(open));
+          if (open) noteInput.focus();
+        });
         div.appendChild(noteBox);
         historyList.appendChild(div);
       });
@@ -2394,7 +2493,7 @@
       try{
         const me = await api("/api/me.php");
         state.me = me;
-        balanceText.textContent = price(me.balance_rsd) + " RSD";
+        balanceText.textContent = price(me.balance_rsd);
         renderDiscountBadge(me.discount_percent);
         await enterAuthenticatedPanel(me);
       }catch(e){
@@ -2524,7 +2623,7 @@
       orderBtn.disabled = false;
       setStatus("offline");
       setLoggedInUi(false);
-      balanceText.textContent = "0 RSD";
+      balanceText.textContent = "0";
       historyList.textContent = "Uloguj se za pregled.";
       markAllPaidBtn.disabled = true;
       loginBox.style.display = "block";
@@ -2573,6 +2672,12 @@
       preserveScroll(() => { loadOrders(true); });
     });
     notesSearchClear.addEventListener("click", clearNotesSearch);
+    historyFilters.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-history-filter]");
+      if (!button || state.ordersFilter === button.dataset.historyFilter) return;
+      state.ordersFilter = button.dataset.historyFilter;
+      preserveScroll(() => { loadOrders(true); });
+    });
     function updateProductSearch(value){
       state.productSearch = value;
       state.productLetter = "";
