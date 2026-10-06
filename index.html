@@ -1883,11 +1883,21 @@
             recommendation.hidden = true;
             recommendation.textContent = `${slot.label} - preporučena minimalna prodajna cena: ${price(recommended)} ${product.currency || "RSD"}`;
             cell.addEventListener("click", () => {
-              const expanded = cell.getAttribute("aria-expanded") === "true";
-              variants.querySelectorAll('.price-variant[aria-expanded="true"]').forEach((openCell) => openCell.setAttribute("aria-expanded", "false"));
-              variants.querySelectorAll(".price-variant-details").forEach((details) => { details.hidden = true; });
-              cell.setAttribute("aria-expanded", String(!expanded));
-              recommendation.hidden = expanded;
+              const selectedAgain = cell.getAttribute("aria-expanded") === "true";
+              state.deliveryOfferProductId = String(product.product_id);
+              chooseProduct(product.product_id);
+
+              if (selectedAgain) {
+                cell.setAttribute("aria-expanded", "false");
+                recommendation.hidden = true;
+                order();
+                return;
+              }
+
+              pricesList.querySelectorAll('.price-variant[aria-expanded="true"]').forEach((openCell) => openCell.setAttribute("aria-expanded", "false"));
+              pricesList.querySelectorAll(".price-variant-details").forEach((details) => { details.hidden = true; });
+              cell.setAttribute("aria-expanded", "true");
+              recommendation.hidden = false;
             });
             item.append(cell, recommendation);
             variants.appendChild(item);

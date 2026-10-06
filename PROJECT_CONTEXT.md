@@ -51,6 +51,7 @@
   - Reseller and admin login now share a branded header, consistent icon-only theme control, centered authentication cards, and clear links between login screens.
   - Reseller mobile price list groups product variants by game, orders slots as PS5 Primary, PS4 Primary, PS5 Secondary, PS4 Secondary, labels subscription periods (1/3/12 months) from product metadata, adds an in-list search synchronized with the product picker, and reveals recommended resale pricing on tap.
   - Reseller price slots use stable grid cells; desktop recommended resale-price details overlay below the chosen slot without moving neighboring prices, with more consistent button sizing and selection states.
+  - Selecting a reseller price slot also selects the matching product in the order picker and shows its configured delivery email on mobile; tapping the same slot again opens the standard order confirmation.
   - On mobile, manually choosing a game slot reveals the configured reseller delivery email inline, with a shortcut to account settings; it does not auto-submit or interrupt scrolling.
   - Admin/reseller UI avoids aggressive scroll jumps after selection/save actions.
   - Admin order filters, active tab, table scroll positions, focused row controls, and local mutation feedback survive dashboard refreshes.
