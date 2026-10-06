@@ -26,7 +26,7 @@
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
   - Admins can store a private per-reseller note in Admin → Reselleri; it is not exposed to reseller users or order notes.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
-  - Admin Transactions tab records manual positive/negative wallet transactions with a description, updates reseller balance atomically, and shows the wallet history.
+  - Admin Transactions tab records signed wallet transactions with an explicit type and description, updates reseller balance atomically, and shows the wallet history.
   - Admin can cancel an order from the filtered Orders view through a transaction-safe, auditable reversal action.
   - Admin panel can save Inventory API Base URL and supplier token into ignored `api/config.local.php`; the token is never displayed back to the browser after save.
   - Admin can change the currently logged-in admin password from `/admin.html` after confirming the current password.
@@ -127,6 +127,7 @@
 - `sql/2026-06-14_reseller_order_notes.sql` - migration for reseller-owned order notes and internal paid markers.
 - `sql/2026-08-09_account_security_inventory.sql` - migration for reseller phone/profile completion metadata, security audit, login attempts, Inventory API history, and missing-game reports.
 - `sql/2026-10-06_reseller_admin_notes.sql` - migration for private admin notes attached to reseller accounts.
+- `sql/2026-10-06_wallet_transaction_types.sql` - widens wallet transaction type to VARCHAR for manual transaction classifications.
 
 ## Architecture & Technical Decisions
 - Frameworks: no framework; plain PHP 8+, static HTML/CSS/JS.
@@ -177,6 +178,7 @@
   - Run `sql/2026-08-09_account_security_inventory.sql` in phpMyAdmin for account onboarding, Inventory API audit, and missing-game reports.
   - Run `sql/2026-09-10_order_reliability.sql` in phpMyAdmin. It uses `CREATE TABLE IF NOT EXISTS` and does not delete existing data.
   - Run `sql/2026-10-06_reseller_admin_notes.sql` in phpMyAdmin for the private per-reseller admin notes column; runtime schema helpers also add it when database privileges allow.
+  - Run `sql/2026-10-06_wallet_transaction_types.sql` in phpMyAdmin before using the expanded Admin Transactions type list.
   - In private `api/config.local.php`, keep `mail.from` on a real domain mailbox accepted by cPanel. `mail.order_to` and `mail.payment_notice_to` may be comma-separated; the application always includes `arsenijee19@gmail.com` and `support@licenca.rs` as fallback recipients.
 - Run commands:
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
@@ -202,7 +204,7 @@
   - Reseller order notes are stored in `orders.reseller_notes` and internal paid markers in `orders.reseller_paid` / `orders.reseller_paid_at`; both can only be updated by the reseller that owns the order.
   - Admin balance changes:
   - Admin can set exact `balance_rsd` per reseller.
-  - Admin manual Transactions use signed RSD amounts and descriptions; positive entries use `ADMIN_TOPUP`, negative entries use `ADMIN_ADJUSTMENT`, and the balance plus wallet row commit atomically.
+  - Admin manual Transactions use a server-validated type, signed RSD amount, and description; positive amounts add funds and negative amounts deduct funds regardless of classification, with balance and wallet row committed atomically.
   - Admin-only reseller notes are free-form operational context and do not change balance, wallet transactions, or payment status.
   - Balance differences are recorded as `ADMIN_ADJUSTMENT` wallet transactions.
   - Admin order cancellation locks the order and reseller rows, verifies the original negative `ORDER` transaction, adds exactly one positive `ORDER_REVERSAL` transaction linked to the order when the wallet schema supports it, restores the charged amount, marks the order `canceled`, and writes an audit event. A second or concurrent reversal is rejected; legacy ENUM wallet schemas use a clearly described `ADMIN_ADJUSTMENT` fallback.
@@ -251,6 +253,7 @@
 - Added quick product-type filters for PS5 Primary, PS4 Primary, and PS4 / PS5 Secondary below the picker letter filters; they combine with text and letter search.
 - Changed the reseller Balance pill to open a separate transaction-history dialog without changing the orders sidebar.
 - Added Admin Transactions for audited manual balance entries and atomic reseller balance updates.
+- Added selectable admin transaction types for payment records, payment methods, top-ups, balance adjustments, orders, refunds, and bonuses; added a migration to support the expanded type values.
 - Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
 - Redesigned the reseller portal into a calmer two-column desktop layout with distinct order, verification-code, price-list, and history cards; retained the existing API/actions and made the type/letter filters keep the product picker open after selection.
 - Replaced the CSS-drawn resale-price shop glyph and notes-search text toggle with accessible inline SVG icons, preserving their current tooltip/search behavior.

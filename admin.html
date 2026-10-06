@@ -337,9 +337,9 @@
     .table-actions .btn{min-height:40px;padding:9px 13px;border-radius:11px}
     td input,td select,td textarea{min-height:44px;border-radius:10px}
     .table-toolbar .search-field{min-width:min(100%,360px)}
-    .transaction-form-grid{grid-template-columns:minmax(260px,1.2fr) minmax(190px,.85fr) minmax(320px,1.45fr) minmax(190px,.9fr);align-items:end;gap:18px}
+    .transaction-form-grid{grid-template-columns:minmax(210px,1.1fr) minmax(140px,.7fr) minmax(205px,1fr) minmax(270px,1.4fr) minmax(165px,.85fr);align-items:end;gap:18px}
     .transaction-form-grid>.span-3,.transaction-form-grid>.span-4,.transaction-form-grid>.span-5{grid-column:auto}
-    .transaction-form-grid>.form-actions{grid-column:4;align-self:end;justify-content:stretch;margin-top:0}
+    .transaction-form-grid>.form-actions{grid-column:5;align-self:end;justify-content:stretch;margin-top:0}
     .transaction-form-grid .form-actions .btn{width:100%;min-width:0;white-space:normal}
     .transaction-form-grid+ .muted{margin-top:14px!important}
     @media (max-width:1120px){
@@ -586,10 +586,28 @@
             <div class="grid transaction-form-grid">
               <div class="span-4"><label for="transactionReseller">Reseller</label><select id="transactionReseller"></select></div>
               <div class="span-3"><label for="transactionAmount">Iznos (RSD)</label><input id="transactionAmount" type="number" step="1" placeholder="3000 ili -3000" /></div>
-              <div class="span-5"><label for="transactionDescription">Opis</label><input id="transactionDescription" type="text" maxlength="255" placeholder="Uplata po dogovoru za User1" /></div>
+              <div class="span-3"><label for="transactionType">Tip transakcije</label><select id="transactionType" required>
+                <option value="">Izaberite tip</option>
+                <optgroup label="Uplate">
+                  <option value="PAYMENT_RECEIVED">Evidencija uplate</option>
+                  <option value="BANK_TRANSFER">Bankovna uplata</option>
+                  <option value="CASH_PAYMENT">Gotovinska uplata</option>
+                  <option value="CARD_PAYMENT">Kartična uplata</option>
+                  <option value="OTHER_PAYMENT">Ostala uplata</option>
+                </optgroup>
+                <optgroup label="Saldo i porudžbine">
+                  <option value="ADMIN_TOPUP">Admin dopuna</option>
+                  <option value="ADMIN_ADJUSTMENT">Ispravka balansa</option>
+                  <option value="ORDER">Order</option>
+                  <option value="MANUAL_ORDER">Manual Order</option>
+                  <option value="ORDER_REFUND">Povraćaj sredstava</option>
+                  <option value="BONUS">Bonus / kompenzacija</option>
+                </optgroup>
+              </select></div>
+              <div class="span-5"><label for="transactionDescription">Opis</label><input id="transactionDescription" type="text" maxlength="255" placeholder="Npr. uplata po dogovoru za oktobar" /></div>
               <div class="span-12 form-actions"><button class="btn good" id="addTransactionBtn" type="button">Dodaj transakciju</button></div>
             </div>
-            <p class="muted" style="margin-top:10px">Primer: izaberite User1, unesite <span class="mono">3000</span> i opis „Uplata po dogovoru za septembar“.</p>
+            <p class="muted" style="margin-top:10px">Izaberite tip i unesite iznos: pozitivan iznos dodaje sredstva, negativan ih oduzima. Ovo je finansijska evidencija i ne kreira zasebnu porudžbinu. Primer: bankovna uplata od <span class="mono">3000 RSD</span>.</p>
           </div>
           <div class="table-wrap"><table id="transactionsTable"></table></div>
         </div>
@@ -1366,7 +1384,7 @@
       (state.data.transactions || []).forEach((transaction) => {
         const row = body.insertRow();
         columns.forEach((name) => {
-          const value = name === "amount_rsd" ? money(transaction[name]) : (transaction[name] || "-");
+          const value = name === "amount_rsd" ? money(transaction[name]) : (name === "type" ? transactionTypeLabel(transaction[name]) : (transaction[name] || "-"));
           const cell = row.insertCell();
           text(cell, "span", value, name === "amount_rsd" ? (Number(transaction[name]) >= 0 ? "transaction-positive" : "transaction-negative") : "");
         });
@@ -1377,6 +1395,24 @@
         cell.colSpan = columns.length;
         text(cell, "span", "Nema zabeleženih transakcija.", "muted");
       }
+    }
+
+    function transactionTypeLabel(type){
+      const labels = {
+        PAYMENT_RECEIVED:"Evidencija uplate",
+        BANK_TRANSFER:"Bankovna uplata",
+        CASH_PAYMENT:"Gotovinska uplata",
+        CARD_PAYMENT:"Kartična uplata",
+        OTHER_PAYMENT:"Ostala uplata",
+        ADMIN_TOPUP:"Admin dopuna",
+        ADMIN_ADJUSTMENT:"Ispravka balansa",
+        ORDER:"Order",
+        MANUAL_ORDER:"Manual Order",
+        ORDER_REFUND:"Povraćaj sredstava",
+        BONUS:"Bonus / kompenzacija",
+        ORDER_REVERSAL:"Poništenje porudžbine"
+      };
+      return labels[type] || type || "-";
     }
 
     function renderInventory(){
@@ -1851,11 +1887,13 @@
           body:JSON.stringify({
             reseller_id:$("transactionReseller").value,
             amount_rsd:$("transactionAmount").value,
+            type:$("transactionType").value,
             description:$("transactionDescription").value.trim()
           })
         });
         state.data = result;
         $("transactionAmount").value = "";
+        $("transactionType").value = "";
         $("transactionDescription").value = "";
         renderWithUiState(() => render());
         showToast("ok", "Transakcija je sačuvana i balance je ažuriran.");

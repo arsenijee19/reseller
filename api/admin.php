@@ -771,11 +771,25 @@ try {
     require_recent_admin_step_up();
     $resellerId = (int)($input['reseller_id'] ?? 0);
     $amount = (int)($input['amount_rsd'] ?? 0);
+    $typeInput = $input['type'] ?? null;
+    if ($typeInput !== null && !is_string($typeInput)) {
+      json_response(['ok' => false, 'error' => 'Izaberite validan tip transakcije.'], 400);
+    }
+    $type = trim((string)($typeInput ?? ''));
     $description = trim((string)($input['description'] ?? ''));
     $descriptionLength = function_exists('mb_strlen') ? mb_strlen($description, 'UTF-8') : strlen($description);
+    $allowedTypes = [
+      'PAYMENT_RECEIVED', 'BANK_TRANSFER', 'CASH_PAYMENT', 'CARD_PAYMENT', 'OTHER_PAYMENT',
+      'ADMIN_TOPUP', 'ADMIN_ADJUSTMENT', 'ORDER', 'MANUAL_ORDER', 'ORDER_REFUND', 'BONUS',
+    ];
+
+    if ($type === '') $type = $amount > 0 ? 'ADMIN_TOPUP' : 'ADMIN_ADJUSTMENT';
 
     if ($resellerId <= 0 || $amount === 0) {
       json_response(['ok' => false, 'error' => 'Izaberite resellera i unesite iznos različit od nule.'], 400);
+    }
+    if (!in_array($type, $allowedTypes, true)) {
+      json_response(['ok' => false, 'error' => 'Izaberite validan tip transakcije.'], 400);
     }
     if (abs($amount) > 100000000) {
       json_response(['ok' => false, 'error' => 'Iznos transakcije je prevelik.'], 400);
@@ -794,7 +808,6 @@ try {
 
       $newBalance = (int)$reseller['balance_rsd'] + $amount;
       $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$newBalance, $resellerId]);
-      $type = $amount > 0 ? 'ADMIN_TOPUP' : 'ADMIN_ADJUSTMENT';
       $pdo->prepare('INSERT INTO wallet_transactions (reseller_id, type, amount_rsd, description) VALUES (?, ?, ?, ?)')
         ->execute([$resellerId, $type, $amount, $description]);
       audit_event($pdo, 'admin', $adminId, 'manual_transaction_added', 'success', [

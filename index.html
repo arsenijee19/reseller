@@ -1903,10 +1903,17 @@
 
     function transactionTypeLabel(type){
       const labels = {
-        ORDER: "Porudžbina",
-        ADMIN_TOPUP: "Uplata",
-        ADMIN_ADJUSTMENT: "Promena balansa",
-        ORDER_REFUND: "Povraćaj",
+        PAYMENT_RECEIVED: "Evidencija uplate",
+        BANK_TRANSFER: "Bankovna uplata",
+        CASH_PAYMENT: "Gotovinska uplata",
+        CARD_PAYMENT: "Kartična uplata",
+        OTHER_PAYMENT: "Ostala uplata",
+        ORDER: "Order",
+        MANUAL_ORDER: "Manual Order",
+        ADMIN_TOPUP: "Admin dopuna",
+        ADMIN_ADJUSTMENT: "Ispravka balansa",
+        ORDER_REFUND: "Povraćaj sredstava",
+        BONUS: "Bonus / kompenzacija",
         ORDER_REVERSAL: "Povraćaj porudžbine"
       };
       return labels[type] || type || "Transakcija";
