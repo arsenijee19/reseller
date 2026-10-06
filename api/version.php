@@ -9,5 +9,5 @@ header('X-Content-Type-Options: nosniff');
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-06-order-speed-feedback',
+  'version' => '2026-10-06-login-balance-animations',
 ], JSON_UNESCAPED_SLASHES);

@@ -75,7 +75,15 @@
     p{color:var(--muted);font-size:13px;line-height:1.45}
     .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .status-indicator{display:inline-flex;align-items:center;gap:8px;padding:0 12px;color:#344054;font-size:13px;white-space:nowrap}
-    .status-indicator::before{content:"";width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.1)}
+    .status-indicator::before{content:"";width:9px;height:9px;border-radius:50%;background:#dc2626;box-shadow:0 0 0 4px rgba(220,38,38,.1);transform:scale(1);transition:background .28s var(--ease),box-shadow .28s var(--ease),transform .28s var(--ease)}
+    .status-indicator.is-connecting::before{background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.14);animation:status-connecting-pulse .8s ease-in-out infinite alternate}
+    .status-indicator.is-online::before{background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.12)}
+    .status-indicator.is-online.is-arriving::before{animation:status-online-pop .7s var(--ease) both}
+    .status-indicator.is-arriving #statusText{animation:status-label-in .38s var(--ease) both}
+    .status-indicator.is-connecting #statusText{color:var(--warn)}
+    @keyframes status-connecting-pulse{to{box-shadow:0 0 0 7px rgba(245,158,11,0);transform:scale(.88)}}
+    @keyframes status-online-pop{0%{transform:scale(.65);box-shadow:0 0 0 0 rgba(22,163,74,.35)}55%{transform:scale(1.35);box-shadow:0 0 0 7px rgba(22,163,74,0)}100%{transform:scale(1);box-shadow:0 0 0 4px rgba(22,163,74,.12)}}
+    @keyframes status-label-in{from{opacity:.45;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
     .balance-group{display:flex;align-items:center;gap:10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
     .balance-pill{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;column-gap:10px;min-height:44px;padding:0 5px;border:0;background:transparent;text-align:left;cursor:pointer}
     .balance-pill:hover{transform:none;box-shadow:none;border:0}
@@ -83,7 +91,11 @@
     .balance-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .balance-caption{color:#667085;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
     .balance-amount{display:inline-flex;align-items:baseline;gap:4px;font-size:19px;font-weight:850;letter-spacing:-.035em;color:var(--text)}
+    .balance-amount #balanceText{display:inline-block;text-align:right;font-variant-numeric:tabular-nums}
     .balance-amount small{font-size:11px;letter-spacing:0;color:var(--muted)}
+    .balance-pill.is-counting .balance-icon{animation:wallet-count-bounce .38s ease-in-out 3;box-shadow:0 0 0 5px rgba(22,163,74,.1)}
+    .balance-pill.is-counting #balanceText{color:var(--good)}
+    @keyframes wallet-count-bounce{50%{transform:translateY(-2px) scale(1.06)}}
     .paid-header-btn{min-height:40px;padding:8px 13px;border-radius:12px;background:#effcf4!important;border-color:#bbf0cc!important;color:#147a3b!important;box-shadow:none!important;white-space:nowrap;font-size:15px}
     .logout-icon-btn{width:46px;height:46px;flex:0 0 46px;padding:11px;border-radius:14px}
     .logout-icon-btn svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -879,6 +891,10 @@
       <p>Panel je osvežen da brže pronađete igru, proverite stanje i završite porudžbinu.</p>
       <div class="release-list">
         <div class="release-item">
+          <strong>Življi prikaz prijave i balansa</strong>
+          <p>Status prelazi u „online“, a balans se kratko broji od nule do trenutnog iznosa.</p>
+        </div>
+        <div class="release-item">
           <strong>Balans otvara istoriju transakcija</strong>
           <p>Dodirnite ili kliknite na balans u zaglavlju da pregledate uplate, porudžbine i ostale promene.</p>
         </div>
@@ -927,9 +943,10 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-order-speed-feedback";
+    const RELEASE_VERSION = "2026-10-06-login-balance-animations";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
+    const statusIndicator = document.querySelector(".status-indicator");
     const statusText = $("statusText");
     const balanceText = $("balanceText");
     const balanceBtn = $("balanceBtn");
@@ -1039,7 +1056,55 @@
     const twoFactorLoginMsg = $("twoFactorLoginMsg");
     let typingTimer = null;
 
-    function setStatus(value){ statusText.textContent = value; }
+    let statusArrivalTimer = 0;
+    let balanceAnimationFrame = 0;
+    function setStatus(value){
+      const wasOnline = statusIndicator.classList.contains("is-online");
+      window.clearTimeout(statusArrivalTimer);
+      statusText.textContent = value;
+      statusIndicator.classList.remove("is-offline", "is-connecting", "is-online", "is-arriving");
+      if (value === "online") {
+        statusIndicator.classList.add("is-online");
+        if (!wasOnline) {
+          statusIndicator.classList.add("is-arriving");
+          statusArrivalTimer = window.setTimeout(() => statusIndicator.classList.remove("is-arriving"), 900);
+        }
+      } else if (value === "povezivanje") {
+        statusIndicator.classList.add("is-connecting");
+      } else {
+        statusIndicator.classList.add("is-offline");
+      }
+    }
+    function setBalanceValue(value){ balanceText.textContent = price(value); }
+    function animateBalance(targetValue){
+      const target = Number(targetValue);
+      if (!Number.isFinite(target)) return;
+      window.cancelAnimationFrame(balanceAnimationFrame);
+      balanceBtn.classList.remove("is-counting");
+      const finalValue = price(target);
+      balanceText.style.minWidth = `${finalValue.length}ch`;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setBalanceValue(target);
+        return;
+      }
+      const duration = 1250;
+      let startedAt = 0;
+      setBalanceValue(0);
+      balanceBtn.classList.add("is-counting");
+      const tick = (now) => {
+        if (!startedAt) startedAt = now;
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setBalanceValue(Math.round(target * eased));
+        if (progress < 1) {
+          balanceAnimationFrame = window.requestAnimationFrame(tick);
+        } else {
+          setBalanceValue(target);
+          balanceBtn.classList.remove("is-counting");
+        }
+      };
+      balanceAnimationFrame = window.requestAnimationFrame(tick);
+    }
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; el.textContent = ""; el.className = "msg"; }
@@ -1239,7 +1304,7 @@
     async function loadMe(){
       const j = await api("/api/me.php");
       state.me = j;
-      balanceText.textContent = price(j.balance_rsd);
+      setBalanceValue(j.balance_rsd);
       renderDiscountBadge(j.discount_percent);
       fillProfileForms(j);
       return j;
@@ -1475,7 +1540,7 @@
         if (profileModal.classList.contains("open") || settingsModal.classList.contains("open")) return;
         openReleaseNotes();
         markReleaseNotesSeen();
-      }, 650);
+      }, 1500);
     }
 
     let refreshPending = false;
@@ -1518,7 +1583,9 @@
         fillProfileForms(profile);
 
         if (!profile.profile_completed || !hasCompleteContact(profile)) {
+          hideLoginProgress();
           setStatus("online");
+          animateBalance(profile.balance_rsd);
           setMainActionsEnabled(false);
           pricesList.textContent = "Dovršite podešavanja naloga za prikaz cenovnika.";
           historyList.textContent = "Dovršite podešavanja naloga za pregled porudžbina.";
@@ -1528,7 +1595,9 @@
 
         closeProfileModal();
         await loadProtectedData();
+        hideLoginProgress();
         setStatus("online");
+        animateBalance(profile.balance_rsd);
         maybeOpenReleaseNotes();
       }catch(e){
         await logout();
@@ -1829,6 +1898,7 @@
 
     function showAppShell(){
       setLoggedInUi(true);
+      setStatus("povezivanje");
       loginBox.style.display = "none";
       appBox.style.display = "grid";
       setMainActionsEnabled(false);
@@ -2489,7 +2559,7 @@
       try{
         const me = await api("/api/me.php");
         state.me = me;
-        balanceText.textContent = price(me.balance_rsd);
+        setBalanceValue(me.balance_rsd);
         renderDiscountBadge(me.discount_percent);
         await enterAuthenticatedPanel(me);
       }catch(e){
@@ -2632,7 +2702,10 @@
       orderBtn.disabled = false;
       setStatus("offline");
       setLoggedInUi(false);
-      balanceText.textContent = "0";
+      window.cancelAnimationFrame(balanceAnimationFrame);
+      balanceBtn.classList.remove("is-counting");
+      balanceText.style.minWidth = "";
+      setBalanceValue(0);
       historyList.textContent = "Uloguj se za pregled.";
       markAllPaidBtn.disabled = true;
       loginBox.style.display = "block";
