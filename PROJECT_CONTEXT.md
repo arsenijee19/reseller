@@ -243,6 +243,7 @@
 
 ## Recent Changes
 - Added accessible sign-in progress overlays to reseller/admin credential and 2FA submissions, with status text updated between verification and panel initialization.
+- Delayed the admin session-restore indicator briefly so fast navigation to Admin login does not flash an intermediate loading state; the session gate still hides login/panel until its check completes.
 - Compact reseller order history cards: payment badges sit beside the price, paid/unpaid filters combine with Notes search, and notes editors open only on demand; order names no longer repeat platform labels.
 - Simplified reseller balance header spacing and matched the payment-notice button size to neighboring controls; support actions now have equal-width colored buttons.
 - Reduced reseller price-cell padding and show each recommended minimum resale price inline beneath its catalog price.
