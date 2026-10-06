@@ -93,12 +93,33 @@
     input.is-typing{animation:field-type .18s var(--ease)}
     input.field-error{border-color:var(--bad);animation:field-shake .28s var(--ease);box-shadow:0 0 0 3px rgba(195,41,41,.11)}
     input.field-success{border-color:var(--success);animation:field-success .36s var(--ease);box-shadow:0 0 0 3px rgba(25,163,91,.12)}
-    .select-wrap{position:relative}
-    .select-wrap::before{content:"";position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(120deg,rgba(23,105,224,.0),rgba(23,105,224,.22),rgba(55,214,177,.18),rgba(23,105,224,.0));opacity:0;transform:scaleX(.86);filter:blur(8px);transition:opacity .22s var(--ease),transform .22s var(--ease);pointer-events:none}
-    .select-wrap:hover::before,.select-wrap:focus-within::before,.select-wrap.is-selecting::before{opacity:1;transform:scaleX(1)}
-    .select-wrap select{appearance:none;padding-right:42px;background:linear-gradient(180deg,var(--panel),var(--soft));position:relative}
-    .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(45deg);pointer-events:none;transition:border-color .16s var(--ease),transform .18s var(--ease)}
-    .select-wrap:hover::after,.select-wrap:focus-within::after{border-color:var(--brand);transform:translateY(-45%) rotate(45deg)}
+    .product-picker{position:relative;z-index:5}
+    .product-picker-trigger{width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);padding:10px 14px;text-align:left;cursor:pointer;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease)}
+    .product-picker-trigger:focus-visible{outline:2px solid rgba(75,141,247,.72);outline-offset:2px}
+    .product-picker-trigger:hover,.product-picker.open .product-picker-trigger{border-color:rgba(23,105,224,.42);box-shadow:0 0 0 3px rgba(23,105,224,.1),0 12px 28px rgba(23,105,224,.1);transform:translateY(-1px)}
+    .product-picker-trigger:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+    .product-picker-value{display:grid;gap:3px;min-width:0}
+    .product-picker-value strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .product-picker-value span{font-size:11px;color:var(--muted)}
+    .product-picker-chevron{width:11px;height:11px;flex:0 0 auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-3px) rotate(45deg);transition:transform .18s var(--ease),border-color .16s var(--ease)}
+    .product-picker.open .product-picker-chevron{transform:translateY(3px) rotate(225deg);border-color:var(--brand)}
+    .product-picker-menu{position:absolute;left:0;right:0;top:calc(100% + 8px);display:none;max-height:min(520px,65vh);overflow:auto;overscroll-behavior:contain;border:1px solid rgba(23,105,224,.2);border-radius:14px;background:linear-gradient(180deg,var(--panel),var(--soft));box-shadow:0 24px 70px rgba(15,23,42,.22);padding:10px}
+    .product-picker.open .product-picker-menu{display:block;animation:message-in .18s var(--ease)}
+    .picker-search-wrap{position:sticky;top:0;z-index:2;padding:2px 2px 10px;background:linear-gradient(180deg,var(--panel) 78%,transparent)}
+    .picker-search-wrap input{min-height:42px}
+    .picker-letters{display:flex;gap:5px;flex-wrap:wrap;padding:0 2px 10px}
+    .picker-letter{min-width:30px;min-height:30px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}
+    .picker-letter:hover,.picker-letter.active{border-color:var(--brand);background:rgba(23,105,224,.1);color:var(--brand)}
+    .product-picker-list{display:grid;gap:10px}
+    .product-group{display:grid;gap:5px}
+    .product-group-title{padding:4px 5px;color:var(--brand);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .product-option{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text);padding:10px;text-align:left;cursor:pointer;transition:background .14s var(--ease),border-color .14s var(--ease),transform .14s var(--ease)}
+    .product-option:hover,.product-option.selected{border-color:rgba(23,105,224,.24);background:rgba(23,105,224,.08);transform:translateX(2px)}
+    .product-option-main{display:grid;gap:3px;min-width:0}
+    .product-option-main strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .product-option-main span{color:var(--muted);font-size:11px}
+    .product-option-price{flex:0 0 auto;color:var(--brand);font-size:12px;font-weight:900;white-space:nowrap}
+    .product-picker-empty{padding:18px 10px;color:var(--muted);font-size:13px;text-align:center}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
     .login-actions{justify-content:center}
     .btn{--mx:50%;--my:50%;display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--panel),var(--soft));color:var(--text);padding:10px 14px;cursor:pointer;font-weight:700;line-height:1.2;text-align:center;position:relative;overflow:hidden;isolation:isolate;transition:transform .14s var(--ease),background .14s var(--ease),border-color .14s var(--ease),box-shadow .14s var(--ease),filter .14s var(--ease)}
@@ -121,7 +142,6 @@
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
     .msg.bad{display:block;border-color:rgba(195,41,41,.25);background:rgba(195,41,41,.08)}
-    .product-search{margin-top:12px}
     .search-count{margin-top:6px}
     .prices{display:grid;gap:8px;margin-top:12px}
     .price-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line);border-radius:8px;font-size:13px;transition:background .14s var(--ease),transform .14s var(--ease)}
@@ -310,14 +330,23 @@
         <div id="appBox" style="display:none">
           <div class="section">
             <h2>Nova porudžbina</h2>
-            <p>Izaberi proizvod i upiši email kupca.</p>
-            <div class="product-search">
-              <label for="productSearch">Pretraga proizvoda</label>
-              <input id="productSearch" type="search" autocomplete="off" placeholder="FC27, FC 27, FIFA, Crash, naziv igre..." />
-              <p class="meta search-count" id="productSearchCount"></p>
-            </div>
+            <p>Pretraži i izaberi proizvod za novu porudžbinu.</p>
             <label for="product">Proizvod</label>
-            <div class="select-wrap"><select id="product"></select></div>
+            <div class="product-picker" id="productPicker">
+              <input id="product" type="hidden" />
+              <button class="product-picker-trigger" id="productPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="product-picker-value" id="productPickerValue"><strong>Izaberite proizvod</strong><span>Pretražite i izaberite igru</span></span>
+                <span class="product-picker-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="product-picker-menu" id="productPickerMenu">
+                <div class="picker-search-wrap">
+                  <input id="productSearch" type="search" autocomplete="off" placeholder="Pretraži igre, FC27, FIFA, Crash..." aria-label="Pretraži proizvode" />
+                  <p class="meta search-count" id="productSearchCount"></p>
+                </div>
+                <div class="picker-letters" id="productPickerLetters" aria-label="Filtriraj po početnom slovu"></div>
+                <div class="product-picker-list" id="productPickerList" role="listbox"></div>
+              </div>
+            </div>
             <div class="actions">
               <button class="btn primary" id="orderBtn">Poruči</button>
               <button class="btn good" id="paidBtn">Uplatio sam</button>
@@ -546,7 +575,11 @@
         </div>
         <div class="release-item">
           <strong>Brža pretraga proizvoda</strong>
-          <p>Pretraga pomaže da brzo pronađeš igru, tip naloga ili cenu.</p>
+          <p>Nova pretraga razume FC27 i FC 27, FIFA/FC, Crash/Kres i male greške u kucanju.</p>
+        </div>
+        <div class="release-item">
+          <strong>Novi izbor proizvoda</strong>
+          <p>Igre su sada grupisane po početnom slovu i biraju se kroz moderni meni sa ugrađenom pretragom.</p>
         </div>
       </div>
       <div class="actions">
@@ -573,8 +606,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-08-09-account-security-inventory";
-    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", pendingOrder: null, me: null };
+    const RELEASE_VERSION = "2026-10-06-product-picker-search";
+    const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], productSearch: "", productLetter: "", pendingOrder: null, me: null };
 
     const statusText = $("statusText");
     const balanceText = $("balanceText");
@@ -586,6 +619,11 @@
     const productSearch = $("productSearch");
     const productSearchCount = $("productSearchCount");
     const productSelect = $("product");
+    const productPicker = $("productPicker");
+    const productPickerTrigger = $("productPickerTrigger");
+    const productPickerValue = $("productPickerValue");
+    const productPickerLetters = $("productPickerLetters");
+    const productPickerList = $("productPickerList");
     const orderBtn = $("orderBtn");
     const paidBtn = $("paidBtn");
     const missingGameBtn = $("missingGameBtn");
@@ -867,6 +905,7 @@
 
     function setMainActionsEnabled(enabled){
       productSelect.disabled = !enabled;
+      productPickerTrigger.disabled = !enabled;
       orderBtn.disabled = !enabled;
       paidBtn.disabled = !enabled;
       missingGameBtn.disabled = !enabled;
@@ -1207,29 +1246,113 @@
         .map((item) => item.product);
     }
 
+    function visibleProducts(){
+      return filteredProducts().filter((product) => !state.productLetter || productLetter(product) === state.productLetter);
+    }
+
+    function productLabel(product){
+      const priced = state.prices.get(String(product.id)) || {};
+      return priced.product_name || product.name || product.id;
+    }
+
+    function productType(product){
+      const priced = state.prices.get(String(product.id)) || {};
+      return priced.account_type || "Proizvod";
+    }
+
+    function productLetter(product){
+      const first = normalizeSearch(productLabel(product)).charAt(0).toUpperCase();
+      return /^[A-Z]$/.test(first) ? first : "#";
+    }
+
+    function closeProductPicker(){
+      productPicker.classList.remove("open");
+      productPickerTrigger.setAttribute("aria-expanded", "false");
+    }
+
+    function chooseProduct(productId){
+      const product = state.products.find((item) => String(item.id) === String(productId));
+      if (!product) return;
+      productSelect.value = String(product.id);
+      const priced = state.prices.get(String(product.id)) || {};
+      productPickerValue.textContent = "";
+      appendText(productPickerValue, "strong", productLabel(product));
+      appendText(productPickerValue, "span", `${productType(product)}${priced.price ? " · " + price(priced.price) + " " + (priced.currency || "RSD") : ""}`);
+      closeProductPicker();
+      productSelect.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
     function renderProductOptions(){
       const current = productSelect.value;
-      const products = filteredProducts();
-      productSelect.textContent = "";
-      if (!products.length) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = state.productSearch ? "Nema proizvoda za ovu pretragu" : "Proizvodi se učitavaju...";
-        productSelect.appendChild(opt);
-      }
-      products.forEach((p) => {
-        const opt = document.createElement("option");
-        opt.value = p.id;
-        opt.textContent = p.name;
-        productSelect.appendChild(opt);
+      const filtered = filteredProducts();
+      const products = visibleProducts();
+      const allLetters = [...new Set(filtered.map(productLetter))].sort((a, b) => a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b));
+
+      productPickerLetters.textContent = "";
+      const allButton = document.createElement("button");
+      allButton.className = "picker-letter" + (!state.productLetter ? " active" : "");
+      allButton.type = "button";
+      allButton.textContent = "Sve";
+      allButton.addEventListener("click", () => { state.productLetter = ""; renderProductOptions(); });
+      productPickerLetters.appendChild(allButton);
+      allLetters.forEach((letter) => {
+        const button = document.createElement("button");
+        button.className = "picker-letter" + (state.productLetter === letter ? " active" : "");
+        button.type = "button";
+        button.textContent = letter;
+        button.addEventListener("click", () => { state.productLetter = letter; renderProductOptions(); });
+        productPickerLetters.appendChild(button);
       });
-      if (current && products.some((p) => String(p.id) === String(current))) {
-        productSelect.value = current;
+
+      productPickerList.textContent = "";
+      if (!products.length) {
+        text(productPickerList, "div", state.productSearch ? "Nema proizvoda za ovu pretragu." : "Proizvodi se učitavaju...", "product-picker-empty");
+      } else {
+        const groups = new Map();
+        products.forEach((product) => {
+          const letter = productLetter(product);
+          if (!groups.has(letter)) groups.set(letter, []);
+          groups.get(letter).push(product);
+        });
+        groups.forEach((groupProducts, letter) => {
+          const group = document.createElement("section");
+          group.className = "product-group";
+          text(group, "div", letter, "product-group-title");
+          groupProducts.forEach((product) => {
+            const priced = state.prices.get(String(product.id)) || {};
+            const option = document.createElement("button");
+            option.className = "product-option" + (String(current) === String(product.id) ? " selected" : "");
+            option.type = "button";
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", String(current) === String(product.id) ? "true" : "false");
+            const main = document.createElement("span");
+            main.className = "product-option-main";
+            appendText(main, "strong", productLabel(product));
+            appendText(main, "span", productType(product));
+            option.appendChild(main);
+            if (priced.price !== undefined) appendText(option, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-option-price");
+            option.addEventListener("click", () => chooseProduct(product.id));
+            group.appendChild(option);
+          });
+          productPickerList.appendChild(group);
+        });
       }
-      if (productSearchCount) {
-        productSearchCount.textContent = state.productSearch
-          ? `${products.length} od ${state.products.length} proizvoda`
-          : `${state.products.length} proizvoda`;
+
+      const firstVisible = products[0];
+      const selectedStillVisible = products.some((product) => String(product.id) === String(current));
+      if (!current && firstVisible) chooseProduct(firstVisible.id);
+      if (current && !state.products.some((product) => String(product.id) === String(current))) productSelect.value = "";
+      if (productSearchCount) productSearchCount.textContent = state.productSearch || state.productLetter
+        ? `${products.length} od ${state.products.length} proizvoda`
+        : `${state.products.length} proizvoda`;
+      if (selectedStillVisible && current) {
+        const selected = state.products.find((product) => String(product.id) === String(current));
+        if (selected) {
+          productPickerValue.textContent = "";
+          appendText(productPickerValue, "strong", productLabel(selected));
+          const priced = state.prices.get(String(selected.id)) || {};
+          appendText(productPickerValue, "span", `${productType(selected)}${priced.price ? " · " + price(priced.price) + " " + (priced.currency || "RSD") : ""}`);
+        }
       }
     }
 
@@ -1261,7 +1384,7 @@
 
     function renderPrices(){
       pricesList.textContent = "";
-      const allowed = new Set(filteredProducts().map((p) => String(p.id)));
+      const allowed = new Set(visibleProducts().map((p) => String(p.id)));
       [...state.prices.values()].filter((p) => allowed.has(String(p.product_id))).forEach((p) => {
         const row = document.createElement("div");
         row.className = "price-item";
@@ -1685,8 +1808,11 @@
       state.orders = [];
       state.me = null;
       state.productSearch = "";
+      state.productLetter = "";
       productSearch.value = "";
-      productSelect.disabled = false;
+      productSelect.value = "";
+      productPickerTrigger.disabled = true;
+      closeProductPicker();
       orderBtn.disabled = false;
       setStatus("offline");
       setLoggedInUi(false);
@@ -1726,8 +1852,21 @@
     logoutBtn.addEventListener("click", logout);
     productSearch.addEventListener("input", (event) => {
       state.productSearch = event.target.value;
+      state.productLetter = "";
       renderProductOptions();
       renderPrices();
+    });
+    productPickerTrigger.addEventListener("click", () => {
+      if (productPickerTrigger.disabled) return;
+      const isOpen = productPicker.classList.toggle("open");
+      productPickerTrigger.setAttribute("aria-expanded", String(isOpen));
+      if (isOpen) productSearch.focus();
+    });
+    document.addEventListener("click", (event) => {
+      if (!productPicker.contains(event.target)) closeProductPicker();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeProductPicker();
     });
     document.addEventListener("pointermove", (event) => {
       const btn = event.target.closest(".btn");
@@ -1741,12 +1880,10 @@
     });
     productSelect.addEventListener("change", () => {
       preserveScroll(() => {
-        const wrap = productSelect.closest(".select-wrap");
-        if (!wrap) return;
-        wrap.classList.remove("is-selecting");
-        void wrap.offsetWidth;
-        wrap.classList.add("is-selecting");
-        window.setTimeout(() => wrap.classList.remove("is-selecting"), 420);
+        productPickerTrigger.classList.remove("is-selecting");
+        void productPickerTrigger.offsetWidth;
+        productPickerTrigger.classList.add("is-selecting");
+        window.setTimeout(() => productPickerTrigger.classList.remove("is-selecting"), 420);
       });
     });
     releaseBtn.addEventListener("click", openReleaseNotes);
