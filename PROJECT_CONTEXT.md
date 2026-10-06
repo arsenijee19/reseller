@@ -43,6 +43,7 @@
   - Reseller UI restores an existing server session on page load, so refresh does not force a new login while the session is valid.
   - Reseller UI has a responsive “Šta je novo?” release notes dialog opened from the portal header.
   - Reseller UI automatically shows the current “Šta je novo?” dialog once per browser after login/update.
+  - Reseller clients check `/api/version.php` in the background and reload when a newer release is deployed; refresh waits until the user is not in an order flow, open dialog, or editing a field.
   - Reseller account settings are hidden behind a header menu button and open in a modal instead of occupying a public panel section.
   - Reseller onboarding now asks only for display name, email, and phone; token change is optional and hidden behind an explicit choice.
   - Optional reseller 2-step verification is implemented using standard TOTP plus one-time recovery codes.
@@ -116,6 +117,7 @@
 - `api/products.php` - active product list for reseller order form.
 - `api/prices.php` - active price list for logged-in resellers.
 - `api/order.php` - order creation, wallet charge, email notification, n8n webhook call.
+- `api/version.php` - uncached public build-version response used by active reseller browser sessions to detect deployments.
 - `api/orders.php` - reseller recent order history.
 - `api/orders.php?all=1` - complete order history for the authenticated reseller.
 - `api/transactions.php` - authenticated reseller's wallet history with admin descriptions and related order notes.
@@ -246,6 +248,9 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Updated “Šta je novo?” with clickable balance history, improved catalog search, double-click ordering, visual refresh, and faster order response; excludes individual reseller discount details.
+- Added an accessible order-processing dialog between confirmation and success, with duplicate-submit guidance and an updated message if the request takes longer than expected.
+- Added a no-cache version endpoint and active-session checks so browsers adopt later deployments automatically when no form or order flow is in progress; keep its version equal to `RELEASE_VERSION` in `index.html`.
 - Added accessible sign-in progress overlays to reseller/admin credential and 2FA submissions, with status text updated between verification and panel initialization.
 - Delayed the admin session-restore indicator briefly so fast navigation to Admin login does not flash an intermediate loading state; the session gate still hides login/panel until its check completes.
 - Compact reseller order history cards: payment badges sit beside the price, paid/unpaid filters combine with Notes search, and notes editors open only on demand; order names no longer repeat platform labels.

@@ -320,6 +320,8 @@
     .login-progress-copy strong{font-size:14px}
     .login-progress-copy span{color:var(--muted);font-size:12px}
     @keyframes login-progress-spin{to{transform:rotate(360deg)}}
+    .order-progress-backdrop{z-index:85}.order-progress-card{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:12px;width:min(420px,100%);padding:22px}.order-progress-spinner{width:32px;height:32px;border:3px solid rgba(49,93,244,.16);border-top-color:var(--brand);border-right-color:var(--accent);border-radius:50%;animation:login-progress-spin .72s linear infinite}.order-progress-copy{display:grid;gap:4px}.order-progress-copy strong{font-size:15px}.order-progress-copy span,.order-progress-note{color:var(--muted);font-size:12px;line-height:1.5}.order-progress-card .progress{grid-column:1/-1;margin:4px 0 0}.order-progress-note{grid-column:1/-1;margin:0}
+    @media(prefers-reduced-motion:reduce){.order-progress-spinner{animation-duration:1.4s}}
     .modal{width:min(460px,100%);background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.04);padding:18px}
     .transactions-modal{width:min(900px,100%);max-height:min(84vh,860px);overflow:auto;padding:22px;border-radius:18px}
     .transactions-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
@@ -722,6 +724,9 @@
   <div class="modal-backdrop login-progress-backdrop" id="loginProgress" role="status" aria-live="polite" aria-hidden="true">
     <div class="modal login-progress-card"><span class="login-progress-spinner" aria-hidden="true"></span><div class="login-progress-copy"><strong>Prijava u toku</strong><span id="loginProgressText">Proveravamo podatke...</span></div></div>
   </div>
+  <div class="modal-backdrop order-progress-backdrop" id="orderProgressModal" role="status" aria-live="polite" aria-hidden="true">
+    <div class="modal order-progress-card"><span class="order-progress-spinner" aria-hidden="true"></span><div class="order-progress-copy"><strong>Obrađujemo porudžbinu</strong><span id="orderProgressText">Bezbedno evidentiramo porudžbinu i proveravamo podatke.</span></div><div class="progress active" aria-hidden="true"><div class="progress-bar"></div></div><p class="order-progress-note">Molimo sačekajte i nemojte ponovo slati porudžbinu.</p></div>
+  </div>
 
   <div class="modal-backdrop" id="transactionsModal" role="dialog" aria-modal="true" aria-labelledby="transactionsTitle" aria-describedby="transactionsDescription">
     <div class="modal transactions-modal">
@@ -872,71 +877,31 @@
   <div class="release-backdrop" id="releaseModal" role="dialog" aria-modal="true" aria-labelledby="releaseTitle">
     <div class="release-modal">
       <h2 id="releaseTitle">Novo u reseller panelu</h2>
-      <p>Dodali smo novi sigurnosni update i olakšali pregled porudžbina i isporuke.</p>
+      <p>Panel je osvežen da brže pronađete igru, proverite stanje i završite porudžbinu.</p>
       <div class="release-list">
         <div class="release-item">
-          <strong>Pregledniji slotovi i pretplate</strong>
-          <p>Slotovi su poređani po platformi, a kod pretplata je trajanje jasno označeno kao 1, 3 ili 12 meseci.</p>
+          <strong>Balans otvara istoriju transakcija</strong>
+          <p>Dodirnite ili kliknite na balans u zaglavlju da pregledate uplate, porudžbine i ostale promene.</p>
         </div>
         <div class="release-item">
-          <strong>Email isporuke pri izboru igre</strong>
-          <p>Nakon izbora igre na telefonu odmah možete proveriti adresu isporuke i po potrebi je promeniti, bez prekidanja skrolovanja.</p>
+          <strong>Brža pretraga kataloga</strong>
+          <p>Pretraga pronalazi nazive i uz razmake ili manje greške u kucanju, pa brže dolazite do željene igre.</p>
         </div>
         <div class="release-item">
-          <strong>Kontakt podaci naloga</strong>
-          <p>Panel će tražiti email i telefon resellera kako bi verifikacioni kodovi i provere stizali na pravu adresu.</p>
+          <strong>Poručite direktno iz cenovnika</strong>
+          <p>Prvi klik na slot prikazuje preporučenu cenu. Kliknite isti slot još jednom da otvorite potvrdu porudžbine.</p>
         </div>
         <div class="release-item">
-          <strong>Verifikacioni kod iz panela</strong>
-          <p>Za PlayStation nalog možeš zatražiti kod direktno iz panela, najviše 3 puta dnevno po nalogu.</p>
+          <strong>Jasniji tok poručivanja</strong>
+          <p>Nakon potvrde videćete animaciju obrade, a čim je porudžbina evidentirana prikazaće se potvrda.</p>
         </div>
         <div class="release-item">
-          <strong>Igra mi nije stigla</strong>
-          <p>Ako porudžbina ne stigne, možeš izabrati prethodnu porudžbinu i poslati prijavu PlayWorld timu.</p>
+          <strong>Pregledniji prikaz</strong>
+          <p>Panel i cenovnik su blago redizajnirani, a slotovi i trajanje pretplata su jasnije označeni.</p>
         </div>
         <div class="release-item">
-          <strong>Notes po porudžbini</strong>
-          <p>Uz svaku porudžbinu možeš da upišeš telefon kupca, email naloga ili internu napomenu.</p>
-        </div>
-        <div class="release-item">
-          <strong>Brza pretraga notes-a</strong>
-          <p>Otvori pretragu iznad prethodnih porudžbina i pronađi belešku po imenu kupca ili drugoj napomeni.</p>
-        </div>
-        <div class="release-item">
-          <strong>Plaćeno / nije plaćeno</strong>
-          <p>Svaku porudžbinu možeš da označiš kao plaćenu, a oznaku možeš i da poništiš.</p>
-        </div>
-        <div class="release-item">
-          <strong>Označi sve kao plaćeno</strong>
-          <p>Za bržu evidenciju možeš jednim klikom da označiš prethodne porudžbine kao plaćene.</p>
-        </div>
-        <div class="release-item">
-          <strong>Zatraži igru</strong>
-          <p>Ako igra nije u ponudi, pošalji predlog direktno iz panela.</p>
-        </div>
-        <div class="release-item">
-          <strong>Brža pretraga proizvoda</strong>
-          <p>Nova pretraga razume FC27 i FC 27, FIFA/FC, Crash/Kres i male greške u kucanju.</p>
-        </div>
-        <div class="release-item">
-          <strong>Novi izbor proizvoda</strong>
-          <p>Igre su sada grupisane po početnom slovu i biraju se kroz moderni meni sa ugrađenom pretragom.</p>
-        </div>
-        <div class="release-item">
-          <strong>Brzi filteri po tipu naloga</strong>
-          <p>Ispod slova sada možeš jednim klikom da prikažeš samo PS5 Primary, PS4 Primary ili PS4 / PS5 Secondary igre.</p>
-        </div>
-        <div class="release-item">
-          <strong>Preporučena prodajna cena</strong>
-          <p>Ikona prodavnice pored cene prikazuje preporučenu minimalnu cenu za dalju prodaju.</p>
-        </div>
-        <div class="release-item">
-          <strong>Istorija promena na balansu</strong>
-          <p>Izaberite Balance na vrhu panela za pregled uplata, porudžbina i opisa promena. Lista porudžbina ostaje odvojena.</p>
-        </div>
-        <div class="release-item">
-          <strong>Admin Transactions</strong>
-          <p>Admin sada može da evidentira ručne uplate i promene balansa uz opis transakcije.</p>
+          <strong>Brži odgovor nakon potvrde</strong>
+          <p>Porudžbina se potvrđuje čim se bezbedno evidentira; slanje pratećih obaveštenja ne zadržava ekran.</p>
         </div>
       </div>
       <div class="actions">
@@ -963,7 +928,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-mobile-catalog-slots";
+    const RELEASE_VERSION = "2026-10-06-order-speed-feedback";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusText = $("statusText");
@@ -1039,6 +1004,8 @@
     const transactionsDoneBtn = $("transactionsDoneBtn");
     const themeBtn = $("themeBtn");
     const orderProgress = $("orderProgress");
+    const orderProgressModal = $("orderProgressModal");
+    const orderProgressText = $("orderProgressText");
     const confirmModal = $("confirmModal");
     const confirmDetails = $("confirmDetails");
     const confirmOrderBtn = $("confirmOrderBtn");
@@ -1138,6 +1105,11 @@
       return `${d.getDate()}. ${d.getMonth() + 1}. ${time}`;
     }
     function setProgress(active){ orderProgress.classList.toggle("active", active); }
+    function setOrderProcessing(active, message){
+      if (message) orderProgressText.textContent = message;
+      orderProgressModal.classList.toggle("open", active);
+      orderProgressModal.setAttribute("aria-hidden", String(!active));
+    }
     function normalizeSearch(value){
       return String(value == null ? "" : value)
         .toLowerCase()
@@ -1505,6 +1477,32 @@
         openReleaseNotes();
         markReleaseNotesSeen();
       }, 650);
+    }
+
+    let refreshPending = false;
+    let versionCheckInFlight = false;
+    function canRefreshForNewVersion(){
+      const active = document.activeElement;
+      return !state.orderInProgress &&
+        !document.querySelector(".modal-backdrop.open, .release-backdrop.open") &&
+        !(active && active.matches("input, textarea, select"));
+    }
+    function refreshIfSafe(){
+      if (refreshPending && canRefreshForNewVersion()) window.location.reload();
+    }
+    async function checkAppVersion(){
+      if (versionCheckInFlight || document.visibilityState === "hidden") return;
+      versionCheckInFlight = true;
+      try{
+        const response = await fetch("/api/version.php", { credentials:"same-origin", cache:"no-store", headers:{ "Accept":"application/json" } });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (result && result.ok === true && result.version && result.version !== RELEASE_VERSION) {
+          refreshPending = true;
+          refreshIfSafe();
+        }
+      }catch(e){}
+      finally{ versionCheckInFlight = false; }
     }
 
     async function loadProtectedData(){
@@ -2519,15 +2517,24 @@
     async function submitConfirmedOrder(){
       if (state.orderInProgress || !state.pendingOrder) return;
       const details = state.pendingOrder;
+      const startedAt = performance.now();
+      let slowOrderTimer = 0;
       closeConfirmation();
       state.orderInProgress = true;
       orderBtn.disabled = true;
       paidBtn.disabled = true;
       orderBtn.textContent = "Poručujem...";
       setProgress(true);
+      setOrderProcessing(true, "Bezbedno evidentiramo porudžbinu i proveravamo podatke.");
+      slowOrderTimer = window.setTimeout(() => {
+        setOrderProcessing(true, "Porudžbina se i dalje obrađuje. Molimo sačekajte, nemojte je slati ponovo.");
+      }, 2500);
       hide(orderMsg);
       try{
         await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id }) });
+        await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, 500 - (performance.now() - startedAt))));
+        window.clearTimeout(slowOrderTimer);
+        setOrderProcessing(false);
         hide(orderMsg);
         openSuccessModal();
         await loadMe();
@@ -2535,8 +2542,12 @@
           historyList.textContent = "Prethodne porudžbine trenutno nisu dostupne.";
         });
       }catch(e){
+        window.clearTimeout(slowOrderTimer);
+        setOrderProcessing(false);
         show(orderMsg, "bad", e.message);
       }finally{
+        window.clearTimeout(slowOrderTimer);
+        setOrderProcessing(false);
         state.orderInProgress = false;
         orderBtn.disabled = false;
         paidBtn.disabled = false;
@@ -2739,6 +2750,10 @@
     closeSuccessBtn.addEventListener("click", closeSuccessModal);
     successModal.addEventListener("click", (event) => { if (event.target === successModal) closeSuccessModal(); });
     releaseModal.addEventListener("click", (event) => { if (event.target === releaseModal) dismissReleaseNotes(); });
+    document.addEventListener("focusout", () => window.setTimeout(refreshIfSafe, 0));
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAppVersion(); });
+    window.setTimeout(checkAppVersion, 3000);
+    window.setInterval(checkAppVersion, 30000);
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
     settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettingsModal(); });
