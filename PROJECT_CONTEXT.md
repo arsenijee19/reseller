@@ -253,6 +253,7 @@
 - Added a shop icon beside each reseller catalog price with a hover/focus tooltip for the recommended minimum resale price based on the reseller price tiers.
 - Redesigned the reseller portal into a calmer two-column desktop layout with distinct order, verification-code, price-list, and history cards; retained the existing API/actions and made the type/letter filters keep the product picker open after selection.
 - Replaced the CSS-drawn resale-price shop glyph and notes-search text toggle with accessible inline SVG icons, preserving their current tooltip/search behavior.
+- Standardized admin form field sizing, dropdown affordances, button geometry, form spacing, and responsive layouts; aligned the Transactions entry form into one balanced desktop row without changing its action or API.
 - Added a lightweight client-side Notes search for quickly finding previous orders by reseller-entered notes without reloading the panel.
 - Moved the authenticated reseller Logout action into the top status bar as a compact accessible exit icon beside the theme control.
 - Added a direct Reseller prijava link to the Admin login screen so users can return to the ordinary reseller login without browser navigation.
