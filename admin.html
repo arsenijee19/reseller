@@ -135,6 +135,13 @@
     .admin-modal-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .18s var(--ease),visibility 0s}
     .admin-modal{width:min(430px,100%);padding:20px;border:1px solid rgba(23,105,224,.18);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--soft));box-shadow:0 24px 80px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:transform .2s var(--ease),opacity .18s var(--ease)}
     .admin-modal-backdrop.open .admin-modal{transform:translateY(0) scale(1);opacity:1}
+    .login-progress-backdrop{z-index:80}
+    .login-progress-card{display:flex;align-items:center;gap:14px;width:min(360px,100%);padding:20px}
+    .login-progress-spinner{width:26px;height:26px;flex:0 0 26px;border:3px solid rgba(37,99,235,.18);border-top-color:var(--brand);border-radius:50%;animation:login-progress-spin .72s linear infinite}
+    .login-progress-copy{display:grid;gap:3px}
+    .login-progress-copy strong{font-size:14px}
+    .login-progress-copy span{color:var(--muted);font-size:12px}
+    @keyframes login-progress-spin{to{transform:rotate(360deg)}}
     .admin-modal h2{margin-bottom:7px}
     .admin-modal .actions{justify-content:flex-end;margin-top:16px}
     .admin-modal .msg{margin-top:12px;margin-bottom:0}
@@ -739,6 +746,9 @@
       </div>
     </section>
   </main>
+  <div class="admin-modal-backdrop login-progress-backdrop" id="loginProgress" role="status" aria-live="polite" aria-hidden="true">
+    <div class="admin-modal login-progress-card"><span class="login-progress-spinner" aria-hidden="true"></span><div class="login-progress-copy"><strong>Prijava u toku</strong><span id="loginProgressText">Proveravamo podatke...</span></div></div>
+  </div>
   <div class="admin-modal-backdrop" id="adminReauthModal" role="dialog" aria-modal="true" aria-labelledby="adminReauthTitle">
     <div class="admin-modal">
       <h2 id="adminReauthTitle">Potvrda admin akcije</h2>
@@ -788,6 +798,15 @@
     }
     function showLoginMsg(type,text){ const el=$("loginMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
     function clearMsg(){ $("adminMsg").style.display="none"; $("loginMsg").style.display="none"; }
+    function showLoginProgress(message){
+      $("loginProgressText").textContent = message;
+      $("loginProgress").classList.add("open");
+      $("loginProgress").setAttribute("aria-hidden", "false");
+    }
+    function hideLoginProgress(){
+      $("loginProgress").classList.remove("open");
+      $("loginProgress").setAttribute("aria-hidden", "true");
+    }
     function captureUiState(){
       const active = document.activeElement;
       return {
@@ -1708,24 +1727,29 @@
       clearMsg();
       $("adminLoginBtn").disabled = true;
       try{
+        showLoginProgress(state.admin2faPending ? "Proveravamo 2-step kod..." : "Proveravamo šifru...");
         if (state.admin2faPending) {
           await api("2fa_challenge", { method:"POST", body:JSON.stringify({ code:$("admin2faLoginCode").value }) });
           setAdmin2faLoginMode(false);
         } else {
           const result = await api("login", { method:"POST", body:JSON.stringify({ password:$("adminPassword").value }) });
           if (result.requires_2fa) {
+            hideLoginProgress();
             showLoginMsg("warn", "Unesite 2-step kod iz Authenticator aplikacije ili recovery kod.");
             setAdmin2faLoginMode(true);
             return;
           }
         }
+        showLoginProgress("Podaci su potvrđeni. Učitavamo panel...");
         setLoggedIn(true);
         $("adminPassword").value = "";
         $("admin2faLoginCode").value = "";
         await load();
       }catch(e){
+        hideLoginProgress();
         showLoginMsg("bad", e.message);
       }finally{
+        hideLoginProgress();
         $("adminLoginBtn").disabled = false;
       }
     }

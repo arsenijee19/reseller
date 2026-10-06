@@ -49,6 +49,7 @@
   - Reseller/admin UI includes premium modal transitions, subtle gaming-style hover states, and reduced-motion support.
   - Admin panel has a calmer responsive dashboard layout with centered tab navigation, overview summary cards, softer tables/forms, and improved mobile spacing.
   - Admin refresh checks the existing session before revealing authentication UI, opening the loaded dashboard directly for a valid session and showing login only when needed.
+  - Reseller and admin password/token and 2FA submissions show a blocking progress modal while the server verifies credentials and the panel loads.
   - Reseller and admin login now share a branded header, consistent icon-only theme control, centered authentication cards, and clear links between login screens.
   - Reseller mobile price list groups product variants by game, orders slots as PS5 Primary, PS4 Primary, PS5 Secondary, PS4 Secondary, labels subscription periods (1/3/12 months) from product metadata, adds an in-list search synchronized with the product picker, and reveals recommended resale pricing on tap.
   - Reseller price slots use stable grid cells; desktop recommended resale-price details overlay below the chosen slot without moving neighboring prices, with more consistent button sizing and selection states.
@@ -241,6 +242,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Added accessible sign-in progress overlays to reseller/admin credential and 2FA submissions, with status text updated between verification and panel initialization.
 - Centered the reseller login brand in the header while leaving the theme button anchored at the right edge.
 - Admin refresh now suppresses the login form during session restoration; a valid session reveals the dashboard after its data loads, while an expired session reveals login.
 - Reseller refresh now starts in a session-check state rather than briefly rendering the login form; the authenticated panel is revealed after session and panel data restoration, and the login form appears only when the session is not valid.

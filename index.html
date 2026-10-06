@@ -297,6 +297,13 @@
     .success-backdrop.open{background:rgba(8,13,20,.68)}
     .modal,.release-modal,.success-modal{transform:translateY(14px) scale(.96);opacity:0;transition:transform .22s var(--ease),opacity .18s var(--ease),box-shadow .18s var(--ease);will-change:transform,opacity}
     .modal-backdrop.open .modal,.release-backdrop.open .release-modal,.success-backdrop.open .success-modal{transform:translateY(0) scale(1);opacity:1}
+    .login-progress-backdrop{z-index:80}
+    .login-progress-card{display:flex;align-items:center;gap:14px;width:min(360px,100%);padding:20px}
+    .login-progress-spinner{width:26px;height:26px;flex:0 0 26px;border:3px solid rgba(49,93,244,.18);border-top-color:var(--brand);border-radius:50%;animation:login-progress-spin .72s linear infinite}
+    .login-progress-copy{display:grid;gap:3px}
+    .login-progress-copy strong{font-size:14px}
+    .login-progress-copy span{color:var(--muted);font-size:12px}
+    @keyframes login-progress-spin{to{transform:rotate(360deg)}}
     .modal{width:min(460px,100%);background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid rgba(23,105,224,.16);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.04);padding:18px}
     .transactions-modal{width:min(900px,100%);max-height:min(84vh,860px);overflow:auto;padding:22px;border-radius:18px}
     .transactions-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
@@ -685,6 +692,10 @@
     </div>
   </div>
 
+  <div class="modal-backdrop login-progress-backdrop" id="loginProgress" role="status" aria-live="polite" aria-hidden="true">
+    <div class="modal login-progress-card"><span class="login-progress-spinner" aria-hidden="true"></span><div class="login-progress-copy"><strong>Prijava u toku</strong><span id="loginProgressText">Proveravamo podatke...</span></div></div>
+  </div>
+
   <div class="modal-backdrop" id="transactionsModal" role="dialog" aria-modal="true" aria-labelledby="transactionsTitle" aria-describedby="transactionsDescription">
     <div class="modal transactions-modal">
       <div class="transactions-modal-head">
@@ -1038,6 +1049,15 @@
     function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
     function show(el,type,text){ el.className = "msg " + type; el.textContent = text; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; el.textContent = ""; el.className = "msg"; }
+    function showLoginProgress(message){
+      $("loginProgressText").textContent = message;
+      $("loginProgress").classList.add("open");
+      $("loginProgress").setAttribute("aria-hidden", "false");
+    }
+    function hideLoginProgress(){
+      $("loginProgress").classList.remove("open");
+      $("loginProgress").setAttribute("aria-hidden", "true");
+    }
     function preserveScroll(callback){
       const x = window.scrollX;
       const y = window.scrollY;
@@ -1407,13 +1427,16 @@
       hide(twoFactorLoginMsg);
       verify2faLoginBtn.disabled = true;
       let challengeCompleted = false;
+      showLoginProgress("Proveravamo 2-step kod...");
       try{
         await api("/api/2fa.php?action=challenge", { method:"POST", body:JSON.stringify({ code:twoFactorLoginCode.value }) });
         challengeCompleted = true;
+        showLoginProgress("Kod je potvrđen. Učitavamo panel...");
         closeTwoFactorLogin();
         const me = await loadMe();
         await enterAuthenticatedPanel(me);
       }catch(e){
+        hideLoginProgress();
         if (challengeCompleted || e.panelLoad) {
           if (!e.panelLoad) await logout();
           closeTwoFactorLogin();
@@ -1422,6 +1445,7 @@
           show(twoFactorLoginMsg, "bad", e.message);
         }
       }finally{
+        hideLoginProgress();
         verify2faLoginBtn.disabled = false;
       }
     }
@@ -2342,20 +2366,25 @@
         const token = tokenInput.value.trim();
         markField(tokenInput, token ? "ok" : "bad");
         if (!token) throw new Error("Unesi token.");
+        showLoginProgress("Proveravamo token...");
         const loginResult = await api("/api/login.php", { method:"POST", body:JSON.stringify({ token }) });
         markField(tokenInput, "ok");
         if (loginResult.requires_2fa) {
+          hideLoginProgress();
           openTwoFactorLogin();
           return;
         }
         sessionStarted = true;
+        showLoginProgress("Token je potvrđen. Učitavamo panel...");
         const me = await loadMe();
         await enterAuthenticatedPanel(me);
       }catch(e){
+        hideLoginProgress();
         if (sessionStarted && !e.panelLoad) await logout();
         markField(tokenInput, "bad");
         show(loginMsg, "bad", e.message);
       }finally{
+        hideLoginProgress();
         loginBtn.disabled = false;
         loginBtn.textContent = "Uloguj se";
       }
