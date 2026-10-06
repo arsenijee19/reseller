@@ -271,6 +271,7 @@
 ## Recent Changes
 - Reworked Admin → Podešavanja → Telegram admin bot layout: fixed full-width checkbox styling, aligned chat/threshold forms and actions, and added responsive notification cards without changing bot behavior.
 - Added a responsive floating “back to top” control to reseller and admin pages; it appears after scrolling, returns smoothly to the top, and honors reduced-motion preferences.
+- cPanel API `.htaccess` forwards the `Authorization` header to PHP/FastCGI so Telegram Bearer-token authentication can reach `api/telegram_gateway.php`.
 - Added an animated offline → connecting → online status transition and a reduced-motion-aware balance count-up on reseller login; bumped the public release version so active clients detect this release.
 - Updated “Šta je novo?” with clickable balance history, improved catalog search, double-click ordering, visual refresh, and faster order response; excludes individual reseller discount details.
 - Added an accessible order-processing dialog between confirmation and success, with duplicate-submit guidance and an updated message if the request takes longer than expected.
