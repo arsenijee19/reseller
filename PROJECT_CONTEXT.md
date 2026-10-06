@@ -268,6 +268,7 @@
 - Replaced reseller verification-code result text blocks with modern success/warning/error cards that match the portal button/card style.
 - Added admin-created reseller flow with required display name/token, optional email/phone/balance, temporary internal email auto-fill, initial token hashing, and first-login personal email enforcement.
 - Added per-reseller percentage discounts with Admin editing, discounted reseller catalog display, server-side order recalculation, and final-price notification data.
+- Improved reseller product search with spacing/punctuation normalization, FIFA/FC and Crash/Kres aliases, typo tolerance, and relevance sorting; separated the price list into its own visual section.
 - Added admin TOTP 2FA with pending login challenge, encrypted secret storage, hashed recovery codes, management UI, audit records, and rate limiting.
 - Added explicit admin 2FA setup steps and disabled confirmation until a setup key has been generated.
 - Added transaction-safe admin order cancellation with exact balance reversal, immutable financial history, cancellation metadata, audit logging, canceled-row styling, and duplicate-reversal protection.
