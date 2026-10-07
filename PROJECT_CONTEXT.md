@@ -21,7 +21,7 @@
   - Resellers can save internal notes, mark each order as internally paid/unpaid, and mark all visible previous orders as paid for their own tracking.
   - Reseller product search filters the order dropdown and price list by product details.
   - Order creation writes `orders`, writes a negative `wallet_transactions` entry, updates reseller balance, sends notification email, and calls the n8n delivery webhook.
-  - Successful n8n automatic delivery can append its login email to the exact reseller order notes through a short-lived per-order HMAC callback; retries are idempotent and existing notes are preserved.
+  - Successful n8n automatic delivery appends its login email to the exact reseller order notes through a short-lived per-order HMAC callback; the workflow must preserve order metadata across the Google Sheets lookup, so `Order: -` in delivery Telegram indicates a lost order link and a failed notes callback.
   - Order creation avoids per-request schema creation on its critical path, commits the order and wallet charge first, then flushes JSON before email/n8n work; PHP-FPM uses `fastcgi_finish_request()` and other PHP handlers attempt a content-length/connection-close flush.
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
