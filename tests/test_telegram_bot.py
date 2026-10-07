@@ -157,14 +157,15 @@ class CommandReplyTests(unittest.TestCase):
 
         def panel(action, _chat_id, **_fields):
             events.append(f"panel:{action}")
-            return {"ok": True, "authorized": True, "reseller": {
-                "id": 7, "email": "user@example.com", "display_name": "User", "balance_rsd": 0,
-            }, "two_factor": "isključena"}
+            return {"ok": True, "authorized": False}
 
         def answer(_callback_id, _message=""):
             events.append("callback:answer")
 
-        with mock.patch.object(bot, "panel", side_effect=panel), mock.patch.object(bot, "answer_callback", side_effect=answer), mock.patch.object(bot, "send"):
+        def send(_chat_id, _text, *_args, **kwargs):
+            events.append("message:loading" if "Učitavam" in _text else "message:access-denied")
+
+        with mock.patch.object(bot, "panel", side_effect=panel), mock.patch.object(bot, "answer_callback", side_effect=answer), mock.patch.object(bot, "send", side_effect=send):
             bot.handle_callback({
                 "id": "callback-1",
                 "from": {"username": "arsoarso"},
@@ -173,7 +174,9 @@ class CommandReplyTests(unittest.TestCase):
             })
 
         self.assertEqual(events[0], "callback:answer")
-        self.assertEqual(events[1], "panel:authorized")
+        self.assertEqual(events[1], "message:loading")
+        self.assertEqual(events[2], "panel:authorized")
+        self.assertEqual(events[3], "message:access-denied")
 
     def test_reseller_callback_error_replaces_the_selection_message(self):
         with mock.patch.object(bot, "panel", return_value={"ok": False, "error": "Panel API trenutno nije dostupan."}), mock.patch.object(bot, "send") as send:

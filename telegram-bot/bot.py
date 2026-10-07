@@ -439,12 +439,13 @@ def handle_callback(query: dict[str, Any]) -> None:
         return
     # Acknowledge immediately so Telegram clears the button spinner during slower DB actions.
     answer_callback(callback_id)
-    auth = panel("authorized", chat_id)
-    if not auth.get("authorized"):
-        send(chat_id, "Nemaš pristup.", edit=message_id); return
     parts = data.split(":")
     if parts[0] == "r" and len(parts) == 2:
         send(chat_id, "🔄 Učitavam profil resellera…", edit=message_id)
+    auth = panel("authorized", chat_id)
+    if not auth.get("authorized"):
+        send(chat_id, "Nemaš pristup.", edit=message_id); return
+    if parts[0] == "r" and len(parts) == 2:
         show_reseller(chat_id, int(parts[1]), edit_id=message_id)
     elif parts[0] == "tx" and len(parts) == 2:
         show_transactions(chat_id, int(parts[1]))
