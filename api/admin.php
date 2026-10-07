@@ -1163,8 +1163,10 @@ try {
       $params[] = $discount;
     }
     if (in_array('phone', $columns, true)) {
-      $fields[] = 'phone';
-      $params[] = $phone !== '' ? $phone : null;
+      if ($phone !== '') {
+        $fields[] = 'phone';
+        $params[] = $phone;
+      }
     }
     if (in_array('display_name', $columns, true)) {
       $fields[] = 'display_name';
@@ -1177,6 +1179,24 @@ try {
     if (in_array('updated_at', $columns, true)) {
       $fields[] = 'updated_at';
       $params[] = date('Y-m-d H:i:s');
+    }
+    if (in_array('created_at', $columns, true)) {
+      $fields[] = 'created_at';
+      $params[] = date('Y-m-d H:i:s');
+    }
+
+    $providedFields = array_fill_keys($fields, true);
+    foreach (table_columns($pdo, 'resellers') as $column) {
+      $name = (string)$column['COLUMN_NAME'];
+      $extra = strtolower((string)$column['EXTRA']);
+      if (($column['IS_NULLABLE'] ?? 'YES') !== 'NO'
+        || $column['COLUMN_DEFAULT'] !== null
+        || strpos($extra, 'auto_increment') !== false
+        || strpos($extra, 'generated') !== false
+        || isset($providedFields[$name])) {
+        continue;
+      }
+      throw new RuntimeException('Required reseller column: ' . $name);
     }
 
     $sql = 'INSERT INTO resellers (`' . implode('`,`', $fields) . '`) VALUES (' . implode(',', array_fill(0, count($fields), '?')) . ')';

@@ -52,6 +52,12 @@ function public_error_detail(Throwable $e): string {
     $sqlState = (string)($e->errorInfo[0] ?? $e->getCode());
     $driverCode = (int)($e->errorInfo[1] ?? 0);
     if ($driverCode === 1062) return 'Reseller sa tim emailom već postoji. Osvežite listu i proverite nalog.';
+    if ($driverCode === 1048 && preg_match("/Column '([A-Za-z0-9_]+)' cannot be null/i", $message, $match)) {
+      return 'Polje „' . $match[1] . '“ u bazi ne dozvoljava praznu vrednost. Proverite opcione podatke resellera.';
+    }
+    if ($driverCode === 1364 && preg_match("/Field '([A-Za-z0-9_]+)' doesn't have a default value/i", $message, $match)) {
+      return 'Baza zahteva obavezno polje „' . $match[1] . '“, koje nije popunjeno. Proverite strukturu tabele resellers.';
+    }
     if ($driverCode === 1364 || $driverCode === 1048) return 'Bazi nedostaje obavezna vrednost za reseller nalog. Proverite da li je primenjena poslednja SQL migracija.';
     if ($driverCode === 1054 || $sqlState === '42S22') return 'Šema baze nije usklađena sa portalom. Potrebno je primeniti nedostajuću SQL migraciju.';
     if ($driverCode === 1146 || $sqlState === '42S02') return 'U bazi nedostaje potrebna tabela. Proverite SQL migracije.';
@@ -69,6 +75,9 @@ function public_error_detail(Throwable $e): string {
   }
 
   if ($e instanceof ParseError) return 'Server konfiguracija trenutno nije validna.';
+  if (preg_match('/^Required reseller column: ([A-Za-z0-9_]+)$/', $message, $match)) {
+    return 'Baza zahteva obavezno polje „' . $match[1] . '“, koje forma ne popunjava. Proverite strukturu tabele resellers.';
+  }
   if (strpos($message, 'Database configuration is missing') !== false) return 'Server baza trenutno nije pravilno podešena.';
   return 'Server trenutno nije mogao da obradi zahtev.';
 }
