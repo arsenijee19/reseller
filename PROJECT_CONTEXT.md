@@ -56,7 +56,7 @@
   - Admin password, TOTP 2FA, and passkey controls are grouped under Settings; the admin dashboard shows a warning when admin 2FA is disabled.
   - Admin refresh checks the existing session before revealing authentication UI, opening the loaded dashboard directly for a valid session and showing login only when needed.
   - Reseller and admin password/token and 2FA submissions show a blocking progress modal while the server verifies credentials and the panel loads.
-  - Reseller and admin login now share a branded header, consistent icon-only theme control, centered authentication cards, and clear links between login screens.
+  - Reseller and admin login share the same controller brand mark, gradient, sizing, and responsive brand typography, with consistent icon-only theme controls and centered authentication cards.
   - Reseller mobile price list groups product variants by game, orders slots as PS5 Primary, PS4 Primary, PS5 Secondary, PS4 Secondary, labels subscription periods (1/3/12 months) from product metadata, adds an in-list search synchronized with the product picker, and reveals recommended resale pricing on tap.
   - Reseller price slots use stable grid cells; desktop recommended resale-price details overlay below the chosen slot without moving neighboring prices, with more consistent button sizing and selection states.
   - Selecting a reseller price slot also selects the matching product in the order picker and shows its configured delivery email on mobile; tapping the same slot again opens the standard order confirmation.

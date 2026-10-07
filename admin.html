@@ -382,10 +382,10 @@
     :root{--portal-card-radius:18px;--portal-control-radius:12px;--portal-control-height:48px;--portal-icon-size:44px}
     .portal-auth-header{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1360px;margin:0 auto;padding:4px 0}
     .portal-brand{display:flex;align-items:center;gap:12px;min-width:0}
-    .portal-logo{width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;border-radius:13px;background:linear-gradient(145deg,#315df4,#7041e8);color:#fff;box-shadow:0 9px 22px rgba(73,80,220,.2)}
+    .portal-logo{width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;border-radius:13px;background:linear-gradient(145deg,#315df4,#7845ec);color:#fff;box-shadow:0 10px 24px rgba(73,80,220,.24)}
     .portal-logo svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .portal-brand strong,.portal-brand span{display:block}
-    .portal-brand strong{font-size:17px;letter-spacing:-.025em}
+    .portal-brand strong{font-size:18px;letter-spacing:-.025em}
     .portal-brand span{margin-top:2px;color:var(--muted);font-size:12px}
     .icon-control{width:var(--portal-icon-size);height:var(--portal-icon-size);min-width:var(--portal-icon-size);min-height:var(--portal-icon-size);padding:10px;border-radius:var(--portal-control-radius)}
     .icon-control svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -413,7 +413,7 @@
     }
     @media(max-width:560px){
       .shell{padding:16px 16px 32px}
-      .portal-brand strong{font-size:15px}
+      .portal-brand strong{font-size:16px}
       .login{margin-top:78px}
       .login .section{padding:20px}
       .login-heading h1{font-size:20px}
@@ -424,6 +424,7 @@
       .topbar .actions .icon-control{width:40px;height:40px;min-width:40px;min-height:40px;flex:0 0 40px;padding:9px}
       .topbar .actions #refreshBtn,.topbar .actions #logoutBtn{width:40px;min-width:40px;padding:9px}
     }
+    @media(max-width:400px){.portal-brand strong{font-size:15px}.portal-brand span{display:none}}
     @media(prefers-reduced-motion:reduce){.session-restore-spinner,.session-restore-content,.session-restore-content::before{animation:none!important;opacity:1;transform:none}}
     /* Admin workspace refresh: quiet navigation, readable tables, focused editing. */
     .admin-brand{display:flex;align-items:center;gap:12px;min-width:0}.admin-brand .portal-logo{width:44px;height:44px;flex:0 0 44px}.admin-brand-copy{display:grid;gap:2px}.admin-brand-copy strong{font-size:18px;letter-spacing:-.03em}.admin-brand-copy span{color:var(--muted);font-size:12px}
