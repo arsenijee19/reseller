@@ -28,8 +28,9 @@ TLS_KEY = os.environ.get("TLS_KEY", "/run/secrets/privkey.pem")
 PORT = int(os.environ.get("PORT", "8443"))
 ALLOWED_TELEGRAM_USERNAME = os.environ.get("ALLOWED_TELEGRAM_USERNAME", "arsoarso").lstrip("@").casefold()
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
-API_LOCK = threading.Lock()
-LAST_API_CALL = 0.0
+REPLY_CONTEXT = threading.local()
+HEARTBEAT_LOCK = threading.Lock()
+LAST_WEBHOOK_HEARTBEAT = 0.0
 
 
 def parse_amount(value: str) -> int:
@@ -94,30 +95,33 @@ def is_allowed_start_message(message: dict[str, Any]) -> bool:
 
 
 def panel(action: str, chat_id: int, **fields: Any) -> dict[str, Any]:
-    global LAST_API_CALL
     data = json.dumps({"action": action, "chat_id": chat_id, **fields}).encode()
     request = urllib.request.Request(PANEL_API_URL, data=data, headers={
         "X-Panel-Token": PANEL_API_TOKEN,
         "Content-Type": "application/json",
         "Accept": "application/json",
     })
-    with API_LOCK:
-        delay = 0.15 - (time.monotonic() - LAST_API_CALL)
-        if delay > 0:
-            time.sleep(delay)
+    try:
+        with urllib.request.urlopen(request, timeout=12) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
         try:
-            with urllib.request.urlopen(request, timeout=12) as response:
-                result = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            try:
-                result = json.loads(exc.read().decode("utf-8"))
-            except Exception:
-                result = {"ok": False, "error": "Panel API nije dostupan."}
-        except Exception as exc:
-            logging.warning("Panel API request failed: %s", type(exc).__name__)
-            result = {"ok": False, "error": "Panel API trenutno nije dostupan."}
-        LAST_API_CALL = time.monotonic()
-    return result
+            return json.loads(exc.read().decode("utf-8"))
+        except Exception:
+            return {"ok": False, "error": "Panel API nije dostupan."}
+    except Exception as exc:
+        logging.warning("Panel API request failed: %s", type(exc).__name__)
+        return {"ok": False, "error": "Panel API trenutno nije dostupan."}
+
+
+def maybe_webhook_heartbeat() -> None:
+    global LAST_WEBHOOK_HEARTBEAT
+    now = time.monotonic()
+    with HEARTBEAT_LOCK:
+        if now - LAST_WEBHOOK_HEARTBEAT < 30:
+            return
+        LAST_WEBHOOK_HEARTBEAT = now
+    panel("heartbeat", 0, service="webhook")
 
 
 def telegram(method: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -132,6 +136,10 @@ def telegram(method: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def send(chat_id: int, text: str, keyboard: list[list[dict[str, str]]] | None = None, edit: int | None = None) -> int | None:
+    if edit is None:
+        edit = getattr(REPLY_CONTEXT, "message_id", None)
+        if edit is not None:
+            del REPLY_CONTEXT.message_id
     payload: dict[str, Any] = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}
     if keyboard:
         payload["reply_markup"] = {"inline_keyboard": keyboard}
@@ -251,12 +259,19 @@ def handle_message(message: dict[str, Any]) -> None:
     if command == "start":
         send(chat_id, f"👋 Dobro došli!\n🆔 Chat ID ovog naloga: <code>{chat_id}</code>\nDodajte ga u Admin → Podešavanja → Telegram admin bot.")
         return
+    if command:
+        progress_id = send(chat_id, f"⏳ Obrađujem komandu <code>/{safe(command)}</code>…")
+        if progress_id:
+            REPLY_CONTEXT.message_id = progress_id
     authorized = panel("authorized", chat_id)
     is_admin = bool(authorized.get("authorized"))
     if not is_admin:
+        if command:
+            send(chat_id, "Nemaš pristup.")
         return
-    panel("heartbeat", chat_id, service="webhook")
-    conversation = panel("get_conversation", chat_id).get("conversation")
+    conversation = None
+    if not command:
+        conversation = panel("get_conversation", chat_id).get("conversation")
     if conversation and not command:
         state = conversation.get("state")
         payload = conversation.get("payload") or {}
@@ -419,9 +434,11 @@ def handle_callback(query: dict[str, Any]) -> None:
     data = str(query.get("data", ""))
     if not is_allowed_username((query.get("from") or {}).get("username")):
         return
+    # Acknowledge immediately so Telegram clears the button spinner during slower DB actions.
+    answer_callback(callback_id)
     auth = panel("authorized", chat_id)
     if not auth.get("authorized"):
-        answer_callback(callback_id, "Nemaš pristup."); return
+        send(chat_id, "Nemaš pristup."); return
     parts = data.split(":")
     if parts[0] == "r" and len(parts) == 2:
         show_reseller(chat_id, int(parts[1]))
@@ -477,7 +494,6 @@ def handle_callback(query: dict[str, Any]) -> None:
     elif parts[0] == "solve" and len(parts) == 3:
         result = panel("resolve_report", chat_id, type=parts[1], id=int(parts[2]))
         send(chat_id, "Prijava je označena kao rešena." if result.get("ok") else safe(result.get("error", "Nije uspelo.")), edit=message_id)
-    answer_callback(callback_id)
 
 
 def deliver_outbox() -> None:
@@ -559,7 +575,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
             if is_allowed_start_message(message):
                 handle_message(message)
                 self.send_response(200); self.end_headers(); self.wfile.write(b"ok"); return
-            panel("heartbeat", 0, service="webhook")
+            maybe_webhook_heartbeat()
             # Telegram's chat id scopes every update; the gateway claims the update id before side effects.
             chat_id = int((update.get("message") or update.get("callback_query", {}).get("message") or {}).get("chat", {}).get("id", 0))
             if chat_id:

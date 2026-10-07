@@ -71,6 +71,18 @@ class PanelRequestTests(unittest.TestCase):
         self.assertEqual(request.get_header("X-panel-token"), "test-api-token")
         self.assertIsNone(request.get_header("Authorization"))
 
+    def test_webhook_heartbeat_is_coalesced_for_thirty_seconds(self):
+        previous = bot.LAST_WEBHOOK_HEARTBEAT
+        bot.LAST_WEBHOOK_HEARTBEAT = 0
+        try:
+            with mock.patch.object(bot.time, "monotonic", side_effect=[100, 110, 131]), mock.patch.object(bot, "panel") as panel:
+                bot.maybe_webhook_heartbeat()
+                bot.maybe_webhook_heartbeat()
+                bot.maybe_webhook_heartbeat()
+            self.assertEqual(panel.call_count, 2)
+        finally:
+            bot.LAST_WEBHOOK_HEARTBEAT = previous
+
 
 class MessageHandlingTests(unittest.TestCase):
     def test_start_sends_chat_id_without_panel_api(self):
@@ -83,7 +95,7 @@ class MessageHandlingTests(unittest.TestCase):
         self.assertTrue(send.call_args.args[1].startswith("👋"))
         panel.assert_not_called()
 
-    def test_help_runs_through_panel_api_and_replies(self):
+    def test_help_skips_conversation_lookup_and_replies(self):
         class Response:
             def __init__(self, payload):
                 self.payload = payload
@@ -109,13 +121,59 @@ class MessageHandlingTests(unittest.TestCase):
                 response["conversation"] = None
             return Response(json.dumps(response).encode())
 
-        with mock.patch.object(bot.urllib.request, "urlopen", side_effect=urlopen), mock.patch.object(bot, "send") as send:
+        with mock.patch.object(bot.urllib.request, "urlopen", side_effect=urlopen), mock.patch.object(bot, "send", return_value=None) as send:
             bot.handle_message({"text": "/help", "from": {"username": "arsoarso"}, "chat": {"id": 4242}})
 
-        self.assertEqual(actions, ["authorized", "heartbeat", "get_conversation"])
-        send.assert_called_once()
-        self.assertIn("PlayWorld admin bot", send.call_args.args[1])
-        self.assertTrue(send.call_args.args[1].startswith("🤖"))
+        self.assertEqual(actions, ["authorized"])
+        self.assertEqual(send.call_count, 2)
+        self.assertTrue(send.call_args_list[0].args[1].startswith("⏳ Obrađujem komandu"))
+        response_text = send.call_args_list[-1].args[1]
+        self.assertIn("PlayWorld admin bot", response_text)
+        self.assertTrue(response_text.startswith("🤖"))
+
+
+class CommandReplyTests(unittest.TestCase):
+    def test_command_result_edits_its_new_progress_message(self):
+        calls = []
+
+        def telegram(method, payload):
+            calls.append((method, payload))
+            if method == "sendMessage":
+                return {"ok": True, "result": {"message_id": 91}}
+            return {"ok": True}
+
+        with mock.patch.object(bot, "telegram", side_effect=telegram):
+            progress_id = bot.send(4242, "⏳ Obrađujem komandu…")
+            bot.REPLY_CONTEXT.message_id = progress_id
+            bot.send(4242, "📊 Gotovo")
+
+        self.assertEqual([method for method, _ in calls], ["sendMessage", "editMessageText"])
+        self.assertEqual(calls[1][1]["message_id"], 91)
+        self.assertEqual(calls[1][1]["text"], "📊 Gotovo")
+        self.assertFalse(hasattr(bot.REPLY_CONTEXT, "message_id"))
+
+    def test_callback_is_acknowledged_before_panel_work(self):
+        events = []
+
+        def panel(action, _chat_id, **_fields):
+            events.append(f"panel:{action}")
+            return {"ok": True, "authorized": True, "reseller": {
+                "id": 7, "email": "user@example.com", "display_name": "User", "balance_rsd": 0,
+            }, "two_factor": "isključena"}
+
+        def answer(_callback_id, _message=""):
+            events.append("callback:answer")
+
+        with mock.patch.object(bot, "panel", side_effect=panel), mock.patch.object(bot, "answer_callback", side_effect=answer), mock.patch.object(bot, "send"):
+            bot.handle_callback({
+                "id": "callback-1",
+                "from": {"username": "arsoarso"},
+                "data": "r:7",
+                "message": {"message_id": 12, "chat": {"id": 4242}},
+            })
+
+        self.assertEqual(events[0], "callback:answer")
+        self.assertEqual(events[1], "panel:authorized")
 
 
 if __name__ == "__main__":
