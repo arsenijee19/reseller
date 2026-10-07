@@ -275,6 +275,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Reseller order notes are displayed in a wrapping, styled note block; automatic-delivery login emails are visually separated from the reseller's own note text without changing stored note content.
 - Telegram reseller-selection buttons now show a loading state in the selected list message and replace it with the profile or a visible API error; callback acknowledgement remains immediate and panel failures log their action for diagnosis.
 - Telegram bot command UX now provides an immediate bottom-of-chat progress reply, removes the unnecessary per-command conversation lookup, and avoids serialized/throttled panel requests; inline confirmation card behavior is preserved.
 - Refined the reseller mobile header into a balanced two-row layout, aligned payment and balance controls, standardized catalog-section headings, and simplified support-button styling; synced the app release version for active-session refresh.

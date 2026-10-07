@@ -265,7 +265,12 @@
     .history-paid-badge.is-unpaid{background:#fff0d6;color:#a84708}
     :root[data-theme="dark"] .history-paid-badge.is-paid{background:rgba(37,167,101,.17);color:#74e2a5}
     :root[data-theme="dark"] .history-paid-badge.is-unpaid{background:rgba(217,119,6,.18);color:#fdba74}
-    .history-note-preview{max-width:100%;overflow:hidden;color:var(--muted);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+    .history-note-preview{display:grid;gap:7px;max-width:100%;margin-top:9px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--muted);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+    .history-note-preview[hidden]{display:none}
+    .history-note-body{white-space:pre-wrap}
+    .history-note-delivery{display:flex;align-items:flex-start;gap:7px;min-width:0;padding-top:7px;border-top:1px solid var(--line)}
+    .history-note-delivery-label{flex:0 0 auto;color:var(--good);font-size:10px;font-weight:800}
+    .history-note-delivery-email{min-width:0;color:var(--text);font-weight:700;overflow-wrap:anywhere}
     .history-item-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
     .history-item-actions .btn{min-height:30px;padding:6px 9px;font-size:11px}
     .history-payment-action{white-space:nowrap}
@@ -2318,9 +2323,36 @@
 
         const notePreview = document.createElement("div");
         notePreview.className = "history-note-preview";
-        notePreview.hidden = !String(order.reseller_notes || "").trim();
-        notePreview.textContent = order.reseller_notes || "";
-        if (!notePreview.hidden) notePreview.title = order.reseller_notes;
+        const renderNotePreview = (notes) => {
+          const value = String(notes || "").trim();
+          notePreview.replaceChildren();
+          notePreview.hidden = !value;
+          if (!value) return;
+
+          const deliveryMarker = "Login mail (automatska isporuka):";
+          const deliveryIndex = value.lastIndexOf(deliveryMarker);
+          const regularNote = deliveryIndex >= 0 ? value.slice(0, deliveryIndex).trim() : value;
+          const deliveryEmail = deliveryIndex >= 0 ? value.slice(deliveryIndex + deliveryMarker.length).trim() : "";
+          if (regularNote) {
+            const noteText = document.createElement("div");
+            noteText.className = "history-note-body";
+            noteText.textContent = regularNote;
+            notePreview.appendChild(noteText);
+          }
+          if (deliveryIndex >= 0) {
+            const delivery = document.createElement("div");
+            delivery.className = "history-note-delivery";
+            const label = document.createElement("span");
+            label.className = "history-note-delivery-label";
+            label.textContent = "Automatska isporuka";
+            const email = document.createElement("span");
+            email.className = "history-note-delivery-email";
+            email.textContent = deliveryEmail || "Mejl nije naveden";
+            delivery.append(label, email);
+            notePreview.appendChild(delivery);
+          }
+        };
+        renderNotePreview(order.reseller_notes);
         div.appendChild(notePreview);
 
         const actions = document.createElement("div");
@@ -2381,9 +2413,7 @@
             const nextNotes = noteInput.value.trim();
             await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:nextNotes }) });
             order.reseller_notes = nextNotes;
-            notePreview.textContent = nextNotes;
-            notePreview.hidden = !nextNotes;
-            notePreview.title = nextNotes;
+            renderNotePreview(nextNotes);
             noteToggle.textContent = nextNotes ? "Uredi belešku" : "Dodaj belešku";
             renderHistoryFilters(ordersMatchingNotes());
             noteStatus.textContent = "Sačuvano.";
