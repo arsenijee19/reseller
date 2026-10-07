@@ -1163,10 +1163,8 @@ try {
       $params[] = $discount;
     }
     if (in_array('phone', $columns, true)) {
-      if ($phone !== '') {
-        $fields[] = 'phone';
-        $params[] = $phone;
-      }
+      $fields[] = 'phone';
+      $params[] = $phone;
     }
     if (in_array('display_name', $columns, true)) {
       $fields[] = 'display_name';
@@ -1190,6 +1188,7 @@ try {
     }
 
     $providedFields = array_fill_keys($fields, true);
+    $missingRequiredFields = [];
     foreach (table_columns($pdo, 'resellers') as $column) {
       $name = (string)$column['COLUMN_NAME'];
       $extra = strtolower((string)$column['EXTRA']);
@@ -1200,7 +1199,10 @@ try {
         || isset($providedFields[$name])) {
         continue;
       }
-      throw new RuntimeException('Required reseller column: ' . $name);
+      if (preg_match('/^[A-Za-z0-9_]+$/', $name)) $missingRequiredFields[] = $name;
+    }
+    if ($missingRequiredFields) {
+      throw new RuntimeException('Required reseller columns: ' . implode(',', $missingRequiredFields));
     }
 
     $sql = 'INSERT INTO resellers (`' . implode('`,`', $fields) . '`) VALUES (' . implode(',', array_fill(0, count($fields), '?')) . ')';

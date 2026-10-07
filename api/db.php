@@ -75,8 +75,9 @@ function public_error_detail(Throwable $e): string {
   }
 
   if ($e instanceof ParseError) return 'Server konfiguracija trenutno nije validna.';
-  if (preg_match('/^Required reseller column: ([A-Za-z0-9_]+)$/', $message, $match)) {
-    return 'Baza zahteva obavezno polje „' . $match[1] . '“, koje forma ne popunjava. Proverite strukturu tabele resellers.';
+  if (preg_match('/^Required reseller columns: ([A-Za-z0-9_,]+)$/', $message, $match)) {
+    $columns = implode('“, „', explode(',', $match[1]));
+    return 'Baza zahteva obavezna polja „' . $columns . '“, koja forma ne popunjava. Proverite strukturu tabele resellers.';
   }
   if (strpos($message, 'Database configuration is missing') !== false) return 'Server baza trenutno nije pravilno podešena.';
   return 'Server trenutno nije mogao da obradi zahtev.';

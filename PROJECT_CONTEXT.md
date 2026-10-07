@@ -26,7 +26,7 @@
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
-  - Admin API failures return a short diagnostic reference; server logs record only the API action, exception class, SQLSTATE, and MySQL driver code (never SQL parameters or credentials). Reseller creation writes the display name to legacy `name` and modern `display_name` columns when present, omits blank optional phone values, supplies timestamps when those columns exist, and preflights unsupported required columns.
+  - Admin API failures return a short diagnostic reference; server logs record only the API action, exception class, SQLSTATE, and MySQL driver code (never SQL parameters or credentials). Reseller creation writes the display name to legacy `name` and modern `display_name` columns, stores blank optional phone as an empty string for legacy NOT NULL schemas, supplies timestamps when those columns exist, and reports all unsupported required columns together.
   - Admins can store a private per-reseller note in Admin → Reselleri; it is not exposed to reseller users or order notes.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin Transactions tab records signed wallet transactions with an explicit type and description, updates reseller balance atomically, and shows the wallet history.
