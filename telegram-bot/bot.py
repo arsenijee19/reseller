@@ -110,7 +110,7 @@ def panel(action: str, chat_id: int, **fields: Any) -> dict[str, Any]:
         except Exception:
             return {"ok": False, "error": "Panel API nije dostupan."}
     except Exception as exc:
-        logging.warning("Panel API request failed: %s", type(exc).__name__)
+        logging.warning("Panel API %s failed: %s", action, type(exc).__name__)
         return {"ok": False, "error": "Panel API trenutno nije dostupan."}
 
 
@@ -130,6 +130,9 @@ def telegram(method: str, data: dict[str, Any]) -> dict[str, Any]:
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        logging.warning("Telegram %s failed: HTTP %s", method, exc.code)
+        return {"ok": False}
     except Exception as exc:
         logging.warning("Telegram %s failed: %s", method, type(exc).__name__)
         return {"ok": False}
@@ -225,10 +228,10 @@ def reseller_matches(chat_id: int, query: str) -> None:
         send(chat_id, "👥 Izaberite odgovarajućeg resellera:", keyboard)
 
 
-def show_reseller(chat_id: int, reseller_id: int) -> None:
+def show_reseller(chat_id: int, reseller_id: int, edit_id: int | None = None) -> None:
     result = panel("reseller", chat_id, reseller_id=reseller_id)
     if not result.get("ok"):
-        send(chat_id, safe(result.get("error", "Reseller nije pronađen.")))
+        send(chat_id, safe(result.get("error", "Reseller nije pronađen.")), edit=edit_id)
         return
     row = result["reseller"]
     balance = int(row.get("balance_rsd") or 0)
@@ -237,7 +240,7 @@ def show_reseller(chat_id: int, reseller_id: int) -> None:
             f"🔐 Status: {safe(row.get('status'))} · 2FA: {safe(result.get('two_factor'))} · Popust: {safe(row.get('discount_percent', 0))}%")
     keyboard = [[{"text": "➕ Dopuni", "callback_data": f"adjust:{row['id']}:plus"}, {"text": "➖ Oduzmi", "callback_data": f"adjust:{row['id']}:minus"}],
                 [{"text": "📒 Transakcije", "callback_data": f"tx:{row['id']}"}, {"text": "🛒 Porudžbine", "callback_data": f"orders:{row['id']}"}]]
-    send(chat_id, text, keyboard)
+    send(chat_id, text, keyboard, edit=edit_id)
 
 
 def show_transactions(chat_id: int, reseller_id: int, limit: int = 10) -> None:
@@ -438,10 +441,11 @@ def handle_callback(query: dict[str, Any]) -> None:
     answer_callback(callback_id)
     auth = panel("authorized", chat_id)
     if not auth.get("authorized"):
-        send(chat_id, "Nemaš pristup."); return
+        send(chat_id, "Nemaš pristup.", edit=message_id); return
     parts = data.split(":")
     if parts[0] == "r" and len(parts) == 2:
-        show_reseller(chat_id, int(parts[1]))
+        send(chat_id, "🔄 Učitavam profil resellera…", edit=message_id)
+        show_reseller(chat_id, int(parts[1]), edit_id=message_id)
     elif parts[0] == "tx" and len(parts) == 2:
         show_transactions(chat_id, int(parts[1]))
     elif parts[0] == "orders" and len(parts) == 2:

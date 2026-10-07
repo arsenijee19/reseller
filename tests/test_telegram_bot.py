@@ -175,6 +175,12 @@ class CommandReplyTests(unittest.TestCase):
         self.assertEqual(events[0], "callback:answer")
         self.assertEqual(events[1], "panel:authorized")
 
+    def test_reseller_callback_error_replaces_the_selection_message(self):
+        with mock.patch.object(bot, "panel", return_value={"ok": False, "error": "Panel API trenutno nije dostupan."}), mock.patch.object(bot, "send") as send:
+            bot.show_reseller(4242, 7, edit_id=31)
+
+        send.assert_called_once_with(4242, "Panel API trenutno nije dostupan.", edit=31)
+
 
 if __name__ == "__main__":
     unittest.main()

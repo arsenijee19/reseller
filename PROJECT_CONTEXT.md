@@ -73,7 +73,7 @@
   - cPanel exposes a Bearer-authenticated `api/telegram_gateway.php`; random API token digests are stored in `telegram_bot_config`, and admin Settings can manage chat IDs, notification switches, TOTP threshold, low-balance threshold, token rotation, and test messages.
   - Shared `apply_wallet_transaction()` now performs row-locked balance changes and records snapshots; admin manual transactions, reseller admin balance edits, admin top-ups, reseller orders, and Telegram balance actions share it.
   - Telegram payment confirmations require a manually entered amount if absent from the notice; balance actions use five-minute pending records, unique idempotency keys, optional high-value Admin TOTP, and reversal transactions rather than deletion.
-  - Telegram slash commands post a new temporary reply at the bottom of the chat and replace only that reply with the result; inline-action cards remain edited in place. Bot API calls no longer use a global 150 ms throttle/lock, and typed commands skip an unnecessary conversation lookup.
+  - Telegram slash commands post a new temporary reply at the bottom of the chat and replace only that reply with the result; inline-action cards remain edited in place. Reseller-selection callbacks visibly show loading and replace the list with the profile or an inline error. Callback queries are acknowledged before API calls. Bot API calls no longer use a global 150 ms throttle/lock, and typed commands skip an unnecessary conversation lookup.
 - Partially implemented functionality:
   - Order delivery automation is still delegated to the existing n8n webhook; import the updated workflow export to activate automatic order-note updates.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
@@ -275,6 +275,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Telegram reseller-selection buttons now show a loading state in the selected list message and replace it with the profile or a visible API error; callback acknowledgement remains immediate and panel failures log their action for diagnosis.
 - Telegram bot command UX now provides an immediate bottom-of-chat progress reply, removes the unnecessary per-command conversation lookup, and avoids serialized/throttled panel requests; inline confirmation card behavior is preserved.
 - Refined the reseller mobile header into a balanced two-row layout, aligned payment and balance controls, standardized catalog-section headings, and simplified support-button styling; synced the app release version for active-session refresh.
 - Smoothed the brief session-check loading state on reseller and admin sign-in with a delayed, reduced-motion-aware card transition; clients also detect the UI update through the shared release version.
