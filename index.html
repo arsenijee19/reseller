@@ -2074,7 +2074,7 @@
               appendText(cell, "span", `${price(basePrice)} ${product.currency || "RSD"}`, "price-original");
               appendText(cell, "span", `-${product.discount_percent}%`, "discount-badge");
             }
-            const recommended = recommendedResalePrice(Number(product.price));
+            const recommended = recommendedResalePrice(basePrice);
             const recommendation = document.createElement("div");
             recommendation.className = "price-variant-details";
             recommendation.id = detailsId;

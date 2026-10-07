@@ -275,6 +275,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Recommended minimum resale prices now use the product's original base price for both the markup tier and final amount; reseller discounts affect only the reseller purchase price.
 - Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.
 - Reseller order notes are displayed in a wrapping, styled note block; automatic-delivery login emails are visually separated from the reseller's own note text without changing stored note content.
 - Telegram reseller-selection buttons now show a loading state in the selected list message and replace it with the profile or a visible API error; callback acknowledgement remains immediate and panel failures log their action for diagnosis.
