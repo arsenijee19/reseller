@@ -10,7 +10,7 @@
   - Reseller token login using `password_verify()` against `resellers.token_hash`.
   - Reseller login/admin login now have server-side rate limiting and security audit records without storing plaintext credentials.
   - Reseller balance lookup, product list, price list, order creation, recent order history.
-  - Reseller Balance opens a separate modal with up to 500 of that reseller's wallet transactions, including admin-entered descriptions and linked order notes; the orders sidebar remains the latest 10 orders.
+  - Reseller Balance opens a separate modal with up to 500 of that reseller's wallet transactions, including admin-entered descriptions and linked order notes; the orders sidebar loads all of that reseller's orders.
   - Resellers must complete account profile onboarding after the account-security migration: personal email and phone are stored on the reseller profile before protected panel actions are available.
   - Resellers still using internal `@playworld.rs` email addresses are forced back into the profile popup until they save a personal email for future delivery and verification-code messages.
   - Resellers can update account email/phone and optionally change their reseller token/password after confirming the current token/password.
@@ -275,6 +275,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.
 - Reseller order notes are displayed in a wrapping, styled note block; automatic-delivery login emails are visually separated from the reseller's own note text without changing stored note content.
 - Telegram reseller-selection buttons now show a loading state in the selected list message and replace it with the profile or a visible API error; callback acknowledgement remains immediate and panel failures log their action for diagnosis.
 - Telegram bot command UX now provides an immediate bottom-of-chat progress reply, removes the unnecessary per-command conversation lookup, and avoids serialized/throttled panel requests; inline confirmation card behavior is preserved.

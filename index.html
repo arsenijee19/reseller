@@ -743,7 +743,7 @@
             <div>
               <div class="section-heading history-title">
                 <span class="section-icon orange" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3h6v4H9zM9 11h6M9 15h6"/></svg></span>
-                <div class="section-copy"><h2 id="historyTitle">Prethodne porudžbine</h2><p id="historyDescription">Pregled poslednjih porudžbina na ovom reseller nalogu.</p></div>
+                <div class="section-copy"><h2 id="historyTitle">Prethodne porudžbine</h2><p id="historyDescription">Pregled svih porudžbina na ovom reseller nalogu.</p></div>
               </div>
             </div>
             <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži notes" aria-label="Pretraži notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
@@ -2263,7 +2263,7 @@
 
     async function loadOrders(renderOnly = false){
       if (!renderOnly) {
-        const j = await api("/api/orders.php");
+        const j = await api("/api/orders.php?all=1");
         state.orders = j.orders || [];
       }
       const noteMatchedOrders = ordersMatchingNotes();
