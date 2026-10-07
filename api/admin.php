@@ -1172,6 +1172,10 @@ try {
       $fields[] = 'display_name';
       $params[] = $displayName !== '' ? $displayName : null;
     }
+    if (in_array('name', $columns, true)) {
+      $fields[] = 'name';
+      $params[] = $displayName;
+    }
     if (in_array('profile_completed_at', $columns, true) && $phone !== '' && !is_internal_reseller_email($email)) {
       $fields[] = 'profile_completed_at';
       $params[] = date('Y-m-d H:i:s');
