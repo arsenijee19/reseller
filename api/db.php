@@ -49,6 +49,14 @@ function public_error_detail(Throwable $e): string {
   $message = $e->getMessage();
 
   if ($e instanceof PDOException) {
+    $sqlState = (string)($e->errorInfo[0] ?? $e->getCode());
+    $driverCode = (int)($e->errorInfo[1] ?? 0);
+    if ($driverCode === 1062) return 'Reseller sa tim emailom već postoji. Osvežite listu i proverite nalog.';
+    if ($driverCode === 1364 || $driverCode === 1048) return 'Bazi nedostaje obavezna vrednost za reseller nalog. Proverite da li je primenjena poslednja SQL migracija.';
+    if ($driverCode === 1054 || $sqlState === '42S22') return 'Šema baze nije usklađena sa portalom. Potrebno je primeniti nedostajuću SQL migraciju.';
+    if ($driverCode === 1146 || $sqlState === '42S02') return 'U bazi nedostaje potrebna tabela. Proverite SQL migracije.';
+    if ($driverCode === 1452) return 'Baza je odbila povezani zapis. Proverite integritet podataka i SQL migracije.';
+    if ($driverCode === 1142 || $driverCode === 1227) return 'MySQL korisniku nedostaje dozvola za ovu izmenu. Proverite privilegije baze na cPanelu.';
     if (strpos($message, '[1045]') !== false) return 'MySQL odbija pristup. Proveri DB user/password i privilegije.';
     if (strpos($message, '[1049]') !== false) return 'MySQL baza ne postoji ili DB name nije tačan.';
     if (strpos($message, '[2002]') !== false) return 'MySQL host nije dostupan. Proveri DB host.';
@@ -63,6 +71,18 @@ function public_error_detail(Throwable $e): string {
   if ($e instanceof ParseError) return 'Server konfiguracija trenutno nije validna.';
   if (strpos($message, 'Database configuration is missing') !== false) return 'Server baza trenutno nije pravilno podešena.';
   return 'Server trenutno nije mogao da obradi zahtev.';
+}
+
+function log_api_failure(string $area, Throwable $e): string {
+  $reference = bin2hex(random_bytes(4));
+  $area = preg_match('/^[a-z0-9_-]{1,40}$/i', $area) ? $area : 'unknown';
+  $sqlState = $e instanceof PDOException
+    ? (string)($e->errorInfo[0] ?? $e->getCode())
+    : (string)$e->getCode();
+  $driverCode = $e instanceof PDOException ? (int)($e->errorInfo[1] ?? 0) : 0;
+  error_log(sprintf('API failure ref=%s area=%s type=%s sqlstate=%s driver_code=%d',
+    $reference, $area, get_class($e), preg_replace('/[^A-Za-z0-9_-]/', '', $sqlState), $driverCode));
+  return $reference;
 }
 
 function config_value(string $path, $default = null) {

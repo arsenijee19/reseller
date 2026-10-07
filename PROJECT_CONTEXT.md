@@ -26,6 +26,7 @@
   - Admin login via `admin_users.password_hash`.
   - Admin panel at `/admin.html` for reseller balance/status/token changes, product create/update/deactivate/delete, order review/update, and schema visibility.
   - Admins can create new resellers from `/admin.html` with only display name and initial token/password required; email/phone/balance are optional and missing email is auto-filled with a temporary internal address.
+  - Admin API failures now return a short diagnostic reference; server logs record only the API action, exception class, SQLSTATE, and MySQL driver code (never SQL parameters or credentials). Common reseller insert/schema/privilege failures receive actionable Serbian messages.
   - Admins can store a private per-reseller note in Admin → Reselleri; it is not exposed to reseller users or order notes.
   - Admin panel includes Inventory Supplier API status/config visibility, Inventory request history, missing-game report history, and recent security audit events.
   - Admin Transactions tab records signed wallet transactions with an explicit type and description, updates reseller balance atomically, and shows the wallet history.
@@ -394,6 +395,7 @@
 - Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
+- Live cPanel DB is not available in the development workspace; if reseller creation still fails after deploying the improved diagnostics, use the returned reference and matching cPanel PHP error-log entry to identify the remaining schema or privilege issue.
 - Local workspace has no access to the production database, so functional DB tests could not be completed locally.
 - `mail()` returns only a boolean and does not guarantee inbox delivery.
 - Hard deletes of products can affect historical order readability; prefer deactivation unless deletion is intentional.

@@ -1027,7 +1027,10 @@
       }catch(e){
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
-      if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
+      if (!json.ok) {
+        const message = userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`;
+        throw new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
+      }
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }

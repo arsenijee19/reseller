@@ -1407,5 +1407,6 @@ try {
   json_response(['ok' => false, 'error' => 'Unknown action'], 404);
 } catch (Throwable $e) {
   if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
-  json_response(['ok' => false, 'error' => public_error_detail($e)], 500);
+  $reference = log_api_failure('admin_' . ($action ?: 'unknown'), $e);
+  json_response(['ok' => false, 'error' => public_error_detail($e), 'reference' => $reference], 500);
 }
