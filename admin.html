@@ -444,6 +444,7 @@
     .switch-control{position:relative;width:44px;height:25px;flex:0 0 44px}.switch-control input{position:absolute;width:1px;height:1px;opacity:0}.switch-track{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:background .16s ease}.switch-track::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.2);transition:transform .16s ease}.switch-control input:checked+.switch-track{background:#16a34a}.switch-control input:checked+.switch-track::after{transform:translateX(19px)}.switch-control input:focus-visible+.switch-track{outline:2px solid var(--brand);outline-offset:2px}.drawer-footer{display:flex;justify-content:flex-end;gap:9px;padding:13px 22px;border-top:1px solid var(--line);background:var(--panel)}.drawer-footer .btn.primary{flex:1}
     .product-group-list{display:grid;gap:14px}.product-group-card{overflow:visible;border:1px solid var(--line);border-radius:17px;background:var(--panel);box-shadow:0 6px 20px rgba(18,32,51,.035)}.product-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}.product-group-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}.product-group-title strong{font-size:14px}.product-group-title .muted{font-size:11px}.platform-chip{padding:3px 7px;border-radius:6px;background:#e0ebff;color:#3848c4;font-size:10px;font-weight:850}.platform-chip.ps4{background:#e1f4ff;color:#1478a7}.product-group-head .btn{min-height:34px;padding:7px 10px;font-size:11px}.product-table{min-width:820px}.product-table th,.product-table td{padding:9px 14px}.product-table th{font-size:10px}.product-slot{font-weight:750;white-space:nowrap}.product-id{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
     .product-price-cell{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.product-price-field{display:flex;align-items:center;width:152px;min-width:152px;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.product-price-field input{min-width:0;width:100%;min-height:38px;padding:8px 10px;border:0;border-radius:0;background:transparent;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}.product-price-field input:focus{box-shadow:none}.product-price-field span{align-self:stretch;display:grid;place-items:center;padding:0 9px;border-left:1px solid var(--line);background:var(--soft);color:var(--muted);font-size:10px}.product-price-save{min-height:34px;padding:6px 10px;font-size:11px}.product-price-change{flex-basis:100%;margin-top:-2px;color:var(--muted);font-size:10px}.product-price-change a{color:var(--brand);cursor:pointer;text-decoration:underline}.product-status-cell{white-space:nowrap}.product-status-switch{position:relative;display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--good);font-size:11px;font-weight:750;cursor:pointer}.product-status-switch::before{content:"";width:34px;height:19px;border-radius:999px;background:#16a34a}.product-status-switch::after{content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .16s ease}.product-status-switch[data-active="false"]{color:var(--muted)}.product-status-switch[data-active="false"]::before{background:#cbd5e1}.product-status-switch[data-active="false"]::after{transform:translateX(15px)}
+    .product-render-error{padding:10px 14px;color:var(--danger,#b42318);font-size:12px}
     .product-menu-cell{position:relative;text-align:right}.product-menu-trigger{width:36px;min-width:36px;height:36px;min-height:36px;padding:7px;font-size:17px}.product-menu{position:fixed;z-index:80;display:none;min-width:145px;padding:5px;border:1px solid var(--line);border-radius:11px;background:var(--panel);box-shadow:0 12px 28px rgba(12,22,38,.17)}.product-menu.open{display:grid}.product-menu button{width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:var(--text);text-align:left;font-size:12px;cursor:pointer}.product-menu button:hover{background:var(--soft)}.product-menu button.danger{color:var(--danger)}
     .product-new-wrap{margin-bottom:14px}.product-new-toggle{display:flex;justify-content:space-between;align-items:center;gap:14px;width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);cursor:pointer}.product-new-toggle strong{font-size:13px}.product-new-toggle span{color:var(--muted);font-size:11px}.product-new-wrap[open] .product-new-toggle{border-radius:14px 14px 0 0}.product-new-form{padding:16px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;background:var(--panel)}
     .product-price-change button{padding:0;border:0;background:none;color:var(--brand);font:inherit;cursor:pointer;text-decoration:underline}
@@ -1489,8 +1490,13 @@
       $("productSearchCount").textContent = `${filteredProducts.length} varijanti${search ? ` od ${products.length}` : ""} · grupisano po igri`;
       const grouped = new Map();
       filteredProducts.forEach((product) => {
-        const title = productGroupTitle(product);
-        const key = normalizeSearch(title);
+        let title;
+        try{ title = productGroupTitle(product); }
+        catch(error){
+          console.error("Failed to group admin product", product && product.product_id, error);
+          title = String(product && (product.product_name || product.product_id) || "Proizvod").trim();
+        }
+        const key = normalizeSearch(title) || String(product && product.product_id || title);
         if (!grouped.has(key)) grouped.set(key, { title, products:[] });
         grouped.get(key).products.push(product);
       });
@@ -1499,7 +1505,9 @@
         text(container, "p", search ? "Nema proizvoda za ovu pretragu." : "Nema proizvoda.", "muted"); return;
       }
       grouped.forEach((group) => {
-        const card = document.createElement("article"); card.className = "product-group-card";
+        let card;
+        try{
+        card = document.createElement("article"); card.className = "product-group-card";
         const head = document.createElement("header"); head.className = "product-group-head";
         const title = document.createElement("div"); title.className = "product-group-title";
         text(title, "strong", group.title);
@@ -1610,6 +1618,15 @@
           }
         });
         wrap.appendChild(table); card.append(head, wrap); container.appendChild(card);
+        }catch(error){
+          console.error("Failed to render admin product group", group && group.title, error);
+          if (!card) { card = document.createElement("article"); card.className = "product-group-card"; }
+          if (!container.contains(card)) container.appendChild(card);
+          const message = document.createElement("p");
+          message.className = "muted product-render-error";
+          message.textContent = "Grupa „" + (group && group.title || "Proizvod") + "” nije mogla da se prikaže.";
+          card.appendChild(message);
+        }
       });
     }
 

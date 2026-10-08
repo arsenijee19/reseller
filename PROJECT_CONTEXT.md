@@ -275,7 +275,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
-- Admin product rendering now isolates errors to an individual variant row and uses a Safari-compatible own-property check, preventing one malformed row from blanking the entire filtered product list.
+- Admin product rendering falls back safely when product grouping/rendering fails, isolates errors to individual variant rows, and uses a Safari-compatible own-property check so one bad record cannot blank the filtered list.
 - Recommended minimum resale prices now use the product's original base price for both the markup tier and final amount; reseller discounts affect only the reseller purchase price.
 - Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.
 - Reseller order notes are displayed in a wrapping, styled note block; automatic-delivery login emails are visually separated from the reseller's own note text without changing stored note content.
