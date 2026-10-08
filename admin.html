@@ -1512,7 +1512,10 @@
         const title = document.createElement("div"); title.className = "product-group-title";
         text(title, "strong", group.title);
         const platforms = new Set();
-        group.products.forEach((product) => (`${product.product_name || ""} ${product.account_type || ""}`).match(/PS[45]/gi) || []).forEach((platform) => platforms.add(platform.toUpperCase()));
+        group.products.forEach((product) => {
+          const matches = `${product.product_name || ""} ${product.account_type || ""}`.match(/PS[45]/gi) || [];
+          matches.forEach((platform) => platforms.add(platform.toUpperCase()));
+        });
         [...platforms].sort().forEach((platform) => text(title, "span", platform, `platform-chip ${platform.toLowerCase()}`));
         text(title, "span", `· ${group.products.length} ${group.products.length === 1 ? "varijanta" : "varijante"}`, "muted");
         const addVariant = document.createElement("button"); addVariant.className = "btn"; addVariant.type = "button"; addVariant.textContent = "+ Varijanta";
