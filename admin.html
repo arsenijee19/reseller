@@ -1517,13 +1517,15 @@
         ["Tip naloga", "ID proizvoda", "Cena", "Status", ""].forEach((label) => text(header.insertCell(), "strong", label));
         const body = table.createTBody();
         group.products.forEach((product) => {
-          const row = body.insertRow(); row.dataset.recordId = `product-${product.product_id}`;
+          let row;
+          try {
+          row = body.insertRow(); row.dataset.recordId = `product-${product.product_id}`;
           text(row.insertCell(), "span", product.account_type || "Cena", "product-slot");
           text(row.insertCell(), "code", product.product_id || "[product_id]", "product-id mono");
 
           const priceCell = row.insertCell(); priceCell.className = "product-price-cell";
           const priceWrap = document.createElement("div"); priceWrap.className = "product-price-field";
-          const priceKey = Object.hasOwn(product, "price") ? "price" : "price_rsd";
+          const priceKey = Object.prototype.hasOwnProperty.call(product, "price") ? "price" : "price_rsd";
           const initialPriceValue = String(product[priceKey] ?? 0);
           const originalPrice = Number(initialPriceValue || 0);
           const priceInput = input(initialPriceValue); priceInput.type = "number"; priceInput.step = "1"; priceInput.setAttribute("aria-label", `Cena za ${product.account_type || product.product_id}`);
@@ -1597,6 +1599,15 @@
             }
           });
           menuCell.append(menuButton, menu); body.appendChild(row);
+          }catch(error){
+            if (row) row.remove();
+            console.error("Failed to render admin product variant", product && product.product_id, error);
+            const errorRow = body.insertRow();
+            const errorCell = errorRow.insertCell();
+            errorCell.colSpan = 5;
+            errorCell.className = "product-render-error";
+            errorCell.textContent = `Varijanta ${product && (product.account_type || product.product_id) || "proizvoda"} nije mogla da se prikaže.`;
+          }
         });
         wrap.appendChild(table); card.append(head, wrap); container.appendChild(card);
       });
