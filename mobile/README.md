@@ -32,6 +32,10 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
 - Restricts in-app navigation to the reseller portal; external links open in the
   device browser. The admin page is not opened inside the reseller app.
 - Shows a retry screen if the portal cannot be reached.
+- If activation has an ambiguous network/server failure, explains that only the
+  encrypted device credential was saved (not the one-time activation code),
+  includes any server diagnostic reference, and lets the user retry session
+  validation without exposing credentials.
 - Requires an internet connection. This first version does not provide offline
   ordering or offline account access.
 - Website changes appear in the app when the portal is updated; native shell

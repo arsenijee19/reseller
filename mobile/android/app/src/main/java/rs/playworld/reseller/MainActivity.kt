@@ -302,7 +302,13 @@ class MainActivity : android.app.Activity() {
                 twoFactorInput.text.clear()
                 showActivation(activationError)
             } else {
-                showConnectionError("Veza je prekinuta tokom aktivacije. Kod je sačuvan na ovom uređaju; pokušajte ponovo da se povežete.")
+                val recoveryDetails = recoveryError ?: recovered?.optString("error")?.takeIf { it.isNotBlank() }
+                    ?: "Portal nije potvrdio prijavu ovog uređaja."
+                showConnectionError(
+                    "$activationError\n\n$recoveryDetails\n\n" +
+                        "Podaci uređaja su sačuvani, ali jednokratni kod nije sačuvan. " +
+                        "Pokušajte ponovo kada veza bude stabilna."
+                )
             }
         }
     }
@@ -353,7 +359,12 @@ class MainActivity : android.app.Activity() {
                 val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
                 val json = JSONObject(payload.ifBlank { "{}" })
                 json.put("http_status", conn.responseCode)
-                val message = if (conn.responseCode in 200..299 && json.optBoolean("ok")) null else json.optString("error", "Povezivanje nije uspelo (${conn.responseCode}).")
+                val message = if (conn.responseCode in 200..299 && json.optBoolean("ok")) null else {
+                    val serverMessage = json.optString("error").takeIf { it.isNotBlank() }
+                        ?: "Povezivanje nije uspelo (${conn.responseCode})."
+                    val reference = json.optString("reference").takeIf { it.isNotBlank() }
+                    if (reference == null) serverMessage else "$serverMessage (referenca: $reference)"
+                }
                 val response = json
                 val cookies = conn.headerFields.entries.flatMap { entry ->
                     if (entry.key?.equals("Set-Cookie", ignoreCase = true) == true) entry.value.orEmpty() else emptyList()
