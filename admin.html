@@ -480,6 +480,12 @@
     .login .section>p{max-width:34ch;margin:0 auto 24px;text-align:center;font-size:15px;line-height:1.45}
     .login label{font-size:13px;font-weight:600}
     .btn.icon-control{flex:0 0 var(--portal-icon-size)}
+    /* App device panel: full-width actions with consistent spacing */
+    .app-device-panel label{margin:0 0 7px}
+    .app-device-panel>.btn.primary{display:flex;width:100%;min-height:48px;margin-top:12px}
+    .app-device-panel>.btn.primary:disabled{opacity:.7;cursor:progress}
+    .app-code-output .btn{width:100%;min-height:46px}
+    .app-device-item-top .btn{flex:0 0 auto;min-height:38px;padding:8px 14px}
     @media(max-width:560px){.login-heading h1{font-size:25px}.login .section{padding:26px 20px 22px}}
   </style>
 </head>
@@ -2441,6 +2447,9 @@
       const deviceLabel = $("appActivationDeviceLabel").value.trim();
       if (!deviceLabel) { $("appActivationDeviceLabel").focus(); showToast("bad", "Unesite naziv uređaja za ovaj kod."); return; }
       const button = $("createAppActivationCode"); button.disabled = true; button.textContent = "Pravim kod…";
+      // Never leave a previous (already consumed or stale) code on screen while a new one is issued.
+      $("appActivationCodeOutput").hidden = true;
+      $("appActivationCodeValue").textContent = "";
       try{
         await ensureAdminStepUp();
         const result = await api("device_activation_create", { method:"POST", body:JSON.stringify({ reseller_id:resellerId, device_label:deviceLabel }) });
