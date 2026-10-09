@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/device_auth_helpers.php';
 
 start_secure_session('admin');
 
@@ -573,6 +574,26 @@ try {
     json_response(dashboard_payload($pdo, $_GET));
   }
 
+  if ($action === 'device_management') {
+    $resellerId = (int)($_GET['reseller_id'] ?? 0);
+    if ($resellerId <= 0 || !table_exists($pdo, 'reseller_device_activation_codes') || !table_exists($pdo, 'reseller_app_devices')) {
+      json_response(['ok' => false, 'error' => 'Upravljanje aplikacijama zahteva SQL migraciju za uređaje.'], 503);
+    }
+    $codes = $pdo->prepare("SELECT id, expires_at, consumed_at, consumed_device_id, revoked_at, created_at,
+        CASE WHEN expires_at <= NOW() THEN 1 ELSE 0 END AS expired
+      FROM reseller_device_activation_codes WHERE reseller_id = ? ORDER BY id DESC LIMIT 30");
+    $codes->execute([$resellerId]);
+    $devices = $pdo->prepare("SELECT id, device_id, device_name, platform, created_at, last_seen_at,
+        last_ip_address, revoked_at FROM reseller_app_devices WHERE reseller_id = ? ORDER BY revoked_at IS NULL DESC, last_seen_at DESC, id DESC");
+    $devices->execute([$resellerId]);
+    json_response([
+      'ok' => true,
+      'activation_codes' => $codes->fetchAll(PDO::FETCH_ASSOC),
+      'devices' => $devices->fetchAll(PDO::FETCH_ASSOC),
+      'csrf_token' => csrf_token(),
+    ]);
+  }
+
   if ($action === 'telegram_settings') {
     if (!table_exists($pdo, 'telegram_bot_config') || !table_exists($pdo, 'telegram_admins')) {
       json_response(['ok' => false, 'error' => 'Pokrenite SQL migraciju za Telegram bota.'], 503);
@@ -610,6 +631,59 @@ try {
   require_post();
   require_csrf();
   $input = read_json_body();
+
+  if (in_array($action, ['device_activation_create', 'device_activation_revoke', 'device_revoke'], true)) {
+    $admin = require_admin();
+    require_recent_admin_step_up();
+    $adminId = (int)$admin['id'];
+    if (!table_exists($pdo, 'reseller_device_activation_codes') || !table_exists($pdo, 'reseller_app_devices')) {
+      json_response(['ok' => false, 'error' => 'Pokrenite SQL migraciju za reseller aplikacije pre upravljanja uređajima.'], 503);
+    }
+
+    if ($action === 'device_activation_create') {
+      $resellerId = (int)($input['reseller_id'] ?? 0);
+      $resellerStmt = $pdo->prepare("SELECT id, status FROM resellers WHERE id = ? LIMIT 1");
+      $resellerStmt->execute([$resellerId]);
+      $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
+      if (!$reseller || strtolower((string)$reseller['status']) !== 'active') {
+        json_response(['ok' => false, 'error' => 'Aktivacioni kod može se izdati samo aktivnom reselleru.'], 400);
+      }
+      $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM reseller_device_activation_codes
+        WHERE reseller_id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()");
+      $pendingStmt->execute([$resellerId]);
+      if ((int)$pendingStmt->fetchColumn() >= 5) {
+        json_response(['ok' => false, 'error' => 'Reseller već ima pet važećih neiskorišćenih kodova. Sačekajte da isteknu ili opozovite neki kod.'], 409);
+      }
+      $code = app_activation_code();
+      $stmt = $pdo->prepare('INSERT INTO reseller_device_activation_codes (reseller_id, code_hash, created_by_admin_id, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))');
+      $stmt->execute([$resellerId, hash('sha256', $code), $adminId]);
+      $id = (int)$pdo->lastInsertId();
+      $expiry = $pdo->prepare('SELECT expires_at FROM reseller_device_activation_codes WHERE id = ?');
+      $expiry->execute([$id]);
+      audit_event($pdo, 'admin', $adminId, 'app_activation_code_created', 'success', ['reseller_id' => $resellerId, 'activation_id' => $id]);
+      json_response(['ok' => true, 'code' => $code, 'expires_at' => $expiry->fetchColumn(), 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'device_activation_revoke') {
+      $resellerId = (int)($input['reseller_id'] ?? 0);
+      $activationId = (int)($input['activation_id'] ?? 0);
+      $stmt = $pdo->prepare('UPDATE reseller_device_activation_codes SET revoked_at = NOW() WHERE id = ? AND reseller_id = ? AND consumed_at IS NULL AND revoked_at IS NULL');
+      $stmt->execute([$activationId, $resellerId]);
+      if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Kod više nije aktivan ili ne postoji.'], 409);
+      audit_event($pdo, 'admin', $adminId, 'app_activation_code_revoked', 'success', ['reseller_id' => $resellerId, 'activation_id' => $activationId]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'device_revoke') {
+      $resellerId = (int)($input['reseller_id'] ?? 0);
+      $deviceRecordId = (int)($input['device_record_id'] ?? 0);
+      $stmt = $pdo->prepare('UPDATE reseller_app_devices SET revoked_at = NOW() WHERE id = ? AND reseller_id = ? AND revoked_at IS NULL');
+      $stmt->execute([$deviceRecordId, $resellerId]);
+      if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Uređaj je već opozvan ili ne postoji.'], 409);
+      audit_event($pdo, 'admin', $adminId, 'app_device_revoked', 'success', ['reseller_id' => $resellerId, 'device_record_id' => $deviceRecordId]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+  }
 
   if (strpos($action, 'telegram_') === 0) {
     if (!table_exists($pdo, 'telegram_bot_config') || !table_exists($pdo, 'telegram_admins')) {

@@ -116,6 +116,20 @@ function require_reseller(): array {
   if (!isset($_SESSION['reseller_id'], $_SESSION['reseller_email'])) {
     json_response(['ok' => false, 'error' => 'Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.'], 401);
   }
+  if (!empty($_SESSION['app_device_id'])) {
+    $pdo = db();
+    if (!table_exists($pdo, 'reseller_app_devices')) {
+      json_response(['ok' => false, 'error' => 'Prijava aplikacije nije dostupna. Ponovo aktivirajte uređaj.'], 401);
+    }
+    $device = $pdo->prepare("SELECT d.id FROM reseller_app_devices d
+      INNER JOIN resellers r ON r.id = d.reseller_id
+      WHERE d.device_id = ? AND d.reseller_id = ? AND d.revoked_at IS NULL AND r.status = 'active' LIMIT 1");
+    $device->execute([(string)$_SESSION['app_device_id'], (int)$_SESSION['reseller_id']]);
+    if (!$device->fetchColumn()) {
+      $_SESSION = [];
+      json_response(['ok' => false, 'error' => 'Pristup aplikacije je opozvan. Ulogujte uređaj novim aktivacionim kodom.'], 401);
+    }
+  }
   return [
     'id' => (int)$_SESSION['reseller_id'],
     'email' => (string)$_SESSION['reseller_email'],

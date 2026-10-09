@@ -5,8 +5,30 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
 
 ## Behavior
 
-- Opens `https://reseller.psigre.rs/` in Android System WebView.
-- Uses the existing HTTPS origin, API, login session, and server-side database.
+- First use shows a native activation screen for the administrator-issued,
+  12-character one-time code. A code expires unused after 24 hours and is
+  consumed atomically by its first successful activation.
+- If reseller 2-step verification is enabled, activation also requires a fresh
+  6-digit Authenticator code.
+- After activation the app stores only a random per-device credential, encrypted
+  with an AES-GCM key held by Android Keystore. It never stores the reseller's
+  login token. The portal session is refreshed in the background on app resume
+  and at most every 45 minutes while in use.
+- Opens `https://reseller.psigre.rs/` in Android System WebView only after the
+  server has authenticated the saved device credential.
+- Admins can issue/revoke codes and inspect/revoke devices in the reseller edit
+  drawer. Revocation blocks the next device session and any subsequent reseller
+  API request made by that app session.
+- Explicit app logout revokes that device enrollment; uninstalling the app
+  removes its local credential. A new install therefore needs a new code.
+- The same API contract supports iOS: `POST /api/device_auth.php?action=activate`
+  with `{code, device_id, device_token, platform, device_name, two_factor_code?}`
+  returns a portal session cookie. The client generates a cryptographically
+  random 32-byte device token and saves it securely before activation; the API
+  stores only its hash and never returns the token. `session` and `logout` accept
+  `{device_id, device_token}`. An iOS client should keep the token in Keychain,
+  pair it with a non-backed-up install marker so reinstall requests a new code,
+  and use the returned cookie in its WebKit cookie store.
 - Restricts in-app navigation to the reseller portal; external links open in the
   device browser. The admin page is not opened inside the reseller app.
 - Shows a retry screen if the portal cannot be reached.
@@ -14,6 +36,14 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
   ordering or offline account access.
 - Website changes appear in the app when the portal is updated; native shell
   changes require a new APK.
+
+## Server setup for device activation
+
+Before issuing codes, run `sql/2026-10-09_reseller_app_devices.sql` once against
+the portal database. It only creates two new InnoDB tables and does not modify
+existing reseller, order, balance, or session data. Deploy the PHP/API and
+admin-panel changes together with the migration. Codes are shown only once to
+the admin, stored as SHA-256 hashes, and expire after 24 hours if unused.
 
 ## Build a test APK
 

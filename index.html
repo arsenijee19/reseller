@@ -2838,10 +2838,16 @@
     regenRecoveryBtn.addEventListener("click", regenerateRecoveryCodes);
     disable2faBtn.addEventListener("click", disableTwoFactor);
     completeProfileBtn.addEventListener("click", () => saveProfile("profile", true));
-    profileLogoutBtn.addEventListener("click", logout);
+    profileLogoutBtn.addEventListener("click", async () => {
+      await logout();
+      if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
+    });
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
     requestGameBtn.addEventListener("click", openGameRequest);
-    logoutBtn.addEventListener("click", logout);
+    logoutBtn.addEventListener("click", async () => {
+      await logout();
+      if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
+    });
     notesSearchToggle.addEventListener("click", () => {
       const isOpen = notesSearchWrap.classList.contains("open");
       if (isOpen) {

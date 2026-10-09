@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 for file in api/*.php; do php -l "$file" >/dev/null; done
+php tests/test_device_auth_helpers.php >/dev/null
 sed -n '/<script>/,/<\/script>/p' admin.html | sed '1d;$d' >/tmp/reseller-admin-security.js
 sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' >/tmp/reseller-index-security.js
 node --check /tmp/reseller-admin-security.js
@@ -25,6 +26,9 @@ rg -q 'shop-price-tip' index.html
 rg -q "LIMIT 10" api/orders.php
 rg -q 'add_transaction' api/admin.php admin.html
 rg -q 'wallet_transactions' api/admin.php admin.html
+rg -q 'reseller_device_activation_codes' api/device_auth.php api/admin.php sql/2026-10-09_reseller_app_devices.sql
+rg -q 'AndroidKeyStore' mobile/android/app/src/main/java/rs/playworld/reseller/MainActivity.kt
+rg -q 'PlayWorldNative.logout' index.html
 
 # Theme buttons use fixed, source-controlled SVG strings; reject other unsafe DOM/eval APIs.
 if rg -n 'insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then

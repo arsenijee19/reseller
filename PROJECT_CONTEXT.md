@@ -75,7 +75,7 @@
   - Telegram payment confirmations require a manually entered amount if absent from the notice; balance actions use five-minute pending records, unique idempotency keys, optional high-value Admin TOTP, and reversal transactions rather than deletion.
   - Telegram slash commands post a new temporary reply at the bottom of the chat and replace only that reply with the result; inline-action cards remain edited in place. Reseller-selection callbacks visibly show loading and replace the list with the profile or an inline error. Callback queries are acknowledged before API calls. Bot API calls no longer use a global 150 ms throttle/lock, and typed commands skip an unnecessary conversation lookup.
 - Partially implemented functionality:
-  - Android reseller shell is scaffolded under `mobile/android/` and loads the existing portal over HTTPS; GitHub Actions builds a debug APK and launches it on an Android emulator to catch startup crashes. Emulator launch was observed to succeed, and the smoke-test shell assertion is being corrected after an initial test-script syntax error. Physical-device testing and release signing are still pending.
+  - Android reseller app now supports native one-time activation, optional reseller TOTP, Android Keystore-encrypted device credentials, background PHP session renewal, and device logout. Admin can issue/revoke activation codes and inspect/revoke each reseller device from the edit drawer. The API contract is platform-neutral for future iOS Keychain/WebKit clients; server deployment, SQL migration, emulator/physical-device acceptance, and release signing remain pending.
   - Order delivery automation is still delegated to the existing n8n webhook; import the updated workflow export to activate automatic order-note updates.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
   - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
@@ -85,6 +85,7 @@
   - `TELEGRAM_BOT_RUNBOOK.md` documents production migration/setup. The cPanel DB was not available here, so SQL execution and financial concurrency need a staging/live test before enabling Telegram writes.
   - The isolated VPS deployment may be installed/built, but starting it without the BotFather token, panel API token, and webhook certificate cannot work and should not be attempted.
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
+  - Run `sql/2026-10-09_reseller_app_devices.sql` on the cPanel database before issuing mobile activation codes.
   - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
   - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
@@ -123,6 +124,10 @@
 - `api/me.php` - current reseller profile/balance and CSRF token.
 - `api/profile.php` - reseller account profile/settings update and optional reseller credential change.
 - `api/2fa.php` - reseller TOTP 2-step setup, login challenge, recovery-code regeneration, and disable flow.
+- `api/device_auth.php` - one-time Android/iOS app enrollment, device session refresh, and device logout.
+- `api/device_auth_helpers.php` - activation-code generation/normalization and opaque device-token hashing.
+- `sql/2026-10-09_reseller_app_devices.sql` - additive activation-code and mobile-device tables.
+- `tests/test_device_auth_helpers.php` - activation-code and opaque-credential helper tests.
 - `api/verification_code.php` - server-side Inventory Supplier API email-code request flow with idempotency, daily limit, and audit logging.
 - `api/missing_game.php` - reseller-owned missing-game report endpoint with duplicate protection and n8n notification payload.
 - `api/products.php` - active product list for reseller order form.
@@ -232,6 +237,7 @@
   - Inline JS syntax check used during development: extract `<script>` contents to `/tmp` and run `node --check`.
 
 ## Important Business Logic
+- Mobile app enrollment uses a cryptographically random 12-character code, valid for 24 hours and consumed in a row-locked transaction once. At most five unconsumed codes and ten active devices are allowed per reseller. Reseller TOTP is mandatory at enrollment when enabled. The app generates a random 256-bit device token before activation; the server stores only SHA-256, while Android encrypts it with an Android Keystore AES-GCM key and iOS should use Keychain. Device revocation is checked on every reseller API request made by app sessions. App sessions are silently renewed every 45 minutes; standard website token login remains unchanged.
 - Reseller orders:
   - Product price is loaded from `product_prices` by `product_id`.
   - Admin can assign each reseller a `0-100%` discount. The reseller sees the discounted catalog price, while the server recalculates it during order creation and stores the final charged price.
@@ -280,7 +286,8 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
-- Added an isolated Android reseller app shell that loads the existing HTTPS portal, keeps its PHP/API/database and cPanel hosting unchanged, restricts embedded navigation to the reseller site, opens external links in the browser, and shows a retry screen when offline. CI emulator setup now enables KVM; the emulator successfully installed and launched the APK, while a shell syntax error prevented the smoke assertion and artifact upload from completing. No release signing key or production APK has been created.
+- Added one-use 12-character app activation codes (24-hour unused expiry), reseller 2FA enforcement during enrollment, hash-only device credentials, admin code/device management, and per-request device-revocation checks. Android stores its opaque credential encrypted in Android Keystore and renews the existing PHP portal session; iOS can use the same API with Keychain.
+- Replaced the Android shell's direct portal startup with native one-time device enrollment, secure credential storage, session renewal, device revocation, and custom activation/retry screens; the live portal remains hosted on the existing HTTPS/cPanel backend. The GitHub Actions Android build/emulator test has not yet run on this revision. No release signing key or production APK has been created.
 - Fixed admin product grouping: platform extraction now loops over each variant's matches instead of chaining onto `forEach()`'s undefined return value, which had aborted every product group. Rendering retains per-row/group error boundaries and Safari-compatible own-property checks.
 - Recommended minimum resale prices now use the product's original base price for both the markup tier and final amount; reseller discounts affect only the reseller purchase price.
 - Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.
@@ -392,7 +399,7 @@
 - Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
 ## Current Priorities
-- Confirm the corrected emulator startup smoke test passes, then install the debug APK on a physical Android phone and test reseller login, 2FA, ordering, keyboard/insets, external links, and connection recovery. Before distributing a release APK, generate and securely back up a permanent signing key outside Git.
+- Run `sql/2026-10-09_reseller_app_devices.sql` on cPanel before enabling mobile activation, then confirm the GitHub Android build/emulator test passes and test activation, 2FA, ordering, session renewal, admin revocation, keyboard/insets, and recovery on a physical device. Before reseller distribution, generate and securely back up a permanent signing key outside Git.
 - Deploy the Telegram panel API and additive migration to cPanel, configure admin token and BotFather token, then enable the isolated `reseller-tg-bot` webhook on VPS following `TELEGRAM_BOT_RUNBOOK.md`.
 - Confirm port 8443 reachability/firewall policy and run the Telegram manual acceptance checklist in staging before production financial actions.
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
@@ -409,8 +416,8 @@
 - Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
-- The user reports that the Android app crashes immediately on their device. CI emulator successfully installed and opened the APK (`Status: ok`), but the first smoke run ended on a shell syntax error before its process/crash assertions or artifact upload. A corrected emulator test is being run; physical-device behavior still needs confirmation. Local testing is limited because this machine has Java 8 and no Android Studio/SDK. Production release signing is intentionally not configured until a permanent private signing key can be generated and stored securely.
-- Android app requires an internet connection and displays the live portal in WebView; it does not provide offline order access. Portal updates are immediate, while native app-shell updates require a new APK.
+- The new native activation flow has not yet been built by Android Gradle or exercised on a physical device; this workspace only has Java 8 and no Android SDK/Gradle wrapper. Portal updates remain immediate, but native app-shell updates require a newly signed APK. Production release signing is intentionally not configured until a permanent private signing key can be generated and stored securely.
+- Android app requires an internet connection and displays the live portal in WebView; it does not provide offline order access. The API/database migration must be deployed before app activation or admin device management will be available.
 - Live cPanel DB is not available in the development workspace; reseller creation must be verified against production after deployment, especially if its legacy schema has custom required columns.
 - Local workspace has no access to the production database, so functional DB tests could not be completed locally.
 - `mail()` returns only a boolean and does not guarantee inbox delivery.
