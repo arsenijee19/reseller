@@ -46,3 +46,6 @@ if [ "${SKIP_PWA:-0}" != "1" ] && command -v node >/dev/null; then
   mkdir -p "${SHOTS:-/tmp/pw-e2e-shots}"
   SHOTS="${SHOTS:-/tmp/pw-e2e-shots}" BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" node "$ROOT/tests/e2e/pwa.js"
 fi
+if [ "${QA:-0}" = "1" ] && command -v node >/dev/null; then
+  SHOTS="${SHOTS:-/tmp/pw-e2e-shots}" BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" node "$ROOT/tests/e2e/qa.js"
+fi

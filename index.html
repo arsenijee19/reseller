@@ -640,6 +640,28 @@
     .native-toggle input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;accent-color:var(--brand)}
     .native-note{margin:8px 0 0;font-size:12px;color:var(--muted)}
     .native-settings[hidden]{display:none}
+    /* .btn (position:relative) is declared later and used to win over .scroll-top-btn, so the button sat at the page bottom instead of floating */
+    .btn.scroll-top-btn{position:fixed}
+    /* Balance history on phones: one readable card per transaction, amount always visible (the 620px table hid it) */
+    @media (max-width:640px){
+      .transactions-modal{padding:18px 16px}
+      .transactions-modal-head{gap:10px;align-items:flex-start}
+      .transactions-modal-head>div{min-width:0;flex:1}
+      .transactions-close{flex:0 0 40px;width:40px;min-width:40px;height:40px;min-height:40px;padding:0}
+      .transactions-table{min-width:0}
+      .transactions-table thead{display:none}
+      .transactions-table,.transactions-table tbody{display:block}
+      .transactions-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date amount" "type amount" "desc desc";gap:2px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+      .transactions-table tr:last-child{border-bottom:0}
+      .transactions-table td{display:block;padding:0;border:0}
+      .transactions-table td:nth-child(1){grid-area:date;color:var(--muted);font-size:12px}
+      .transactions-table td:nth-child(2){grid-area:type;font-weight:750;font-size:14px}
+      .transactions-table td:nth-child(3){grid-area:desc;margin-top:6px}
+      .transactions-table td:nth-child(4){grid-area:amount;align-self:center;font-size:15px}
+      .transactions-table .transaction-description{min-width:0}
+      .transactions-table td.transactions-empty{grid-area:auto;grid-column:1/-1;padding:6px 0}
+      .transactions-table-wrap{max-height:min(60vh,560px)}
+    }
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
     @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1104,7 +1126,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-ios-drawer-fix";
+    const RELEASE_VERSION = "2026-10-09-phone-qa";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");

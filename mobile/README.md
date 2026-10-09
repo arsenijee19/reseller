@@ -124,3 +124,7 @@ admin step-up, so critical admin actions still ask for the admin password (and
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Never commit a keystore.
 - iPhone/Home Screen app: nothing to install per release; it loads the site on every start, so a normal cPanel
   deploy updates it (icon/name/splash changes need a one-time re-add to the Home Screen).
+
+- `QA=1 tests/e2e/run.sh` additionally walks through the reseller and admin panels as an ordinary user on an iPhone SE,
+  iPhone 15 and Pixel 7 (login, product search, order, "Uplatio sam", balance history, profile, admin drawer, issuing a
+  code) and fails on horizontal overflow, controls outside the screen or broken flows; screenshots go to `$SHOTS`.
