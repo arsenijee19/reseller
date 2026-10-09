@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Admin</title>
-  <script>
+  <script id="early-theme">
     /* Apply the saved theme before first paint so dark mode never flashes light. */
     (function(){try{var t=localStorage.getItem("pw-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){}})();
   </script>
@@ -479,6 +479,7 @@
     .login-heading h1{font-size:28px;line-height:1.1;font-weight:700;letter-spacing:-.03em}
     .login .section>p{max-width:34ch;margin:0 auto 24px;text-align:center;font-size:15px;line-height:1.45}
     .login label{font-size:13px;font-weight:600}
+    .btn.icon-control{flex:0 0 var(--portal-icon-size)}
     @media(max-width:560px){.login-heading h1{font-size:25px}.login .section{padding:26px 20px 22px}}
   </style>
 </head>
