@@ -29,6 +29,7 @@ import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -62,6 +63,7 @@ class MainActivity : android.app.Activity() {
     private lateinit var twoFactorInput: EditText
     private lateinit var activationButton: Button
     private lateinit var messageView: TextView
+    private lateinit var connectionMessageView: TextView
     private var checkingSession = false
     private var sessionLoadedAt = 0L
     private var reloadPortalAfterSession = false
@@ -157,81 +159,93 @@ class MainActivity : android.app.Activity() {
     override fun onDestroy() { if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }; super.onDestroy() }
 
     private fun createActivationView(): View {
+        val compact = resources.configuration.screenWidthDp <= 360
+        val pageInset = if (compact) 16 else 24
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(20), dp(24), dp(24)); background = gradient(BG, WHITE, 24)
+            setPadding(dp(pageInset), dp(16), dp(pageInset), dp(16)); background = gradient(BG, WHITE, 24)
         }
         val scroller = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val stack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
-        val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(30)) }
-        val logo = TextView(this).apply {
-            text = "🎮"; textSize = 25f; gravity = Gravity.CENTER
-            background = gradient(BLUE, PURPLE, 18); setTextColor(Color.WHITE)
-        }
-        brand.addView(logo, LinearLayout.LayoutParams(dp(50), dp(50)))
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(24)) }
+        brand.addView(brandMark(44), LinearLayout.LayoutParams(dp(44), dp(44)))
         val brandText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
-        brandText.addView(label("PlayWorld.rs", 18f, INK, true))
-        brandText.addView(label("Reseller aplikacija", 13f, MUTED, false))
+        brandText.addView(label("PlayWorld.rs", 17f, INK, true))
+        brandText.addView(label("Reseller Portal", 12f, MUTED, false))
         brand.addView(brandText)
-        stack.addView(brand, LinearLayout.LayoutParams(-1, dp(68)))
+        stack.addView(brand, LinearLayout.LayoutParams(-1, dp(60)))
 
         val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(22), dp(22), dp(22))
-            background = rounded(WHITE, dp(22), STROKE); elevation = dp(5).toFloat()
+            orientation = LinearLayout.VERTICAL; setPadding(dp(if (compact) 18 else 22), dp(22), dp(if (compact) 18 else 22), dp(22))
+            background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
         }
-        card.addView(label("PLAYWORLD  /  RESELLER", 11f, BLUE, true).apply {
-            letterSpacing = .12f
-        })
-        val emblem = TextView(this).apply {
-            text = "✦"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(BLUE)
-            background = rounded(Color.rgb(228, 237, 255), dp(14))
+        val sectionHeading = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val keyMark = ImageView(this).apply {
+            setImageResource(R.drawable.ic_key_mark)
+            background = rounded(Color.rgb(228, 237, 255), dp(12))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            contentDescription = null
         }
-        card.addView(emblem, LinearLayout.LayoutParams(dp(48), dp(48)))
-        card.addView(label("Povežite uređaj", 24f, INK, true).apply { setPadding(0, dp(15), 0, dp(6)); letterSpacing = -.025f })
-        card.addView(label("Unesite jednokratni kod koji Vam je izdao administrator. Kod se koristi samo jednom.", 14f, MUTED, false).apply { setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(19)) })
+        sectionHeading.addView(keyMark, LinearLayout.LayoutParams(dp(40), dp(40)))
+        sectionHeading.addView(label("Prijava uređaja", 19f, INK, true).apply { setPadding(dp(12), 0, 0, 0) })
+        card.addView(sectionHeading)
+        card.addView(label("Povežite uređaj", 23f, INK, true).apply { setPadding(0, dp(18), 0, dp(6)); letterSpacing = -.025f })
+        card.addView(label("Unesite jednokratni kod koji Vam je izdao administrator. Kod se koristi samo jednom.", 14f, MUTED, false).apply { setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(12)) })
         card.addView(fieldLabel("Aktivacioni kod"))
         codeInput = editField("ABCD-EFGH-JKLM", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS)
         codeInput.filters = arrayOf(InputFilter.LengthFilter(14), InputFilter.AllCaps())
         codeInput.letterSpacing = .12f
-        card.addView(codeInput, matchWrap(dp(54)))
+        card.addView(codeInput, matchWrap(dp(50)))
         card.addView(fieldLabel("Authenticator kod · ako je uključen 2FA"))
         twoFactorInput = editField("6 cifara", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD)
         twoFactorInput.filters = arrayOf(InputFilter.LengthFilter(6))
         twoFactorInput.letterSpacing = .2f
-        card.addView(twoFactorInput, matchWrap(dp(54)))
-        activationButton = Button(this).apply {
-            text = "Aktiviraj uređaj"; isAllCaps = false; setTextColor(Color.WHITE); textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD; background = gradient(BLUE, PURPLE, 14)
-            setOnClickListener { activateDevice() }
-        }
-        val buttonParams = matchWrap(dp(54)); buttonParams.topMargin = dp(18)
+        card.addView(twoFactorInput, matchWrap(dp(50)))
+        activationButton = primaryButton("Aktiviraj uređaj") { activateDevice() }
+        val buttonParams = matchWrap(dp(48)); buttonParams.topMargin = dp(18)
         card.addView(activationButton, buttonParams)
-        messageView = label("", 13f, MUTED, false).apply { setPadding(0, dp(13), 0, 0); gravity = Gravity.CENTER }
+        messageView = label("", 13f, MUTED, false).apply { setPadding(0, dp(12), 0, 0); gravity = Gravity.CENTER; setLineSpacing(dp(2).toFloat(), 1f) }
         card.addView(messageView)
-        stack.addView(card, LinearLayout.LayoutParams(-1, -2))
-        stack.addView(label("Pristup ostaje aktivan na ovom uređaju dok ne uklonite aplikaciju, ne odjavite se ili administrator ne opozove uređaj.", 12f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), 0) })
+        val width = minOf(dp(resources.configuration.screenWidthDp - pageInset * 2), dp(480))
+        stack.addView(card, LinearLayout.LayoutParams(width, -2))
+        stack.addView(label("Pristup ostaje aktivan na ovom uređaju dok ne uklonite aplikaciju, ne odjavite se ili administrator ne opozove uređaj.", 12f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(14), dp(8), dp(8)); setLineSpacing(dp(2).toFloat(), 1f) }, LinearLayout.LayoutParams(width, -2))
         scroller.addView(stack)
         page.addView(scroller, LinearLayout.LayoutParams(-1, 0, 1f))
-        page.addView(label("www.playworld.rs", 12f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
+        page.addView(label("www.playworld.rs", 12f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0) })
         return page
     }
 
     private fun createLoadingView() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE, 24)
-        addView(TextView(this@MainActivity).apply { text = "🎮"; textSize = 40f; gravity = Gravity.CENTER })
-        addView(label("Bezbedno povezivanje", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(14), 0, dp(6)) })
-        addView(label("Proveravamo prijavu ovog uređaja…", 14f, MUTED, false).apply { gravity = Gravity.CENTER })
-        addView(ProgressBar(this@MainActivity).apply { indeterminateTintList = android.content.res.ColorStateList.valueOf(BLUE) }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { topMargin = dp(22) })
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(20), dp(20), dp(20), dp(20)); background = gradient(BG, WHITE, 24)
+        val card = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(24), dp(28), dp(24), dp(28))
+            background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
+        }
+        card.addView(brandMark(48), LinearLayout.LayoutParams(dp(48), dp(48)))
+        card.addView(label("Bezbedno povezivanje", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(18), 0, dp(6)) })
+        card.addView(label("Proveravamo prijavu ovog uređaja…", 14f, MUTED, false).apply { gravity = Gravity.CENTER })
+        card.addView(ProgressBar(this@MainActivity).apply { indeterminateTintList = android.content.res.ColorStateList.valueOf(BLUE) }, LinearLayout.LayoutParams(dp(28), dp(28)).apply { topMargin = dp(20) })
+        addView(card, LinearLayout.LayoutParams(minOf(dp(resources.configuration.screenWidthDp - 40), dp(420)), -2).apply { gravity = Gravity.CENTER })
     }
 
     private fun createConnectionErrorView() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE, 24)
-        addView(label("Portal trenutno nije dostupan", 20f, INK, true).apply { gravity = Gravity.CENTER })
-        addView(label("Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod.", 14f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(20)) })
-        addView(Button(this@MainActivity).apply {
-            text = "Pokušajte ponovo"; isAllCaps = false
-            setOnClickListener { errorView.visibility = View.GONE; loadingView.visibility = View.VISIBLE; restoreOrActivate() }
-        })
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(20), dp(20), dp(20), dp(20)); background = gradient(BG, WHITE, 24)
+        val card = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), dp(26), dp(24), dp(24))
+            background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
+        }
+        val alertMark = TextView(this@MainActivity).apply {
+            text = "!"; textSize = 20f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER; setTextColor(ORANGE)
+            background = rounded(Color.rgb(255, 241, 221), dp(13))
+        }
+        card.addView(alertMark, LinearLayout.LayoutParams(dp(44), dp(44)))
+        card.addView(label("Portal trenutno nije dostupan", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(16), 0, dp(8)) })
+        connectionMessageView = label("Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod.", 14f, MUTED, false).apply {
+            gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(20))
+        }
+        card.addView(connectionMessageView)
+        card.addView(primaryButton("Pokušajte ponovo") { showLoading(); restoreOrActivate() }, matchWrap(dp(48)))
+        addView(card, LinearLayout.LayoutParams(minOf(dp(resources.configuration.screenWidthDp - 40), dp(420)), -2).apply { gravity = Gravity.CENTER })
     }
 
     private fun restoreOrActivate() {
@@ -423,7 +437,7 @@ class MainActivity : android.app.Activity() {
         runOnUiThread {
             reloadPortalAfterSession = true
             showOnly(errorView)
-            (errorView.getChildAt(1) as? TextView)?.text = message ?: "Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod."
+            connectionMessageView.text = message ?: "Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod."
             progressBar.visibility = View.GONE
         }
     }
@@ -479,6 +493,20 @@ class MainActivity : android.app.Activity() {
         imeOptions = EditorInfo.IME_ACTION_NEXT; setSingleLine(true); setPadding(dp(15), 0, dp(15), 0); background = rounded(WHITE, dp(13), STROKE)
     }
     private fun matchWrap(height: Int) = LinearLayout.LayoutParams(-1, height)
+    private fun brandMark(size: Int) = ImageView(this).apply {
+        setImageResource(R.drawable.ic_gamepad_mark)
+        background = gradient(BLUE, PURPLE, 13)
+        setPadding(dp(size / 4), dp(size / 4), dp(size / 4), dp(size / 4))
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        contentDescription = "PlayWorld.rs"
+    }
+    private fun primaryButton(title: String, action: () -> Unit) = Button(this).apply {
+        text = title; isAllCaps = false; setTextColor(Color.WHITE); textSize = 15f
+        typeface = Typeface.DEFAULT_BOLD; background = gradient(BLUE, PURPLE, 12)
+        minHeight = dp(48); minimumHeight = dp(48); minWidth = 0; minimumWidth = 0
+        setPadding(dp(16), 0, dp(16), 0); stateListAnimator = null
+        setOnClickListener { action() }
+    }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun rounded(color: Int, radius: Int, stroke: Int? = null) = GradientDrawable().apply { setColor(color); cornerRadius = radius.toFloat(); if (stroke != null) setStroke(dp(1), stroke) }
     private fun gradient(start: Int, end: Int, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(start, end)).apply { cornerRadius = dp(radius).toFloat() }
@@ -498,6 +526,7 @@ class MainActivity : android.app.Activity() {
         private const val MUTED = 0xFF5B6577.toInt()
         private const val STROKE = 0xFFD9E2F0.toInt()
         private const val RED = 0xFFB42318.toInt()
+        private const val ORANGE = 0xFFEA580C.toInt()
     }
 }
 
