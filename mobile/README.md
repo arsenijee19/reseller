@@ -18,10 +18,11 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
 ## Build a test APK
 
 The GitHub Actions workflow `Android test APK` builds a debug APK, enables KVM,
-installs and launches it on an Android emulator, checks that the app process stays
-alive, and uploads it as a workflow artifact. This catches startup crashes that a
-successful compile alone cannot detect. Debug APKs are for internal testing only
-and are not the final reseller distribution package.
+installs and launches it on an Android emulator, checks for a fatal Android crash
+and confirms that the app process stays alive, then uploads it as a workflow
+artifact. This catches startup crashes that a successful compile alone cannot
+detect. Debug APKs are for internal testing only and are not the final reseller
+distribution package.
 
 To build locally, install Android Studio with Android SDK 36 and a JDK 17, then
 open `mobile/android` in Android Studio and run the `assembleDebug` task.
