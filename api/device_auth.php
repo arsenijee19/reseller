@@ -13,7 +13,6 @@ require_json_content_type();
 $input = read_json_body();
 $action = h_string($_GET['action'] ?? '');
 $pdo = db();
-ensure_security_tables($pdo);
 
 if (!table_exists($pdo, 'reseller_device_activation_codes') || !table_exists($pdo, 'reseller_app_devices')) {
   json_response(['ok' => false, 'error' => 'Prijava aplikacije još nije aktivirana na serveru.'], 503);
@@ -56,6 +55,9 @@ function normalize_app_device_id(string $deviceId): string {
 }
 
 try {
+  // Full schema checks are only needed for first-time activation. Session
+  // renewals are frequent and should not perform unrelated DDL work.
+  if ($action === 'activate') ensure_security_tables($pdo);
   device_auth_rate_limit($pdo);
 
   if ($action === 'activate') {
@@ -135,6 +137,7 @@ try {
     } catch (Throwable $loggingError) {
       error_log('app_device_activation_audit_failed reseller_id=' . $resellerId);
     }
+    device_auth_finalize_session_cookie();
     json_response(['ok' => true, 'device_id' => $deviceId, 'csrf_token' => csrf_token()]);
   }
 
@@ -162,6 +165,7 @@ try {
     $pdo->prepare('UPDATE reseller_app_devices SET last_seen_at = NOW(), last_ip_address = ?, user_agent = ? WHERE id = ?')
       ->execute([client_ip(), user_agent(), (int)$device['id']]);
     open_reseller_device_session((int)$device['reseller_id'], (string)$device['email'], $deviceId);
+    device_auth_finalize_session_cookie();
     json_response(['ok' => true, 'device_id' => $deviceId, 'csrf_token' => csrf_token()]);
   }
 
@@ -171,4 +175,19 @@ try {
   $reference = bin2hex(random_bytes(4));
   error_log('app_device_auth reference=' . $reference . ' class=' . get_class($e) . ' sqlstate=' . ($e instanceof PDOException ? (string)$e->getCode() : 'n/a'));
   json_response(['ok' => false, 'error' => 'Prijava uređaja trenutno nije uspela. Pokušajte ponovo.', 'reference' => $reference], 500);
+}
+
+function device_auth_finalize_session_cookie(): void {
+  if (!ini_get('session.use_cookies') || session_id() === '') return;
+  $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  // PHP may emit cookies both when starting and regenerating a session. Keep
+  // only the final ID so native clients never store a stale session by accident.
+  header_remove('Set-Cookie');
+  setcookie(session_name(), session_id(), [
+    'expires' => time() + SESSION_ABSOLUTE_LIFETIME_SECONDS,
+    'path' => '/',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Strict',
+  ]);
 }

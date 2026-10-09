@@ -15,6 +15,7 @@ import android.security.keystore.KeyProperties
 import android.text.InputFilter
 import android.text.InputType
 import android.view.Gravity
+import android.view.animation.DecelerateInterpolator
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
@@ -32,6 +33,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.animation.ValueAnimator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -130,6 +132,7 @@ class MainActivity : android.app.Activity() {
         webView.visibility = View.GONE
         activationView.visibility = View.GONE
         loadingView.visibility = View.VISIBLE
+        animateIn(loadingView)
         restoreOrActivate()
     }
 
@@ -176,12 +179,15 @@ class MainActivity : android.app.Activity() {
             orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(22), dp(22), dp(22))
             background = rounded(WHITE, dp(22), STROKE); elevation = dp(5).toFloat()
         }
+        card.addView(label("PLAYWORLD  /  RESELLER", 11f, BLUE, true).apply {
+            letterSpacing = .12f
+        })
         val emblem = TextView(this).apply {
             text = "✦"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(BLUE)
             background = rounded(Color.rgb(228, 237, 255), dp(14))
         }
         card.addView(emblem, LinearLayout.LayoutParams(dp(48), dp(48)))
-        card.addView(label("Aktivirajte ovaj uređaj", 22f, INK, true).apply { setPadding(0, dp(15), 0, dp(6)) })
+        card.addView(label("Povežite uređaj", 24f, INK, true).apply { setPadding(0, dp(15), 0, dp(6)); letterSpacing = -.025f })
         card.addView(label("Unesite jednokratni kod koji Vam je izdao administrator. Kod se koristi samo jednom.", 14f, MUTED, false).apply { setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(19)) })
         card.addView(fieldLabel("Aktivacioni kod"))
         codeInput = editField("ABCD-EFGH-JKLM", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS)
@@ -231,8 +237,8 @@ class MainActivity : android.app.Activity() {
     private fun restoreOrActivate() {
         val saved = DeviceVault.read(this)
         if (saved == null) { showActivation(); return }
-        loadingView.visibility = View.VISIBLE
-        api("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
+        showLoading()
+        apiWithRetry("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
             if (result == null || (result.optInt("http_status") != 401 && error != null)) {
                 showConnectionError(error)
             } else if (error != null || result.optBoolean("ok") != true) {
@@ -246,7 +252,9 @@ class MainActivity : android.app.Activity() {
         val code = codeInput.text.toString().trim().uppercase().replace("[^A-Z0-9]".toRegex(), "")
         val totp = twoFactorInput.text.toString().trim()
         if (code.length != 12) { showActivation("Aktivacioni kod mora imati 12 znakova."); return }
-        val id = deviceId()
+        // Every enrollment is a new server-side device record, including after
+        // logout/revocation; never reuse an ID protected by the unique DB key.
+        val id = UUID.randomUUID().toString()
         val secret = newDeviceSecret()
         try { DeviceVault.write(this, id, secret) } catch (_: Exception) { showActivation("Ne možemo bezbedno sačuvati prijavu na ovom uređaju."); return }
         setBusy(true)
@@ -255,7 +263,14 @@ class MainActivity : android.app.Activity() {
         if (totp.isNotEmpty()) body.put("two_factor_code", totp)
         api("activate", body) { result, error ->
             if (error != null || result?.optBoolean("ok") != true) {
-                recoverActivation(id, secret, error ?: "Aktivacija nije uspela. Proverite kod i pokušajte ponovo.")
+                val status = result?.optInt("http_status") ?: 0
+                val activationError = error ?: "Aktivacija nije uspela. Proverite kod i pokušajte ponovo."
+                if (status in 400..499) {
+                    DeviceVault.clear(this)
+                    twoFactorInput.text.clear()
+                    setBusy(false)
+                    showActivation(activationError)
+                } else recoverActivation(id, secret, activationError)
                 return@api
             }
             setBusy(false)
@@ -264,7 +279,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun recoverActivation(deviceId: String, secret: String, activationError: String) {
-        api("session", JSONObject().put("device_id", deviceId).put("device_token", secret)) { recovered, recoveryError ->
+        apiWithRetry("session", JSONObject().put("device_id", deviceId).put("device_token", secret)) { recovered, recoveryError ->
             setBusy(false)
             if (recovered?.optBoolean("ok") == true && recoveryError == null) {
                 establishPortalSession(recovered) {}
@@ -282,7 +297,7 @@ class MainActivity : android.app.Activity() {
         if (checkingSession) return
         val saved = DeviceVault.read(this) ?: return
         checkingSession = true
-        api("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
+        apiWithRetry("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
             checkingSession = false
             if (result == null || (result.optInt("http_status") != 401 && error != null)) {
                 showConnectionError(error)
@@ -296,9 +311,7 @@ class MainActivity : android.app.Activity() {
     private fun establishPortalSession(result: JSONObject, after: () -> Unit) {
         CookieManager.getInstance().flush()
         webView.post {
-            webView.visibility = View.VISIBLE
-            activationView.visibility = View.GONE
-            loadingView.visibility = View.GONE
+            showOnly(webView)
             if (reloadPortalAfterSession || webView.url.isNullOrBlank() || webView.url == "about:blank") {
                 reloadPortalAfterSession = false
                 webView.loadUrl(PORTAL_URL)
@@ -331,9 +344,17 @@ class MainActivity : android.app.Activity() {
                 val cookies = conn.headerFields.entries.flatMap { entry ->
                     if (entry.key?.equals("Set-Cookie", ignoreCase = true) == true) entry.value.orEmpty() else emptyList()
                 }
+                val hasSessionCookie = cookies.any { it.substringBefore(';').startsWith("PWRSRESELLERSESSID=") }
+                if (response.optBoolean("ok") && action != "logout" && !hasSessionCookie) {
+                    runOnUiThread { done(response, "Sesija nije potvrđena. Pokušajte ponovo.") }
+                    return@thread
+                }
                 fun continueAfterCookies(index: Int) {
                     if (index >= cookies.size) runOnUiThread { done(response, message) }
-                    else CookieManager.getInstance().setCookie(PORTAL_ORIGIN, cookies[index].substringBefore(';')) { continueAfterCookies(index + 1) }
+                    else CookieManager.getInstance().setCookie(PORTAL_ORIGIN, cookies[index]) { accepted ->
+                        if (!accepted) runOnUiThread { done(response, "Ne možemo bezbedno da sačuvamo prijavu na uređaju. Pokušajte ponovo.") }
+                        else continueAfterCookies(index + 1)
+                    }
                 }
                 continueAfterCookies(0)
             } catch (_: Exception) {
@@ -344,7 +365,7 @@ class MainActivity : android.app.Activity() {
 
     private fun showActivation(message: String? = null) {
         runOnUiThread {
-            webView.visibility = View.GONE; loadingView.visibility = View.GONE; errorView.visibility = View.GONE; activationView.visibility = View.VISIBLE
+            showOnly(activationView)
             messageView.text = message.orEmpty(); messageView.setTextColor(if (message.isNullOrEmpty()) MUTED else RED)
             progressBar.visibility = View.GONE
             WindowInsetsControllerCompat(window, root).apply { isAppearanceLightStatusBars = true; isAppearanceLightNavigationBars = true }
@@ -371,13 +392,6 @@ class MainActivity : android.app.Activity() {
 
     private fun clearPortalCookies(done: () -> Unit) {
         CookieManager.getInstance().removeAllCookies { CookieManager.getInstance().flush(); runOnUiThread(done) }
-    }
-
-    private fun deviceId(): String {
-        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        val current = prefs.getString(DEVICE_ID, null)
-        if (current != null) return current
-        return UUID.randomUUID().toString().also { prefs.edit().putString(DEVICE_ID, it).apply() }
     }
 
     private fun newDeviceSecret(): String {
@@ -408,9 +422,54 @@ class MainActivity : android.app.Activity() {
     private fun showConnectionError(message: String?) {
         runOnUiThread {
             reloadPortalAfterSession = true
-            webView.visibility = View.GONE; activationView.visibility = View.GONE; loadingView.visibility = View.GONE; errorView.visibility = View.VISIBLE
+            showOnly(errorView)
             (errorView.getChildAt(1) as? TextView)?.text = message ?: "Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod."
             progressBar.visibility = View.GONE
+        }
+    }
+
+    private fun showLoading() = runOnUiThread { showOnly(loadingView) }
+
+    private fun showOnly(target: View) {
+        listOf(webView, activationView, loadingView, errorView).forEach { view ->
+            view.animate().cancel()
+            if (view === target) animateIn(view) else {
+                view.visibility = View.GONE
+                view.alpha = 1f
+                view.translationY = 0f
+            }
+        }
+    }
+
+    private fun animateIn(view: View) {
+        view.animate().cancel()
+        view.visibility = View.VISIBLE
+        if (android.os.Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled()) {
+            view.alpha = 1f
+            view.translationY = 0f
+            return
+        }
+        view.alpha = 0f
+        view.translationY = dp(8).toFloat()
+        view.animate().alpha(1f).translationY(0f).setDuration(220)
+            .setInterpolator(DecelerateInterpolator()).start()
+    }
+
+    private fun apiWithRetry(
+        action: String,
+        body: JSONObject,
+        remainingRetries: Int = 2,
+        done: (JSONObject?, String?) -> Unit
+    ) {
+        api(action, body) { result, error ->
+            val status = result?.optInt("http_status") ?: 0
+            val transientFailure = error != null && (result == null || status in 200..299 || status >= 500 || status == 0)
+            if (transientFailure && remainingRetries > 0) {
+                val retryNumber = 3 - remainingRetries
+                sessionHandler.postDelayed({
+                    apiWithRetry(action, body, remainingRetries - 1, done)
+                }, if (retryNumber == 1) 650L else 1500L)
+            } else done(result, error)
         }
     }
     private fun label(value: String, size: Float, color: Int, bold: Boolean) = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD) }
@@ -430,7 +489,6 @@ class MainActivity : android.app.Activity() {
         private const val PORTAL_URL = "$PORTAL_ORIGIN/"
         private const val API_URL = "$PORTAL_ORIGIN/api/device_auth.php"
         private const val PREFS = "reseller_device"
-        private const val DEVICE_ID = "device_id"
         private const val SESSION_REFRESH_MS = 45L * 60L * 1000L
         private const val BLUE = 0xFF2563EB.toInt()
         private const val PURPLE = 0xFF4F46E5.toInt()
@@ -453,10 +511,11 @@ private object DeviceVault {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, getKey())
         val encrypted = cipher.doFinal(secret.toByteArray(Charsets.UTF_8))
-        activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit()
+        val saved = activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit()
             .putString("device_id", deviceId)
             .putString(SECRET, Base64.getEncoder().encodeToString(encrypted))
-            .putString(IV, Base64.getEncoder().encodeToString(cipher.iv)).apply()
+            .putString(IV, Base64.getEncoder().encodeToString(cipher.iv)).commit()
+        check(saved) { "Could not persist device credentials" }
     }
 
     fun read(activity: android.app.Activity): Pair<String, String>? {
@@ -472,7 +531,8 @@ private object DeviceVault {
     }
 
     fun clear(activity: android.app.Activity) {
-        activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().remove(SECRET).remove(IV).apply()
+        activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit()
+            .remove("device_id").remove(SECRET).remove(IV).commit()
         try { KeyStore.getInstance("AndroidKeyStore").apply { load(null); if (containsAlias(KEY_ALIAS)) deleteEntry(KEY_ALIAS) } } catch (_: Exception) { }
     }
 

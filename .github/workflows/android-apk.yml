@@ -58,6 +58,8 @@ jobs:
             sleep 8
             ! adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'
             test -n "$(adb shell pidof rs.playworld.reseller.debug)"
+            adb shell uiautomator dump /sdcard/playworld-window.xml >/dev/null
+            adb shell cat /sdcard/playworld-window.xml | grep -q 'Povežite uređaj'
 
       - name: Upload test APK
         uses: actions/upload-artifact@v4
