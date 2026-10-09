@@ -392,6 +392,10 @@ try {
   ensure_security_tables($pdo);
 
   if ($action === 'session') {
+    if (isset($_SESSION['admin_id']) && admin_session_problem($pdo) !== null) {
+      $_SESSION = [];
+      $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
     json_response([
       'ok' => true,
       'logged_in' => isset($_SESSION['admin_id']),
@@ -449,6 +453,7 @@ try {
     $_SESSION['admin_username'] = (string)$admin['username'];
     $_SESSION['admin_step_up_until'] = time() + 900;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    bind_session_to_credential($pdo, 'admin');
     unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_login_success', 'success');
 
@@ -490,6 +495,7 @@ try {
     $_SESSION['admin_username'] = (string)$pending['username'];
     $_SESSION['admin_step_up_until'] = time() + 900;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    bind_session_to_credential($pdo, 'admin');
     unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     $pdo->prepare('UPDATE admin_two_factor SET last_used_at = NOW(), updated_at = NOW() WHERE admin_id = ?')->execute([(int)$pending['id']]);
     audit_event($pdo, 'admin', (int)$pending['id'], $usedRecovery ? 'admin_two_factor_recovery_login' : 'admin_two_factor_success', 'success');
@@ -555,6 +561,7 @@ try {
     $_SESSION['admin_username'] = (string)$admin['username'];
     $_SESSION['admin_step_up_until'] = time() + 900;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    bind_session_to_credential($pdo, 'admin');
     unset($_SESSION['pending_admin_id'], $_SESSION['pending_admin_username'], $_SESSION['pending_admin_2fa_expires_at'], $_SESSION['pending_admin_2fa_attempts']);
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_passkey_login_success', 'success', ['passkey_id' => (int)$stored['id']]);
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
@@ -626,6 +633,7 @@ try {
   if ($action === 'admin_device_management') {
     $admin = require_admin();
     ensure_admin_app_device_tables($pdo);
+    revoke_idle_admin_devices($pdo);
     $adminId = (int)$admin['id'];
     $codes = $pdo->prepare("SELECT id, device_label, expires_at, consumed_at, consumed_device_id, revoked_at, created_at,
         CASE WHEN expires_at <= NOW() THEN 1 ELSE 0 END AS expired
@@ -993,6 +1001,12 @@ try {
     }
     $update = $pdo->prepare('UPDATE admin_users SET ' . implode(', ', $fields) . ' WHERE id = ?');
     $update->execute([password_hash($newPassword, PASSWORD_DEFAULT), (int)$admin['id']]);
+    // Other sessions fail their password fingerprint check; keep only the one that proved the old password.
+    $_SESSION['credential_fp'] = session_credential_fingerprint((string)$pdo->query('SELECT password_hash FROM admin_users WHERE id = ' . (int)$admin['id'])->fetchColumn());
+    if (table_exists($pdo, 'admin_app_devices')) {
+      $pdo->prepare('UPDATE admin_app_devices SET revoked_at = NOW() WHERE admin_id = ? AND revoked_at IS NULL AND device_id <> ?')
+        ->execute([(int)$admin['id'], (string)($_SESSION['app_device_id'] ?? '')]);
+    }
     audit_event($pdo, 'admin', (int)$admin['id'], 'admin_password_changed', 'success');
 
     json_response(['ok' => true, 'csrf_token' => csrf_token()]);
@@ -1230,6 +1244,9 @@ try {
       }
       $fields[] = 'token_hash = ?';
       $params[] = password_hash($newToken, PASSWORD_DEFAULT);
+      if (has_column($pdo, 'resellers', 'credential_changed_at')) {
+        $fields[] = 'credential_changed_at = NOW()';
+      }
     }
     if (has_column($pdo, 'resellers', 'updated_at')) {
       $fields[] = 'updated_at = NOW()';
@@ -1246,6 +1263,10 @@ try {
     }
     $stmt = $pdo->prepare('UPDATE resellers SET ' . implode(', ', $fields) . ' WHERE id = ?');
     $stmt->execute($params);
+    if ($newToken !== '' && table_exists($pdo, 'reseller_app_devices')) {
+      // A new token means everyone logs in again: web sessions fail the token fingerprint, app devices are revoked.
+      $pdo->prepare('UPDATE reseller_app_devices SET revoked_at = NOW() WHERE reseller_id = ? AND revoked_at IS NULL')->execute([$id]);
+    }
     audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'reseller_updated', 'success', [
       'reseller_id' => $id,
       'credential_changed' => $newToken !== '',

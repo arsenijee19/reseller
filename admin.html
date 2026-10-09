@@ -490,6 +490,10 @@
     .admin-modal-backdrop{z-index:75}
     #adminReauthMsg:empty{display:none!important}
     .admin-modal-backdrop.login-progress-backdrop{z-index:80}
+    .native-toggle{display:flex;align-items:center;gap:12px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+    .native-toggle input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;accent-color:var(--brand)}
+    .native-note{margin:0 0 14px;font-size:12px;color:var(--muted)}
+    .native-settings[hidden]{display:none}
     @media(max-width:560px){.login-heading h1{font-size:25px}.login .section{padding:26px 20px 22px}}
   </style>
 </head>
@@ -643,6 +647,10 @@
             <h2>Admin aplikacija na telefonu</h2>
             <p>Napravite jednokratni kod i unesite ga u PlayWorld Reseller aplikaciju da se telefon prijavi kao admin. Kod važi 15 minuta. Osetljive akcije i dalje traže admin šifru.</p>
           </div>
+        </div>
+        <div class="native-settings" id="adminNativeSettings" hidden>
+          <label class="native-toggle" for="adminNativeScreenshots"><input id="adminNativeScreenshots" type="checkbox" /><span>Dozvoli snimke ekrana u aplikaciji</span></label>
+          <p class="native-note">Admin pristup u aplikaciji je uvek zaključan PIN-om ili otiskom telefona i odjavljuje se posle 30 dana neaktivnosti.</p>
         </div>
         <section class="app-device-panel" aria-label="Admin pristup aplikaciji">
           <label for="adminAppDeviceLabel">Naziv uređaja za ovaj kod</label>
@@ -1100,6 +1108,7 @@
       }catch(e){
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
+      if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
       if (!json.ok) {
         const message = userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`;
         throw new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
@@ -2550,6 +2559,15 @@
         const message = $("drawerResellerMsg"); message.className = "msg bad"; message.textContent = error.message; message.style.display = "block";
       }finally{ button.disabled = false; button.textContent = "Izdaj jednokratni kod"; }
     });
+    (function initAdminNativeSettings(){
+      const bridge = window.PlayWorldNative;
+      if (!bridge || typeof bridge.getAppSettings !== "function") return;
+      try{
+        $("adminNativeScreenshots").checked = !!JSON.parse(bridge.getAppSettings()).allowScreenshots;
+        $("adminNativeSettings").hidden = false;
+        $("adminNativeScreenshots").addEventListener("change", (event) => bridge.setAllowScreenshots(event.target.checked));
+      }catch(_){}
+    })();
     $("createAdminAppCode").addEventListener("click", async () => {
       const deviceLabel = $("adminAppDeviceLabel").value.trim();
       if (!deviceLabel) { $("adminAppDeviceLabel").focus(); showToast("bad", "Unesite naziv uređaja za ovaj kod."); return; }
@@ -2712,6 +2730,8 @@
         if (session.logged_in) {
           setLoggedIn(true);
           await load();
+        } else if (window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") {
+          window.PlayWorldNative.sessionExpired();
         }
       })
       .catch(() => setLoggedIn(false))

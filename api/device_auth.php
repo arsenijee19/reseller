@@ -44,6 +44,7 @@ function open_reseller_device_session(int $resellerId, string $email, string $de
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
   $_SESSION['created_at'] = time();
   $_SESSION['last_activity'] = time();
+  bind_session_to_credential(db(), 'reseller');
   return ['csrf_token' => (string)$_SESSION['csrf_token']];
 }
 
@@ -62,6 +63,7 @@ function open_admin_device_session(int $adminId, string $username, string $devic
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
   $_SESSION['created_at'] = time();
   $_SESSION['last_activity'] = time();
+  bind_session_to_credential(db(), 'admin');
   // Deliberately no admin_step_up_until: critical admin actions still ask for the password (and 2FA).
 }
 
@@ -113,6 +115,7 @@ function admin_device_try_activate(PDO $pdo, string $code, string $deviceId, str
 /** Session renewal / logout for admin devices. Returns false if the credential is not an admin device. */
 function admin_device_try_session(PDO $pdo, string $action, string $deviceId, string $credential): bool {
   if (!table_exists($pdo, 'admin_app_devices')) return false;
+  revoke_idle_admin_devices($pdo);
   $stmt = $pdo->prepare("SELECT d.id, d.admin_id, a.username
     FROM admin_app_devices d INNER JOIN admin_users a ON a.id = d.admin_id AND a.status = 'active'
     WHERE d.device_id = ? AND d.credential_hash = ? AND d.revoked_at IS NULL LIMIT 1");

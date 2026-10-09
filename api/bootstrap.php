@@ -111,23 +111,58 @@ function require_csrf(): void {
   }
 }
 
+function session_credential_fingerprint(string $secretHash): string {
+  return hash('sha256', 'pw-session|' . $secretHash);
+}
+
+/** Call right after a session is created so a later token/password change always invalidates it. */
+function bind_session_to_credential(PDO $pdo, string $kind): void {
+  if ($kind === 'admin') {
+    $stmt = $pdo->prepare('SELECT password_hash FROM admin_users WHERE id = ? LIMIT 1');
+    $stmt->execute([(int)($_SESSION['admin_id'] ?? 0)]);
+  } else {
+    $stmt = $pdo->prepare('SELECT token_hash FROM resellers WHERE id = ? LIMIT 1');
+    $stmt->execute([(int)($_SESSION['reseller_id'] ?? 0)]);
+  }
+  $secret = $stmt->fetchColumn();
+  if ($secret !== false) $_SESSION['credential_fp'] = session_credential_fingerprint((string)$secret);
+}
+
+/**
+ * Every authenticated request re-checks that the account is still active and that its
+ * token has not changed since the session started. This is what makes "deactivate" and
+ * "change token" in the admin panel take effect immediately for web and app sessions.
+ */
 function require_reseller(): array {
   start_secure_session();
   if (!isset($_SESSION['reseller_id'], $_SESSION['reseller_email'])) {
-    json_response(['ok' => false, 'error' => 'Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.'], 401);
+    json_response(['ok' => false, 'error' => 'Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.', 'session_ended' => true], 401);
+  }
+  $pdo = db();
+  $accountStmt = $pdo->prepare('SELECT status, token_hash FROM resellers WHERE id = ? LIMIT 1');
+  $accountStmt->execute([(int)$_SESSION['reseller_id']]);
+  $account = $accountStmt->fetch(PDO::FETCH_ASSOC);
+  if (!$account || strtolower((string)$account['status']) !== 'active') {
+    $_SESSION = [];
+    json_response(['ok' => false, 'error' => 'Nalog je deaktiviran. Kontaktirajte administratora.', 'session_ended' => true], 401);
+  }
+  $fingerprint = session_credential_fingerprint((string)$account['token_hash']);
+  if (empty($_SESSION['credential_fp'])) {
+    $_SESSION['credential_fp'] = $fingerprint;
+  } elseif (!hash_equals((string)$_SESSION['credential_fp'], $fingerprint)) {
+    $_SESSION = [];
+    json_response(['ok' => false, 'error' => 'Token je promenjen. Prijavite se ponovo.', 'session_ended' => true], 401);
   }
   if (!empty($_SESSION['app_device_id'])) {
-    $pdo = db();
     if (!table_exists($pdo, 'reseller_app_devices')) {
       json_response(['ok' => false, 'error' => 'Prijava aplikacije nije dostupna. Ponovo aktivirajte uređaj.'], 401);
     }
     $device = $pdo->prepare("SELECT d.id FROM reseller_app_devices d
-      INNER JOIN resellers r ON r.id = d.reseller_id
-      WHERE d.device_id = ? AND d.reseller_id = ? AND d.revoked_at IS NULL AND r.status = 'active' LIMIT 1");
+      WHERE d.device_id = ? AND d.reseller_id = ? AND d.revoked_at IS NULL LIMIT 1");
     $device->execute([(string)$_SESSION['app_device_id'], (int)$_SESSION['reseller_id']]);
     if (!$device->fetchColumn()) {
       $_SESSION = [];
-      json_response(['ok' => false, 'error' => 'Pristup aplikacije je opozvan. Ulogujte uređaj novim aktivacionim kodom.'], 401);
+      json_response(['ok' => false, 'error' => 'Pristup aplikacije je opozvan. Ulogujte uređaj novim aktivacionim kodom.', 'session_ended' => true], 401);
     }
   }
   return [
@@ -162,10 +197,38 @@ function require_admin_2fa_pending(): array {
   ];
 }
 
+/** Returns an error message when the current admin session must no longer be trusted, else null. */
+function admin_session_problem(PDO $pdo): ?string {
+  $adminId = (int)($_SESSION['admin_id'] ?? 0);
+  if ($adminId <= 0) return 'Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.';
+  $stmt = $pdo->prepare('SELECT status, password_hash FROM admin_users WHERE id = ? LIMIT 1');
+  $stmt->execute([$adminId]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row || (string)$row['status'] !== 'active') return 'Admin nalog nije aktivan.';
+  $fingerprint = session_credential_fingerprint((string)$row['password_hash']);
+  if (empty($_SESSION['credential_fp'])) {
+    $_SESSION['credential_fp'] = $fingerprint;
+  } elseif (!hash_equals((string)$_SESSION['credential_fp'], $fingerprint)) {
+    return 'Admin šifra je promenjena. Prijavite se ponovo.';
+  }
+  if (!empty($_SESSION['app_device_id'])) {
+    if (!table_exists($pdo, 'admin_app_devices')) return 'Pristup aplikacije nije dostupan. Ponovo aktivirajte uređaj.';
+    $device = $pdo->prepare('SELECT id FROM admin_app_devices WHERE device_id = ? AND admin_id = ? AND revoked_at IS NULL LIMIT 1');
+    $device->execute([(string)$_SESSION['app_device_id'], $adminId]);
+    if (!$device->fetchColumn()) return 'Pristup aplikacije je opozvan. Ulogujte uređaj novim kodom.';
+  }
+  return null;
+}
+
 function require_admin(): array {
   start_secure_session();
   if (!isset($_SESSION['admin_id'], $_SESSION['admin_username'])) {
-    json_response(['ok' => false, 'error' => 'Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.'], 401);
+    json_response(['ok' => false, 'error' => 'Admin sesija je istekla. Refrešujte stranicu i ulogujte se ponovo.', 'session_ended' => true], 401);
+  }
+  $problem = admin_session_problem(db());
+  if ($problem !== null) {
+    $_SESSION = [];
+    json_response(['ok' => false, 'error' => $problem, 'session_ended' => true], 401);
   }
   return [
     'id' => (int)$_SESSION['admin_id'],

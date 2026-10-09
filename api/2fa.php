@@ -63,6 +63,7 @@ try {
     $_SESSION['reseller_id'] = (int)$pending['id'];
     $_SESSION['reseller_email'] = (string)$pending['email'];
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    bind_session_to_credential($pdo, 'reseller');
     unset($_SESSION['pending_reseller_id'], $_SESSION['pending_reseller_email'], $_SESSION['pending_2fa_expires_at'], $_SESSION['pending_2fa_attempts']);
     $pdo->prepare('UPDATE reseller_two_factor SET last_used_at = NOW(), updated_at = NOW() WHERE reseller_id = ?')->execute([(int)$pending['id']]);
     audit_event($pdo, 'reseller', (int)$pending['id'], $usedRecovery ? 'two_factor_recovery_login' : 'two_factor_success', 'success');

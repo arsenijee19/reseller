@@ -73,6 +73,7 @@ try {
   $_SESSION["reseller_id"] = (int)$found["id"];
   $_SESSION["reseller_email"] = $found["email"];
   $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+  bind_session_to_credential($pdo, 'reseller');
   record_login_attempt($pdo, 'reseller_login', client_ip(), true);
   audit_event($pdo, 'reseller', (int)$found['id'], 'login_success', 'success');
 

@@ -7,15 +7,11 @@ header("Content-Type: application/json; charset=utf-8");
 
 start_secure_session();
 
-if (!isset($_SESSION["reseller_id"])) {
-  http_response_code(401);
-  echo json_encode(["ok"=>false,"error"=>"Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo."]);
-  exit;
-}
+$reseller = require_reseller();
 
 try {
   $pdo = db();
-  $resellerId = (int)$_SESSION["reseller_id"];
+  $resellerId = (int)$reseller["id"];
   require_completed_profile($pdo, $resellerId);
   $notesSelect = has_column($pdo, 'orders', 'reseller_notes') ? 'o.reseller_notes,' : "'' AS reseller_notes,";
   $paidSelect = has_column($pdo, 'orders', 'reseller_paid') ? 'o.reseller_paid,' : '0 AS reseller_paid,';

@@ -614,6 +614,10 @@
     }
     /* Dialogs taller than the screen (My Profile on phones) must scroll instead of being cut off */
     .modal{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .native-toggle{display:flex;align-items:center;gap:12px;margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+    .native-toggle input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;accent-color:var(--brand)}
+    .native-note{margin:8px 0 0;font-size:12px;color:var(--muted)}
+    .native-settings[hidden]{display:none}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
     @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -878,6 +882,12 @@
         <div class="full"><label for="settingsName">Ime</label><input id="settingsName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" /></div>
         <div><label for="settingsEmail">Lični email za poruke</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
         <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
+        <div class="full security-note native-settings" id="nativeSettings" hidden>
+          <p><strong>Aplikacija na ovom telefonu</strong></p>
+          <label class="native-toggle" for="nativeScreenshots"><input id="nativeScreenshots" type="checkbox" /><span>Dozvoli snimke ekrana</span></label>
+          <label class="native-toggle" for="nativeLock"><input id="nativeLock" type="checkbox" /><span>Zaključaj aplikaciju (PIN, šablon ili otisak)</span></label>
+          <p class="native-note" id="nativeSettingsNote"></p>
+        </div>
         <div class="full security-note">
           <p><strong>Bezbednost naloga</strong></p>
           <p>Ako želiš, možeš promeniti reseller token za pristup panelu.</p>
@@ -1039,7 +1049,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-admin-app-login";
+    const RELEASE_VERSION = "2026-10-09-session-hardening";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1413,6 +1423,9 @@
       }catch(e){
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
+      // Inside the Android app an ended session (deactivated, token changed, device revoked) is handed to the
+      // app, which re-checks the device instead of showing the web token login.
+      if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
       if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
@@ -1486,6 +1499,27 @@
       settingsModal.classList.add("open");
       settingsName.focus();
       loadTwoFactorStatus();
+      loadNativeSettings();
+    }
+
+    // "Aplikacija na ovom telefonu" is only shown inside the Android app (PlayWorldNative bridge).
+    function nativeBridge(){
+      return window.PlayWorldNative && typeof window.PlayWorldNative.getAppSettings === "function" ? window.PlayWorldNative : null;
+    }
+    function loadNativeSettings(){
+      const bridge = nativeBridge();
+      const box = $("nativeSettings");
+      if (!bridge){ box.hidden = true; return; }
+      try{
+        const info = JSON.parse(bridge.getAppSettings());
+        $("nativeScreenshots").checked = !!info.allowScreenshots;
+        $("nativeLock").checked = !!info.lockEnabled;
+        $("nativeLock").disabled = !!info.lockForced;
+        $("nativeSettingsNote").textContent = info.lockForced
+          ? "Admin pristup je uvek zaključan PIN-om ili otiskom telefona."
+          : (info.deviceSecure ? "" : "Za zaključavanje aplikacije prvo postavite PIN, šablon ili otisak prsta na telefonu.");
+        box.hidden = false;
+      }catch(e){ box.hidden = true; }
     }
 
     function closeSettingsModal(){
@@ -2983,6 +3017,15 @@
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAppVersion(); });
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
+    $("nativeScreenshots").addEventListener("change", (event) => { const bridge = nativeBridge(); if (bridge) bridge.setAllowScreenshots(event.target.checked); });
+    $("nativeLock").addEventListener("change", (event) => {
+      const bridge = nativeBridge();
+      if (!bridge) return;
+      if (!bridge.setLockEnabled(event.target.checked)) {
+        event.target.checked = false;
+        $("nativeSettingsNote").textContent = "Za zaključavanje aplikacije prvo postavite PIN, šablon ili otisak prsta na telefonu.";
+      }
+    });
     settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettingsModal(); });
     twoFactorLoginModal.addEventListener("click", (event) => { if (event.target === twoFactorLoginModal) closeTwoFactorLogin(); });
     verify2faLoginBtn.addEventListener("click", verifyTwoFactorLogin);

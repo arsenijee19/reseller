@@ -1,12 +1,15 @@
 package rs.playworld.reseller
 
 import android.annotation.SuppressLint
+import android.app.KeyguardManager
+import android.os.Build
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.provider.Settings
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +20,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.animation.DecelerateInterpolator
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -63,6 +67,13 @@ class MainActivity : android.app.Activity() {
     private lateinit var activationButton: Button
     private lateinit var messageView: TextView
     private lateinit var connectionMessageView: TextView
+    private lateinit var lockView: View
+    private lateinit var lockMessageView: TextView
+    private var locked = true
+    private var authInProgress = false
+    private var backgroundedAt = 0L
+    private var lastSessionExpiredAt = 0L
+    private val appPrefs by lazy { getSharedPreferences("app_settings", MODE_PRIVATE) }
     private var checkingSession = false
     private var sessionLoadedAt = 0L
     private var reloadPortalAfterSession = false
@@ -133,6 +144,10 @@ class MainActivity : android.app.Activity() {
         webView.visibility = View.GONE
         activationView.visibility = View.GONE
         loadingView.visibility = View.VISIBLE
+        lockView = createLockView()
+        root.addView(lockView, FrameLayout.LayoutParams(-1, -1))
+        lockView.visibility = View.GONE
+        applyScreenshotPolicy()
         animateIn(loadingView)
         restoreOrActivate()
     }
@@ -140,15 +155,27 @@ class MainActivity : android.app.Activity() {
     override fun onResume() {
         super.onResume()
         appResumed = true
+        applyScreenshotPolicy()
         sessionHandler.removeCallbacks(sessionRefreshTask)
         sessionHandler.postDelayed(sessionRefreshTask, SESSION_REFRESH_MS)
-        if (::root.isInitialized && ::webView.isInitialized && webView.visibility == View.VISIBLE &&
-            System.currentTimeMillis() - sessionLoadedAt > SESSION_REFRESH_MS) refreshDeviceSession()
+        if (!::root.isInitialized || !::webView.isInitialized) return
+        val away = if (backgroundedAt > 0L) System.currentTimeMillis() - backgroundedAt else 0L
+        if (lockRequired() && !locked && away > LOCK_TIMEOUT_MS) locked = true
+        if (lockRequired() && locked) { showLock(); return }
+        if (webView.visibility == View.VISIBLE) {
+            // Coming back to the app re-validates the device, so a deactivated account or a revoked device is logged out right away.
+            if (away > RESUME_CHECK_MS || System.currentTimeMillis() - sessionLoadedAt > SESSION_REFRESH_MS) refreshDeviceSession(silent = true)
+        }
     }
 
     override fun onPause() {
         appResumed = false
         sessionHandler.removeCallbacks(sessionRefreshTask)
+        if (!authInProgress) {
+            backgroundedAt = System.currentTimeMillis()
+            // Keep the app-switcher thumbnail blank while the lock is active.
+            if (lockRequired()) applyScreenshotPolicy(forceSecure = true)
+        }
         super.onPause()
     }
 
@@ -275,6 +302,7 @@ class MainActivity : android.app.Activity() {
                 return@api
             }
             setBusy(false)
+            locked = false
             establishPortalSession(result) {}
         }
     }
@@ -283,6 +311,7 @@ class MainActivity : android.app.Activity() {
         apiWithRetry("session", JSONObject().put("device_id", deviceId).put("device_token", secret)) { recovered, recoveryError ->
             setBusy(false)
             if (recovered?.optBoolean("ok") == true && recoveryError == null) {
+                locked = false
                 establishPortalSession(recovered) {}
             } else if (recovered?.optInt("http_status") == 401) {
                 DeviceVault.clear(this)
@@ -299,14 +328,15 @@ class MainActivity : android.app.Activity() {
         }
     }
 
-    private fun refreshDeviceSession() {
+    private fun refreshDeviceSession(silent: Boolean = false) {
         if (checkingSession) return
         val saved = DeviceVault.read(this) ?: return
         checkingSession = true
         apiWithRetry("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
             checkingSession = false
             if (result == null || (result.optInt("http_status") != 401 && error != null)) {
-                showConnectionError(error)
+                // A flaky connection on a background re-check must not tear down a working screen.
+                if (!silent) showConnectionError(error)
             } else if (error != null || result.optBoolean("ok") != true) {
                 DeviceVault.clear(this)
                 clearPortalCookies { showActivation("Pristup ovom uređaju je opozvan. Unesite novi jednokratni kod.") }
@@ -433,6 +463,133 @@ class MainActivity : android.app.Activity() {
 
     private inner class AppBridge {
         @JavascriptInterface fun logout() { runOnUiThread { revokeAndShowActivation() } }
+
+        /** The web app got a 401: re-check this device. Valid -> reload with a fresh session, revoked/deactivated -> activation screen. */
+        @JavascriptInterface fun sessionExpired() {
+            runOnUiThread {
+                val now = System.currentTimeMillis()
+                if (now - lastSessionExpiredAt < 5000L) return@runOnUiThread
+                lastSessionExpiredAt = now
+                reloadPortalAfterSession = true
+                refreshDeviceSession()
+            }
+        }
+
+        @JavascriptInterface fun getAppSettings(): String = JSONObject()
+            .put("allowScreenshots", allowScreenshots())
+            .put("lockEnabled", lockEnabled() || isAdminRole())
+            .put("lockForced", isAdminRole())
+            .put("deviceSecure", isDeviceSecure())
+            .put("role", DeviceVault.readRole(this@MainActivity))
+            .toString()
+
+        @JavascriptInterface fun setAllowScreenshots(value: Boolean) {
+            appPrefs.edit().putBoolean("allow_screenshots", value).apply()
+            runOnUiThread { applyScreenshotPolicy() }
+        }
+
+        /** Returns false when the phone has no screen lock (nothing to unlock with). */
+        @JavascriptInterface fun setLockEnabled(value: Boolean): Boolean {
+            if (value && !isDeviceSecure()) return false
+            appPrefs.edit().putBoolean("lock_enabled", value).apply()
+            locked = false
+            return true
+        }
+    }
+
+    // ---- app lock (PIN / pattern / password / fingerprint) and screenshot policy ----
+    private fun allowScreenshots() = appPrefs.getBoolean("allow_screenshots", true)
+    private fun lockEnabled() = appPrefs.getBoolean("lock_enabled", false)
+    private fun isDeviceSecure() = (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure
+    /** Admin devices are always locked; resellers can opt in from the profile settings. */
+    private fun lockRequired() = DeviceVault.read(this) != null && (isAdminRole() || lockEnabled())
+
+    private fun applyScreenshotPolicy(forceSecure: Boolean = false) {
+        if (!allowScreenshots() || forceSecure) window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
+    private fun createLockView() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(24), dp(24), dp(24), dp(24)); background = gradient(BG, WHITE, 24)
+        isClickable = true; isFocusable = true
+        val card = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), dp(28), dp(24), dp(24))
+            background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
+        }
+        card.addView(logoMark(84), LinearLayout.LayoutParams(dp(84), dp(84)))
+        card.addView(label("Aplikacija je zaključana", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(18), 0, dp(6)) })
+        lockMessageView = label("Potvrdite identitet otiskom prsta ili PIN-om telefona.", 14f, MUTED, false).apply {
+            gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(20))
+        }
+        card.addView(lockMessageView)
+        card.addView(primaryButton("Otključaj") { promptUnlock() }, matchWrap(dp(48)))
+        card.addView(label("Odjavi uređaj", 14f, BLUE, true).apply {
+            gravity = Gravity.CENTER; setPadding(0, dp(18), 0, dp(4)); isClickable = true
+            setOnClickListener { locked = false; lockView.visibility = View.GONE; revokeAndShowActivation() }
+        })
+        addView(card, LinearLayout.LayoutParams(minOf(dp(resources.configuration.screenWidthDp - 48), dp(420)), -2).apply { gravity = Gravity.CENTER })
+    }
+
+    private fun showLock() {
+        runOnUiThread {
+            lockView.visibility = View.VISIBLE
+            lockView.bringToFront()
+            promptUnlock()
+        }
+    }
+
+    private fun onUnlocked() {
+        locked = false
+        authInProgress = false
+        lockView.visibility = View.GONE
+        applyScreenshotPolicy()
+        if (webView.visibility == View.VISIBLE) refreshDeviceSession(silent = true)
+    }
+
+    private fun promptUnlock() {
+        if (authInProgress) return
+        if (!isDeviceSecure()) {
+            if (isAdminRole()) {
+                lockMessageView.text = "Za admin pristup postavite PIN, šablon ili otisak prsta u podešavanjima telefona, pa se vratite u aplikaciju."
+                try { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) } catch (_: Exception) { }
+            } else onUnlocked()
+            return
+        }
+        authInProgress = true
+        if (Build.VERSION.SDK_INT >= 30) promptUnlockModern() else promptUnlockLegacy()
+    }
+
+    @androidx.annotation.RequiresApi(30)
+    private fun promptUnlockModern() {
+        val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+            android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        val prompt = android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle("PlayWorld Reseller").setSubtitle("Otključajte aplikaciju")
+            .setAllowedAuthenticators(authenticators).build()
+        prompt.authenticate(android.os.CancellationSignal(), mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) { onUnlocked() }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                authInProgress = false
+                lockMessageView.text = "Otključavanje nije uspelo. Pokušajte ponovo."
+            }
+        })
+    }
+
+    @Suppress("DEPRECATION")
+    private fun promptUnlockLegacy() {
+        val intent = (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).createConfirmDeviceCredentialIntent("PlayWorld Reseller", "Otključajte aplikaciju")
+        if (intent == null) { onUnlocked(); return }
+        startActivityForResult(intent, REQ_UNLOCK)
+    }
+
+    @Suppress("DEPRECATION")
+    @Deprecated("Deprecated in Android; used for devices before Android 11")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_UNLOCK) {
+            authInProgress = false
+            if (resultCode == RESULT_OK) onUnlocked() else lockMessageView.text = "Otključavanje nije uspelo. Pokušajte ponovo."
+        }
     }
 
     private inner class PortalWebViewClient : WebViewClient() {
@@ -540,6 +697,9 @@ class MainActivity : android.app.Activity() {
         private const val API_URL = "$PORTAL_ORIGIN/api/device_auth.php"
         private const val PREFS = "reseller_device"
         private const val SESSION_REFRESH_MS = 45L * 60L * 1000L
+        private const val LOCK_TIMEOUT_MS = 60L * 1000L
+        private const val RESUME_CHECK_MS = 20L * 1000L
+        private const val REQ_UNLOCK = 4711
         private const val BLUE = 0xFF2563EB.toInt()
         private const val PURPLE = 0xFF4F46E5.toInt()
         private const val BG = 0xFFEEF2F9.toInt()

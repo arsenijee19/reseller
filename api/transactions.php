@@ -4,14 +4,11 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 
 start_secure_session();
-
-if (!isset($_SESSION['reseller_id'])) {
-  json_response(['ok' => false, 'error' => 'Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo.'], 401);
-}
+$reseller = require_reseller();
 
 try {
   $pdo = db();
-  $resellerId = (int)$_SESSION['reseller_id'];
+  $resellerId = (int)$reseller['id'];
   require_completed_profile($pdo, $resellerId);
 
   $hasRelatedOrder = has_column($pdo, 'wallet_transactions', 'related_order_id');

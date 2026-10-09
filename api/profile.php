@@ -128,6 +128,14 @@ try {
   $update->execute($params);
 
   $_SESSION['reseller_email'] = $email;
+  if ($tokenChangeRequested) {
+    // Keep this session (it proved the old token), end every other session and app device.
+    $_SESSION['credential_fp'] = session_credential_fingerprint((string)$pdo->query('SELECT token_hash FROM resellers WHERE id = ' . (int)$resellerId)->fetchColumn());
+    if (table_exists($pdo, 'reseller_app_devices')) {
+      $pdo->prepare('UPDATE reseller_app_devices SET revoked_at = NOW() WHERE reseller_id = ? AND revoked_at IS NULL AND device_id <> ?')
+        ->execute([$resellerId, (string)($_SESSION['app_device_id'] ?? '')]);
+    }
+  }
 
   audit_event($pdo, 'reseller', $resellerId, $completeOnboarding ? 'profile_completed' : 'profile_updated', 'success', [
     'email_changed' => $email !== normalize_email((string)$profile['email']),

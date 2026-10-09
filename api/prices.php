@@ -9,18 +9,14 @@ header("Pragma: no-cache");
 
 start_secure_session();
 
-// mora biti ulogovan reseller
-if (!isset($_SESSION["reseller_id"])) {
-  http_response_code(401);
-  echo json_encode(["ok"=>false,"error"=>"Niste ulogovani. Refrešujte stranicu i ulogujte se ponovo."]);
-  exit;
-}
+// mora biti ulogovan reseller (aktivan nalog, nepromenjen token)
+$reseller = require_reseller();
 
 try {
   $pdo = db();
   ensure_security_tables($pdo);
-  require_completed_profile($pdo, (int)$_SESSION["reseller_id"]);
-  $profile = reseller_profile($pdo, (int)$_SESSION["reseller_id"]);
+  require_completed_profile($pdo, (int)$reseller["id"]);
+  $profile = reseller_profile($pdo, (int)$reseller["id"]);
   $discountPercent = normalized_discount_percent($profile['discount_percent'] ?? 0);
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";

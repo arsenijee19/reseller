@@ -74,3 +74,12 @@ function ensure_admin_app_device_tables(PDO $pdo): void {
   ");
   $done = true;
 }
+
+const ADMIN_DEVICE_IDLE_DAYS = 30;
+
+/** Admin devices that were not used for 30 days lose access and must be enrolled again. */
+function revoke_idle_admin_devices(PDO $pdo): void {
+  if (!table_exists($pdo, 'admin_app_devices')) return;
+  $pdo->exec('UPDATE admin_app_devices SET revoked_at = NOW()
+    WHERE revoked_at IS NULL AND COALESCE(last_seen_at, created_at) < (NOW() - INTERVAL ' . (int)ADMIN_DEVICE_IDLE_DAYS . ' DAY)');
+}

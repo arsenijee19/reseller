@@ -78,3 +78,20 @@ registers the phone as an admin device (`admin_app_devices`, up to 5) and opens
 `/admin.html` in the WebView with an admin session. Device sessions do not grant
 admin step-up, so critical admin actions still ask for the admin password (and
 2-step code when enabled). Devices can be revoked from the same admin panel.
+
+## Session rules and app lock
+
+- Every authenticated API request re-checks the account: a deactivated reseller or admin, a changed
+  token/password, or a revoked app device ends the session immediately (`401` with `session_ended`).
+  Inside the app the WebView hands that to `PlayWorldNative.sessionExpired()`, which re-validates the
+  device and shows the activation screen when access is gone. Coming back to the app after 20 s does
+  the same check.
+- A token change (by the admin or by the reseller) revokes the reseller's app devices; the reseller
+  device that performed the change keeps its session. An admin password change does the same for
+  admin devices.
+- Admin devices expire after 30 days without use.
+- Admin devices are always locked behind the phone's PIN / pattern / fingerprint (re-asked after 60 s in
+  the background). Resellers can switch the lock on in My Profile. Screenshots are allowed by default and
+  can be disabled per phone in the same place (admin: Security tab).
+- `tests/e2e/run.sh` starts a throw-away MariaDB and PHP server and checks all of the above end to end
+  (needs `mariadb-server`, `php-mysql`, `python3`).
