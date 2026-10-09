@@ -27,6 +27,8 @@ rg -q "LIMIT 10" api/orders.php
 rg -q 'add_transaction' api/admin.php admin.html
 rg -q 'wallet_transactions' api/admin.php admin.html
 rg -q 'reseller_device_activation_codes' api/device_auth.php api/admin.php sql/2026-10-09_reseller_app_devices.sql
+rg -q 'device_label' api/admin.php admin.html sql/2026-10-09_reseller_app_device_labels.sql tests/test_device_auth_helpers.php
+test -f sql/2026-10-09_reseller_app_device_labels.sql
 rg -q 'AndroidKeyStore' mobile/android/app/src/main/java/rs/playworld/reseller/MainActivity.kt
 rg -q 'PlayWorldNative.logout' index.html
 

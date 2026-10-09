@@ -18,6 +18,16 @@ function normalize_app_activation_code(string $code): string {
   return preg_match('/^[A-HJ-NP-Z2-9]{12}$/', $code) ? $code : '';
 }
 
+function normalize_app_device_label(string $label): string {
+  $label = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $label);
+  if (!is_string($label) || preg_match('//u', $label) !== 1) return '';
+  $label = preg_replace('/\s+/u', ' ', trim($label));
+  if (!is_string($label)) return '';
+  if (function_exists('mb_substr')) return mb_substr($label, 0, 120, 'UTF-8');
+  $characters = preg_split('//u', $label, -1, PREG_SPLIT_NO_EMPTY);
+  return is_array($characters) ? implode('', array_slice($characters, 0, 120)) : '';
+}
+
 function app_device_credential_hash(string $credential): string {
   return hash('sha256', $credential);
 }

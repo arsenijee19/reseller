@@ -18,6 +18,9 @@ expect(count($seen) === 1000, 'Unexpected duplicate in generated activation-code
 expect(normalize_app_activation_code(' abcd-efgh-jkmn ') === 'ABCDEFGHJKMN', 'Code normalization failed.');
 expect(normalize_app_activation_code('ABCDEFGHJKLM0') === '', 'Ambiguous/invalid code character was accepted.');
 expect(normalize_app_activation_code('short') === '', 'Short activation code was accepted.');
+expect(normalize_app_device_label("  Arso iPhone 17\nPro  ") === 'Arso iPhone 17 Pro', 'Device label whitespace/control normalization failed.');
+expect(normalize_app_device_label(str_repeat('a', 121)) === str_repeat('a', 120), 'Device label was not limited to 120 characters.');
+expect(normalize_app_device_label("\xFF") === '', 'Invalid UTF-8 device label was accepted.');
 
 $secret = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 expect((bool)preg_match('/^[A-Za-z0-9_-]{43}$/', $secret), 'Device credential has invalid format.');

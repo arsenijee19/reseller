@@ -852,6 +852,8 @@
             <div class="drawer-section-title">Aplikacija i uređaji</div>
             <section class="app-device-panel" aria-label="Upravljanje pristupom aplikaciji">
               <p class="app-device-intro">Jednokratni kod važi 24 sata. Posle aktivacije uređaj ostaje prijavljen dok ga Vi ili administrator ne odjavite.</p>
+              <label for="appActivationDeviceLabel">Naziv uređaja za ovaj kod</label>
+              <input id="appActivationDeviceLabel" type="text" maxlength="120" autocomplete="off" placeholder="npr. Arso iPhone 17 Pro" />
               <button class="btn primary" id="createAppActivationCode" type="button">Izdaj jednokratni kod</button>
               <div class="app-code-output" id="appActivationCodeOutput" hidden>
                 <strong>Kod za prikazivanje reselleru · važi 24 sata</strong>
@@ -1370,6 +1372,7 @@
       $("drawerResellerMsg").style.display = "none";
       $("appActivationCodeOutput").hidden = true;
       $("appActivationCodeValue").textContent = "";
+      $("appActivationDeviceLabel").value = "";
       $("appActivationCodesList").replaceChildren();
       $("appDevicesList").replaceChildren();
       $("resellerDrawerBackdrop").classList.add("open");
@@ -1397,7 +1400,7 @@
         const top = document.createElement("div"); top.className = "app-device-item-top";
         const copy = document.createElement("div");
         const status = code.revoked_at ? "Opozvan" : code.consumed_at ? "Iskorišćen" : Number(code.expired) ? "Istekao" : "Aktivan";
-        text(copy, "strong", `Kod #${code.id} · ${status}`);
+        text(copy, "strong", `Kod #${code.id} · ${code.device_label || "Uređaj"} · ${status}`);
         const details = `Izdato: ${appDate(code.created_at)} · ističe: ${appDate(code.expires_at)}${code.consumed_at ? ` · iskorišćen: ${appDate(code.consumed_at)}` : ""}`;
         text(copy, "small", details);
         top.append(copy);
@@ -1414,7 +1417,9 @@
         const item = document.createElement("div"); item.className = "app-device-item";
         const top = document.createElement("div"); top.className = "app-device-item-top";
         const copy = document.createElement("div");
-        text(copy, "strong", `${device.device_name || "Uređaj"} · ${String(device.platform || "").toUpperCase()}${device.revoked_at ? " · Opozvan" : " · Aktivan"}`);
+        const assignedName = device.activation_label || device.device_name || "Uređaj";
+        const model = device.activation_label && device.device_name ? ` (${device.device_name})` : "";
+        text(copy, "strong", `${assignedName}${model} · ${String(device.platform || "").toUpperCase()}${device.revoked_at ? " · Opozvan" : " · Aktivan"}`);
         text(copy, "small", `Prijavljen: ${appDate(device.created_at)} · poslednja aktivnost: ${appDate(device.last_seen_at)}${device.last_ip_address ? ` · IP ${device.last_ip_address}` : ""}`);
         top.append(copy);
         if (!device.revoked_at) {
@@ -2409,12 +2414,15 @@
     $("saveResellerEdit").addEventListener("click", saveResellerDrawer);
     $("createAppActivationCode").addEventListener("click", async () => {
       const resellerId = state.editingResellerId;
+      const deviceLabel = $("appActivationDeviceLabel").value.trim();
+      if (!deviceLabel) { $("appActivationDeviceLabel").focus(); showToast("bad", "Unesite naziv uređaja za ovaj kod."); return; }
       const button = $("createAppActivationCode"); button.disabled = true; button.textContent = "Pravim kod…";
       try{
         await ensureAdminStepUp();
-        const result = await api("device_activation_create", { method:"POST", body:JSON.stringify({ reseller_id:resellerId }) });
+        const result = await api("device_activation_create", { method:"POST", body:JSON.stringify({ reseller_id:resellerId, device_label:deviceLabel }) });
         if (state.editingResellerId !== resellerId) return;
         $("appActivationCodeValue").textContent = result.code;
+        $("appActivationDeviceLabel").value = "";
         $("appActivationCodeExpiry").textContent = `Ističe ${appDate(result.expires_at)}. Prikažite ili kopirajte kod sada; kasnije neće moći ponovo da se otkrije.`;
         $("appActivationCodeOutput").hidden = false;
         await loadAppDeviceManagement(resellerId);

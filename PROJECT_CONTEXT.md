@@ -86,6 +86,7 @@
   - The isolated VPS deployment may be installed/built, but starting it without the BotFather token, panel API token, and webhook certificate cannot work and should not be attempted.
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
   - Run `sql/2026-10-09_reseller_app_devices.sql` on the cPanel database before issuing mobile activation codes.
+  - Run `sql/2026-10-09_reseller_app_device_labels.sql` after the app-device migration to issue named activation codes.
   - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
   - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
@@ -127,6 +128,7 @@
 - `api/device_auth.php` - one-time Android/iOS app enrollment, device session refresh, and device logout.
 - `api/device_auth_helpers.php` - activation-code generation/normalization and opaque device-token hashing.
 - `sql/2026-10-09_reseller_app_devices.sql` - additive activation-code and mobile-device tables.
+- `sql/2026-10-09_reseller_app_device_labels.sql` - additive admin-assigned activation-code/device labels.
 - `tests/test_device_auth_helpers.php` - activation-code and opaque-credential helper tests.
 - `api/verification_code.php` - server-side Inventory Supplier API email-code request flow with idempotency, daily limit, and audit logging.
 - `api/missing_game.php` - reseller-owned missing-game report endpoint with duplicate protection and n8n notification payload.
@@ -238,6 +240,7 @@
 
 ## Important Business Logic
 - Mobile app enrollment uses a cryptographically random 12-character code, valid for 24 hours and consumed in a row-locked transaction once. At most five unconsumed codes and ten active devices are allowed per reseller. Reseller TOTP is mandatory at enrollment when enabled. The app generates a random 256-bit device token before activation; the server stores only SHA-256, while Android encrypts it with an Android Keystore AES-GCM key and iOS should use Keychain. Device revocation is checked on every reseller API request made by app sessions. App sessions are silently renewed every 45 minutes; standard website token login remains unchanged.
+- Admin must assign each new activation code a sanitized 1-120 character device name. The name is stored as admin-only metadata and associated with the activated device through its consumed device UUID; legacy codes and devices remain valid without labels.
 - Reseller orders:
   - Product price is loaded from `product_prices` by `product_id`.
   - Admin can assign each reseller a `0-100%` discount. The reseller sees the discounted catalog price, while the server recalculates it during order creation and stores the final charged price.
@@ -291,6 +294,7 @@
 - Hardened Android enrollment and session restoration against interrupted requests, PHP session-cookie rotation, process death, stale device IDs after logout, and short network interruptions. Device credentials are durably saved before activation; successful API responses require an accepted reseller session cookie; only idempotent session checks retry. Routine session refresh no longer runs unrelated schema DDL. Added restrained screen transitions and a more editorial activation heading with Android reduced-motion support.
 - Replaced the generic Android launcher graphic with the provided PlayWorld Reseller icon, padded into the adaptive-icon safe zone and paired with its navy background for device-specific masks.
 - Harmonized Android activation, connection-loading, and retry screens with the portal's brand mark, palette, card/control radii, and button sizing. Content width now follows the app window (including split-screen), compact phones use narrower page/card insets, and error text is referenced directly; authentication, session, and WebView behavior are unchanged. CI built the APK and passed emulator launch plus activation-screen visibility checks on 2026-10-09.
+- Added required device names to Admin → Reselleri → Aplikacija i uređaji; labels follow consumed activation codes into device management, with an additive SQL migration and helper tests.
 - Fixed admin product grouping: platform extraction now loops over each variant's matches instead of chaining onto `forEach()`'s undefined return value, which had aborted every product group. Rendering retains per-row/group error boundaries and Safari-compatible own-property checks.
 - Recommended minimum resale prices now use the product's original base price for both the markup tier and final amount; reseller discounts affect only the reseller purchase price.
 - Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.

@@ -579,12 +579,18 @@ try {
     if ($resellerId <= 0 || !table_exists($pdo, 'reseller_device_activation_codes') || !table_exists($pdo, 'reseller_app_devices')) {
       json_response(['ok' => false, 'error' => 'Upravljanje aplikacijama zahteva SQL migraciju za uređaje.'], 503);
     }
-    $codes = $pdo->prepare("SELECT id, expires_at, consumed_at, consumed_device_id, revoked_at, created_at,
+    $hasDeviceLabel = has_column($pdo, 'reseller_device_activation_codes', 'device_label');
+    $labelSelect = $hasDeviceLabel ? 'device_label' : 'NULL AS device_label';
+    $codes = $pdo->prepare("SELECT id, $labelSelect, expires_at, consumed_at, consumed_device_id, revoked_at, created_at,
         CASE WHEN expires_at <= NOW() THEN 1 ELSE 0 END AS expired
       FROM reseller_device_activation_codes WHERE reseller_id = ? ORDER BY id DESC LIMIT 30");
     $codes->execute([$resellerId]);
-    $devices = $pdo->prepare("SELECT id, device_id, device_name, platform, created_at, last_seen_at,
-        last_ip_address, revoked_at FROM reseller_app_devices WHERE reseller_id = ? ORDER BY revoked_at IS NULL DESC, last_seen_at DESC, id DESC");
+    $deviceLabelSelect = $hasDeviceLabel
+      ? '(SELECT c.device_label FROM reseller_device_activation_codes c WHERE c.consumed_device_id = d.device_id AND c.reseller_id = d.reseller_id ORDER BY c.id DESC LIMIT 1) AS activation_label'
+      : 'NULL AS activation_label';
+    $devices = $pdo->prepare("SELECT d.id, d.device_id, d.device_name, d.platform, d.created_at, d.last_seen_at,
+        d.last_ip_address, d.revoked_at, $deviceLabelSelect FROM reseller_app_devices d
+      WHERE d.reseller_id = ? ORDER BY d.revoked_at IS NULL DESC, d.last_seen_at DESC, d.id DESC");
     $devices->execute([$resellerId]);
     json_response([
       'ok' => true,
@@ -641,7 +647,12 @@ try {
     }
 
     if ($action === 'device_activation_create') {
+      if (!has_column($pdo, 'reseller_device_activation_codes', 'device_label')) {
+        json_response(['ok' => false, 'error' => 'Pokrenite SQL migraciju za nazive uređaja pre izdavanja novih kodova.'], 503);
+      }
       $resellerId = (int)($input['reseller_id'] ?? 0);
+      $deviceLabel = normalize_app_device_label((string)($input['device_label'] ?? ''));
+      if ($deviceLabel === '') json_response(['ok' => false, 'error' => 'Unesite naziv uređaja za ovaj kod.'], 400);
       $resellerStmt = $pdo->prepare("SELECT id, status FROM resellers WHERE id = ? LIMIT 1");
       $resellerStmt->execute([$resellerId]);
       $reseller = $resellerStmt->fetch(PDO::FETCH_ASSOC);
@@ -655,8 +666,8 @@ try {
         json_response(['ok' => false, 'error' => 'Reseller već ima pet važećih neiskorišćenih kodova. Sačekajte da isteknu ili opozovite neki kod.'], 409);
       }
       $code = app_activation_code();
-      $stmt = $pdo->prepare('INSERT INTO reseller_device_activation_codes (reseller_id, code_hash, created_by_admin_id, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))');
-      $stmt->execute([$resellerId, hash('sha256', $code), $adminId]);
+      $stmt = $pdo->prepare('INSERT INTO reseller_device_activation_codes (reseller_id, code_hash, device_label, created_by_admin_id, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))');
+      $stmt->execute([$resellerId, hash('sha256', $code), $deviceLabel, $adminId]);
       $id = (int)$pdo->lastInsertId();
       $expiry = $pdo->prepare('SELECT expires_at FROM reseller_device_activation_codes WHERE id = ?');
       $expiry->execute([$id]);
