@@ -1,8 +1,10 @@
 {
   "android": {
-    "code": 1,
-    "name": "1.0.1",
+    "code": 26,
+    "name": "1.0.26",
     "min_code": 1,
-    "stable_key": false
+    "stable_key": false,
+    "sha256": "1870d96337833c141cec3e0574b79ad8bf365205b06e275b0961cc60bd0b9190",
+    "published_at": "2026-10-09T13:14:20Z"
   }
 }
