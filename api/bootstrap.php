@@ -193,7 +193,12 @@ function is_internal_reseller_email(string $email): bool {
   return $email !== '' && substr($email, -strlen($suffix)) === $suffix;
 }
 
-function table_columns(PDO $pdo, string $table): array {
+function table_columns(PDO $pdo, string $table, bool $refresh = false): array {
+  // INFORMATION_SCHEMA is slow on shared MySQL, so cache per request. Empty
+  // results (missing table) are never cached and ALTERs call with $refresh.
+  static $cache = [];
+  $key = spl_object_id($pdo) . ':' . $table;
+  if (!$refresh && isset($cache[$key])) return $cache[$key];
   $stmt = $pdo->prepare("
     SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
     FROM INFORMATION_SCHEMA.COLUMNS
@@ -201,7 +206,13 @@ function table_columns(PDO $pdo, string $table): array {
     ORDER BY ORDINAL_POSITION
   ");
   $stmt->execute([$table]);
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  if ($columns) {
+    $cache[$key] = $columns;
+  } else {
+    unset($cache[$key]);
+  }
+  return $columns;
 }
 
 function column_names(PDO $pdo, string $table): array {
@@ -271,6 +282,7 @@ function ensure_security_tables(PDO $pdo): void {
     $column = strtok($definition, ' ');
     if ($column && !has_column($pdo, 'resellers', $column)) {
       $pdo->exec("ALTER TABLE resellers ADD COLUMN {$definition}");
+      table_columns($pdo, 'resellers', true);
     }
   }
 
@@ -449,6 +461,7 @@ function ensure_security_tables(PDO $pdo): void {
     $column = strtok($definition, ' ');
     if ($column && !has_column($pdo, $table, $column)) {
       $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$definition}");
+      table_columns($pdo, $table, true);
     }
   }
 
@@ -467,6 +480,7 @@ function ensure_order_cancellation_columns(PDO $pdo): void {
     $column = strtok($definition, ' ');
     if ($column && !has_column($pdo, 'orders', $column)) {
       $pdo->exec("ALTER TABLE orders ADD COLUMN {$definition}");
+      table_columns($pdo, 'orders', true);
     }
   }
 

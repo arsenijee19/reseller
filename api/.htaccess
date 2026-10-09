@@ -7,6 +7,10 @@ Options -Indexes
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 </IfModule>
 
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html application/json text/css application/javascript text/plain
+</IfModule>
+
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "DENY"

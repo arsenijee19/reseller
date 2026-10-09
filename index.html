@@ -599,6 +599,15 @@
       .price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media(max-width:560px){.scroll-top-btn{right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));width:44px;height:44px;border-radius:14px}}
+    /* a11y polish: readable captions in both themes, bigger touch targets on touch devices */
+    .balance-caption{color:var(--muted)}
+    .status-indicator{color:var(--muted)}
+    @media (pointer:coarse){
+      .mini-btn{min-height:40px}
+      .picker-letter{min-width:38px;min-height:38px}
+      .picker-type-filter{min-height:40px}
+      .history-filter{min-height:40px}
+    }
   </style>
 </head>
 <body class="session-checking">
@@ -1012,7 +1021,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-06-mobile-layout-refinement";
+    const RELEASE_VERSION = "2026-10-09-performance-polish";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1358,8 +1367,20 @@
       const headers = Object.assign({}, options.headers || {});
       if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
       if (state.csrf) headers["X-CSRF-Token"] = state.csrf;
-      const res = await fetch(url, Object.assign({ credentials:"same-origin", cache:"no-store" }, options, { headers }));
-      const text = await res.text();
+      // Only idempotent reads get a timeout; writes (orders, payments) must never be aborted client-side.
+      const isRead = !options.method || String(options.method).toUpperCase() === "GET";
+      const controller = isRead && !options.signal && typeof AbortController === "function" ? new AbortController() : null;
+      const abortTimer = controller ? window.setTimeout(() => controller.abort(), 30000) : 0;
+      let res, text;
+      try{
+        res = await fetch(url, Object.assign({ credentials:"same-origin", cache:"no-store" }, options, controller ? { signal:controller.signal } : {}, { headers }));
+        text = await res.text();
+      }catch(e){
+        if (e && e.name === "AbortError") throw new Error("Server predugo odgovara. Proverite internet vezu i pokušajte ponovo.");
+        throw e;
+      }finally{
+        if (abortTimer) window.clearTimeout(abortTimer);
+      }
       let json = {};
       try{
         json = text ? JSON.parse(text) : {};
@@ -2932,7 +2953,8 @@
     document.addEventListener("focusout", () => window.setTimeout(refreshIfSafe, 0));
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAppVersion(); });
     window.setTimeout(checkAppVersion, 3000);
-    window.setInterval(checkAppVersion, 30000);
+    window.setInterval(checkAppVersion, 60000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAppVersion(); });
     requestGameModal.addEventListener("click", (event) => { if (event.target === requestGameModal) closeGameRequest(); });
     missingGameModal.addEventListener("click", (event) => { if (event.target === missingGameModal) closeMissingGame(); });
     settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettingsModal(); });

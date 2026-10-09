@@ -9,5 +9,5 @@ header('X-Content-Type-Options: nosniff');
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-06-mobile-layout-refinement',
+  'version' => '2026-10-09-performance-polish',
 ], JSON_UNESCAPED_SLASHES);
