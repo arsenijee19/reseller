@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Admin</title>
+  <script>
+    /* Apply the saved theme before first paint so dark mode never flashes light. */
+    (function(){try{var t=localStorage.getItem("pw-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){}})();
+  </script>
   <style>
     :root{
       --bg:#f4f6f8;
@@ -59,7 +63,7 @@
     @keyframes session-spin{to{transform:rotate(360deg)}}
     @keyframes session-card-in{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
     @keyframes session-sheen{0%,100%{transform:translateX(0);opacity:0}25%,75%{opacity:.8}50%{transform:translateX(430%);opacity:.8}}
-    body.session-checking .session-restore{display:grid;animation:session-restore-reveal .22s .1s both}
+    body.session-checking .session-restore{display:grid;animation:session-restore-reveal .22s .45s both;opacity:0}
     body.session-checking .login,body.session-checking .login-switch,body.session-checking #adminPanel{visibility:hidden}
     @keyframes session-restore-reveal{from{opacity:0}to{opacity:1}}
     .topbar-title{min-width:0}
@@ -465,6 +469,17 @@
     @media(max-width:560px){.telegram-chat-form,.telegram-thresholds{grid-template-columns:minmax(0,1fr)}.telegram-chat-submit{grid-column:auto}.telegram-notification-options{grid-template-columns:minmax(0,1fr)}.telegram-actions{align-items:stretch;flex-direction:column}.telegram-actions .btn{width:100%}}
     @media(max-width:860px){.tabs{justify-content:flex-start;border-radius:13px}.view-toolbar{align-items:stretch;flex-direction:column}.view-toolbar-controls{justify-content:flex-start}.view-search{width:100%;min-width:0}.security-banner{align-items:flex-start}.security-banner-copy{align-items:flex-start;flex-direction:column;gap:3px}.security-banner>.btn{flex:0 0 auto}.drawer-head{padding:17px 16px 14px}.drawer-content{padding:15px 16px 20px}.drawer-footer{padding:12px 16px}.product-group-card{overflow:hidden}.product-group-head{align-items:flex-start}}
     @media(max-width:560px){.shell{padding:14px 10px 28px}.admin-brand-copy strong{font-size:16px}.admin-brand .portal-logo{width:40px;height:40px;flex-basis:40px}.topbar .actions{gap:6px}.topbar .actions .btn{flex:0 0 40px;width:40px;min-width:40px;padding:8px}.topbar .actions .btn#logoutBtn{flex:0 0 auto;width:auto;min-width:40px}.tabs{gap:2px;padding:4px}.tab{min-height:38px;padding:8px 10px;font-size:11px}.security-banner{padding:10px}.security-banner-copy{font-size:11px}.security-banner-copy strong{white-space:normal}.view-toolbar-controls{align-items:stretch}.segmented-filters{width:100%;justify-content:space-between}.segment-filter{flex:1;padding-inline:6px}.view-toolbar-controls>.btn{width:100%}.reseller-drawer{width:100%}.drawer-fields,.drawer-adjustment-fields{grid-template-columns:1fr}.drawer-fields .full{grid-column:auto}.drawer-title-copy h2{font-size:16px}.drawer-footer .btn{min-width:0}.product-group-head{padding:12px}.product-group-head .btn{flex:0 0 auto;min-width:0}.product-table{min-width:680px}}
+    /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
+    body:not(.session-checking) .login,body:not(.session-checking) .login-switch{animation:login-fade-in .24s var(--ease-fast,ease) both}
+    @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .login .section{text-align:center;padding:32px 28px 28px}
+    .login-heading{flex-direction:column;align-items:center;gap:14px;margin-bottom:8px}
+    .login-heading .portal-logo{width:52px;height:52px;flex-basis:52px;border-radius:16px}
+    .login-heading .portal-logo svg{width:26px;height:26px}
+    .login-heading h1{font-size:28px;line-height:1.1;font-weight:700;letter-spacing:-.03em}
+    .login .section>p{max-width:34ch;margin:0 auto 24px;text-align:center;font-size:15px;line-height:1.45}
+    .login label{font-size:13px;font-weight:600}
+    @media(max-width:560px){.login-heading h1{font-size:25px}.login .section{padding:26px 20px 22px}}
   </style>
 </head>
 <body class="session-checking">
@@ -481,8 +496,8 @@
     </div>
     <section class="panel login" id="loginPanel">
       <div class="section">
-        <div class="login-heading"><span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 5-3.4 8.3-7 10-3.6-1.7-7-5-7-10V6l7-3Z"/></svg></span><h1>Admin prijava</h1></div>
-        <p>Administracija resellera, proizvoda, cena i porudžbina.</p>
+        <div class="login-heading"><span class="portal-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 5-3.4 8.3-7 10-3.6-1.7-7-5-7-10V6l7-3Z"/></svg></span><h1>Dobrodošli nazad</h1></div>
+        <p>Prijavi se za upravljanje resellerima, proizvodima, cenama i porudžbinama.</p>
         <label for="adminPassword">Šifra</label>
         <input id="adminPassword" type="password" autocomplete="current-password" />
         <div id="admin2faLoginBox" style="display:none">
@@ -927,12 +942,20 @@
     }
     function showLoginMsg(type,text){ const el=$("loginMsg"); el.className="msg "+type; el.textContent=text; el.style.display="block"; }
     function clearMsg(){ $("adminMsg").style.display="none"; $("loginMsg").style.display="none"; }
+    let loginProgressTimer = 0;
     function showLoginProgress(message){
       $("loginProgressText").textContent = message;
-      $("loginProgress").classList.add("open");
-      $("loginProgress").setAttribute("aria-hidden", "false");
+      // Fast responses finish before the dialog would appear, so it never flickers.
+      if ($("loginProgress").classList.contains("open") || loginProgressTimer) return;
+      loginProgressTimer = window.setTimeout(() => {
+        loginProgressTimer = 0;
+        $("loginProgress").classList.add("open");
+        $("loginProgress").setAttribute("aria-hidden", "false");
+      }, 300);
     }
     function hideLoginProgress(){
+      window.clearTimeout(loginProgressTimer);
+      loginProgressTimer = 0;
       $("loginProgress").classList.remove("open");
       $("loginProgress").setAttribute("aria-hidden", "true");
     }
