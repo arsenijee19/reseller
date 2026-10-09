@@ -9,5 +9,5 @@ header('X-Content-Type-Options: nosniff');
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-09-app-install',
+  'version' => '2026-10-09-login-layout',
 ], JSON_UNESCAPED_SLASHES);

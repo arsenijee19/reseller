@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#102a6b" />
+  <meta name="theme-color" content="#eef2fa" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="PlayWorld" />
@@ -1093,6 +1093,8 @@
       const next = theme === "dark" ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       saveTheme(next);
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) themeMeta.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#eef2fa");
       ["themeBtn","loginThemeBtn"].forEach((id) => {
         const btn = $(id);
         if (btn) {

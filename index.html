@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#102a6b" />
+  <meta name="theme-color" content="#eef2fa" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="PlayWorld" />
@@ -727,10 +727,9 @@
           <p class="app-activation-hint">Nemate kod? Zatražite ga od administratora.</p>
         </section>
 
-        <p class="login-switch">Administrator? <a href="/admin.html">Admin prijava</a></p>
 
         <section class="panel get-app" id="getApp" aria-label="Aplikacija za telefon">
-          <div class="get-app-head"><strong>Aplikacija za telefon</strong><span>Brži pristup i prijava jednokratnim kodom.</span></div>
+          <div class="get-app-head"><strong>Instalirajte aplikaciju</strong><span>Bez kucanja tokena. Prijava jednokratnim kodom.</span></div>
           <div class="get-app-buttons">
             <a class="store-btn android" id="getAndroidBtn" href="/downloads/PlayWorld-Reseller.apk" download>
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 9.5h11v8a1.5 1.5 0 0 1-1.5 1.5h-.5v2.2a1.3 1.3 0 0 1-2.6 0V19h-1.8v2.2a1.3 1.3 0 0 1-2.6 0V19H8A1.5 1.5 0 0 1 6.5 17.5zM4.2 9.8a1.2 1.2 0 0 1 2.4 0v5.4a1.2 1.2 0 0 1-2.4 0zm13.2 0a1.2 1.2 0 0 1 2.4 0v5.4a1.2 1.2 0 0 1-2.4 0zM7 8.6a5 5 0 0 1 10 0zm3-2.4a.6.6 0 1 0 0 .01zm4 0a.6.6 0 1 0 0 .01z"/></svg>
@@ -742,8 +741,10 @@
             </button>
           </div>
           <p class="get-app-note" id="getAppNote" role="status" aria-live="polite"></p>
-          <button class="get-app-help" id="getAppHelp" type="button" hidden>Pogledaj uputstvo za instalaciju</button>
+          <button class="get-app-help" id="getAppHelp" type="button" hidden>Kako se instalira? Pogledaj uputstvo</button>
         </section>
+
+        <p class="login-switch">Administrator? <a href="/admin.html">Admin prijava</a></p>
 
         <div class="app-column" id="appBox" style="display:none">
           <section class="panel">
@@ -1103,7 +1104,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-app-install";
+    const RELEASE_VERSION = "2026-10-09-login-layout";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1408,6 +1409,8 @@
       const next = theme === "dark" ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       saveTheme(next);
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) themeMeta.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#eef2fa");
       [themeBtn, $("loginThemeBtn")].forEach((button) => {
         if (!button) return;
         button.innerHTML = next === "dark"
