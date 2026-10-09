@@ -156,9 +156,9 @@ class MainActivity : android.app.Activity() {
     private fun createActivationView(): View {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(20), dp(24), dp(24)); background = gradient(BG, WHITE)
+            setPadding(dp(24), dp(20), dp(24), dp(24)); background = gradient(BG, WHITE, 24)
         }
-        val scroller = ScrollView(this).apply { fillViewport = true; isClipToPadding = false }
+        val scroller = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val stack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
         val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(30)) }
         val logo = TextView(this).apply {
@@ -211,7 +211,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun createLoadingView() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE)
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE, 24)
         addView(TextView(this@MainActivity).apply { text = "🎮"; textSize = 40f; gravity = Gravity.CENTER })
         addView(label("Bezbedno povezivanje", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(14), 0, dp(6)) })
         addView(label("Proveravamo prijavu ovog uređaja…", 14f, MUTED, false).apply { gravity = Gravity.CENTER })
@@ -219,7 +219,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun createConnectionErrorView() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE)
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(32), dp(24), dp(32), dp(24)); background = gradient(BG, WHITE, 24)
         addView(label("Portal trenutno nije dostupan", 20f, INK, true).apply { gravity = Gravity.CENTER })
         addView(label("Proverite internet vezu. Vaša aktivacija je sačuvana i ne morate ponovo da unosite kod.", 14f, MUTED, false).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(20)) })
         addView(Button(this@MainActivity).apply {
