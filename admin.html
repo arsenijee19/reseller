@@ -486,6 +486,10 @@
     .app-device-panel>.btn.primary:disabled{opacity:.7;cursor:progress}
     .app-code-output .btn{width:100%;min-height:46px}
     .app-device-item-top .btn{flex:0 0 auto;min-height:38px;padding:8px 14px}
+    /* Confirmation dialogs must sit above the reseller drawer (z-index 70), otherwise they render dimmed behind it */
+    .admin-modal-backdrop{z-index:75}
+    #adminReauthMsg:empty{display:none!important}
+    .admin-modal-backdrop.login-progress-backdrop{z-index:80}
     @media(max-width:560px){.login-heading h1{font-size:25px}.login .section{padding:26px 20px 22px}}
   </style>
 </head>
