@@ -86,7 +86,7 @@
   - The isolated VPS deployment may be installed/built, but starting it without the BotFather token, panel API token, and webhook certificate cannot work and should not be attempted.
   - Run the SQL migration on cPanel/phpMyAdmin before using admin login.
   - Run `sql/2026-10-09_reseller_app_devices.sql` on the cPanel database before issuing mobile activation codes.
-  - Run `sql/2026-10-09_reseller_app_device_labels.sql` after the app-device migration to issue named activation codes.
+  - Run `sql/2026-10-09_reseller_app_device_labels.sql` to create any missing app-device tables and add named activation codes; it is safe to run after the base app-device migration too.
   - Run `sql/2026-08-09_account_security_inventory.sql` in production for full schema parity; runtime helpers also add required profile/2FA tables when DB privileges allow.
   - Configure Inventory Supplier API server-side values through Admin → Inventory or directly in `api/config.local.php` / env: `inventory.api_base` / `inventory.supplier_token` or `PWRS_INVENTORY_API_BASE` / `PWRS_INVENTORY_SUPPLIER_TOKEN`.
   - Import updated `/Users/arsoplayworld/Downloads/reseller.json` into n8n so missing-game reports do not replay delivery.
@@ -128,7 +128,7 @@
 - `api/device_auth.php` - one-time Android/iOS app enrollment, device session refresh, and device logout.
 - `api/device_auth_helpers.php` - activation-code generation/normalization and opaque device-token hashing.
 - `sql/2026-10-09_reseller_app_devices.sql` - additive activation-code and mobile-device tables.
-- `sql/2026-10-09_reseller_app_device_labels.sql` - additive admin-assigned activation-code/device labels.
+- `sql/2026-10-09_reseller_app_device_labels.sql` - self-contained additive app-device table setup and admin-assigned activation-code/device labels.
 - `tests/test_device_auth_helpers.php` - activation-code and opaque-credential helper tests.
 - `api/verification_code.php` - server-side Inventory Supplier API email-code request flow with idempotency, daily limit, and audit logging.
 - `api/missing_game.php` - reseller-owned missing-game report endpoint with duplicate protection and n8n notification payload.
