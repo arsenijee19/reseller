@@ -57,3 +57,8 @@
 /* quiet footer link under the app card */
 .get-app~.login-switch{margin:14px 0 2px;font-size:13px;color:var(--muted)}
 .get-app~.login-switch a{font-weight:700}
+
+/* no pinch / double-tap zoom while the guide is open */
+.ob-backdrop{touch-action:pan-y;-webkit-text-size-adjust:100%}
+.ob-backdrop *{touch-action:manipulation}
+.ob-sheet{overscroll-behavior:contain}

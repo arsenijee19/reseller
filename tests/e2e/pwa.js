@@ -107,11 +107,13 @@ const standaloneInit = () => Object.defineProperty(navigator, "standalone", { ge
   check("tapping the Android icon does not open the tutorial yet", !(await page.locator(".ob-backdrop.open").count()));
   await page.reload(); await page.waitForSelector(".ob-backdrop.open", { timeout: 8000 });
   check("next time the site opens the Android tutorial appears", await page.locator(".ob-backdrop.open").count() === 1);
+  check("zoom is locked while the tutorial is open", /maximum-scale=1/.test(await page.getAttribute('meta[name="viewport"]', "content")) && (await page.evaluate(() => getComputedStyle(document.querySelector(".ob-slide")).touchAction)) === "manipulation");
   check("tutorial has 5 steps", await page.locator(".ob-slide").count() === 5);
   const titles = [];
   for (let i = 0; i < 5; i++) { titles.push(await page.textContent("#obTitle")); await page.screenshot({ path: `${process.env.SHOTS}/tutorial-android-${i + 1}.png` }); if (i < 4) { await page.click("#obNext"); await page.waitForTimeout(550); } }
   check("Play Protect steps mention Learn more and Install anyway", (await page.locator(".ob-slide").allTextContents()).join(" ").includes("Learn more") && (await page.locator(".ob-slide").allTextContents()).join(" ").includes("Install anyway"));
   await page.click("#obNext"); await page.waitForTimeout(500);
+  check("zoom is restored after the tutorial is closed", !/maximum-scale/.test(await page.getAttribute('meta[name="viewport"]', "content")));
   await page.reload(); await page.waitForTimeout(800);
   check("tutorial is shown only once per tap", !(await page.locator(".ob-backdrop.open").count()));
   await ctx.close();

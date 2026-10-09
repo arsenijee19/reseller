@@ -206,8 +206,21 @@
     nextBtn.textContent = index === steps.length - 1 ? "Gotovo" : "Dalje";
   }
 
+  // Safari ignores user-scalable=no, so pinch zoom is blocked with gesture events and double-tap zoom with touch-action.
+  var viewportMeta = document.querySelector('meta[name="viewport"]');
+  var viewportBackup = viewportMeta ? viewportMeta.getAttribute("content") : "";
+  function blockGesture(e) { e.preventDefault(); }
+  function zoomLock(on) {
+    ["gesturestart", "gesturechange", "gestureend"].forEach(function (name) {
+      if (on) document.addEventListener(name, blockGesture, { passive: false });
+      else document.removeEventListener(name, blockGesture, { passive: false });
+    });
+    if (viewportMeta) viewportMeta.setAttribute("content", on ? viewportBackup.replace(/,?\s*(maximum-scale|user-scalable)=[^,]*/g, "") + ",maximum-scale=1,user-scalable=no" : viewportBackup);
+  }
+
   function open(which) {
     if (!overlay) build();
+    zoomLock(true);
     platform = which; steps = STEPS[which];
     overlay.querySelector("#obKicker").textContent = (which === "ios" ? "iPhone · korak po korak" : "Android · korak po korak");
     var stage = overlay.querySelector("#obStage"), dotWrap = overlay.querySelector("#obDots");
@@ -222,7 +235,7 @@
     overlay.classList.add("open");
     clearPending(which);
   }
-  function close() { if (overlay) overlay.classList.remove("open"); }
+  function close() { if (overlay) overlay.classList.remove("open"); zoomLock(false); }
 
   // ---------- "show the tutorial next time the site opens, but only after the icon was tapped" ----------
   function setPending(which) { try { localStorage.setItem(FLAG + which, "1"); } catch (e) {} }
