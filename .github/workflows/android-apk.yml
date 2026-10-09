@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+# One build at a time: two runs publishing the same binary file at once can not be merged.
+concurrency:
+  group: android-apk
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -106,27 +111,35 @@ jobs:
       - name: Publish APK to the site (main only)
         if: github.ref == 'refs/heads/main'
         run: |
-          mkdir -p downloads
-          cp mobile/android/app/build/outputs/apk/release/app-release.apk downloads/PlayWorld-Reseller.apk
-          python3 - <<'PY'
+          set -e
+          STAGE="$RUNNER_TEMP/publish"
+          mkdir -p "$STAGE"
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk "$STAGE/PlayWorld-Reseller.apk"
+          STAGE="$STAGE" python3 - <<'PY'
           import hashlib, json, os, datetime
+          stage = os.environ["STAGE"]
           code = int(os.environ["APP_VERSION_CODE"])
           stable = os.environ.get("STABLE_KEY") == "true"
-          sha = hashlib.sha256(open("downloads/PlayWorld-Reseller.apk", "rb").read()).hexdigest()
+          sha = hashlib.sha256(open(stage + "/PlayWorld-Reseller.apk", "rb").read()).hexdigest()
           json.dump({"android": {
               "code": code, "name": f"1.0.{code}",
               # Only a build signed with the permanent key can replace an installed app, so only then it is mandatory.
               "min_code": code if stable else 1, "stable_key": stable, "sha256": sha,
               "published_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}},
-              open("downloads/app-version.json", "w"), indent=2)
+              open(stage + "/app-version.json", "w"), indent=2)
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add downloads/PlayWorld-Reseller.apk downloads/app-version.json
-          if git diff --cached --quiet; then echo "APK unchanged"; exit 0; fi
-          git commit -m "Publish Android APK build [skip ci]"
-          for attempt in 1 2 3 4; do
-            git pull --rebase origin main && git push origin HEAD:main && exit 0
+          # Always start from the newest main (no rebase: binary files can not be merged), then add our two files.
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            mkdir -p downloads
+            cp "$STAGE/PlayWorld-Reseller.apk" "$STAGE/app-version.json" downloads/
+            git add downloads/PlayWorld-Reseller.apk downloads/app-version.json
+            if git diff --cached --quiet; then echo "APK unchanged"; exit 0; fi
+            git commit -q -m "Publish Android APK build [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
             sleep $((attempt * 4))
           done
           exit 1
