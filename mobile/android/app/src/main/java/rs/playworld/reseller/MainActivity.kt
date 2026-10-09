@@ -60,7 +60,6 @@ class MainActivity : android.app.Activity() {
     private lateinit var loadingView: LinearLayout
     private lateinit var errorView: LinearLayout
     private lateinit var codeInput: EditText
-    private lateinit var twoFactorInput: EditText
     private lateinit var activationButton: Button
     private lateinit var messageView: TextView
     private lateinit var connectionMessageView: TextView
@@ -196,11 +195,6 @@ class MainActivity : android.app.Activity() {
         codeInput.filters = arrayOf(InputFilter.LengthFilter(14), InputFilter.AllCaps())
         codeInput.letterSpacing = .12f
         card.addView(codeInput, matchWrap(dp(50)))
-        card.addView(fieldLabel("Authenticator kod · ako je uključen 2FA"))
-        twoFactorInput = editField("6 cifara", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD)
-        twoFactorInput.filters = arrayOf(InputFilter.LengthFilter(6))
-        twoFactorInput.letterSpacing = .2f
-        card.addView(twoFactorInput, matchWrap(dp(50)))
         activationButton = primaryButton("Aktiviraj uređaj") { activateDevice() }
         val buttonParams = matchWrap(dp(48)); buttonParams.topMargin = dp(18)
         card.addView(activationButton, buttonParams)
@@ -264,7 +258,6 @@ class MainActivity : android.app.Activity() {
 
     private fun activateDevice() {
         val code = codeInput.text.toString().trim().uppercase().replace("[^A-Z0-9]".toRegex(), "")
-        val totp = twoFactorInput.text.toString().trim()
         if (code.length != 12) { showActivation("Aktivacioni kod mora imati 12 znakova."); return }
         // Every enrollment is a new server-side device record, including after
         // logout/revocation; never reuse an ID protected by the unique DB key.
@@ -274,14 +267,12 @@ class MainActivity : android.app.Activity() {
         setBusy(true)
         val body = JSONObject().put("code", code).put("device_id", id).put("device_token", secret).put("platform", "android")
             .put("device_name", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".take(120))
-        if (totp.isNotEmpty()) body.put("two_factor_code", totp)
         api("activate", body) { result, error ->
             if (error != null || result?.optBoolean("ok") != true) {
                 val status = result?.optInt("http_status") ?: 0
                 val activationError = error ?: "Aktivacija nije uspela. Proverite kod i pokušajte ponovo."
                 if (status in 400..499) {
                     DeviceVault.clear(this)
-                    twoFactorInput.text.clear()
                     setBusy(false)
                     showActivation(activationError)
                 } else recoverActivation(id, secret, activationError)
@@ -299,7 +290,6 @@ class MainActivity : android.app.Activity() {
                 establishPortalSession(recovered) {}
             } else if (recovered?.optInt("http_status") == 401) {
                 DeviceVault.clear(this)
-                twoFactorInput.text.clear()
                 showActivation(activationError)
             } else {
                 val recoveryDetails = recoveryError ?: recovered?.optString("error")?.takeIf { it.isNotBlank() }

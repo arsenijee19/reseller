@@ -8,8 +8,8 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
 - First use shows a native activation screen for the administrator-issued,
   12-character one-time code. A code expires unused after 24 hours and is
   consumed atomically by its first successful activation.
-- If reseller 2-step verification is enabled, activation also requires a fresh
-  6-digit Authenticator code.
+- Activation does not ask for a 2-step code; the administrator-issued one-time
+  code is the second factor.
 - After activation the app stores only a random per-device credential, encrypted
   with an AES-GCM key held by Android Keystore. It never stores the reseller's
   login token. The portal session is refreshed in the background on app resume
@@ -22,7 +22,7 @@ move or modify the PHP application, APIs, database, or cPanel deployment.
 - Explicit app logout revokes that device enrollment; uninstalling the app
   removes its local credential. A new install therefore needs a new code.
 - The same API contract supports iOS: `POST /api/device_auth.php?action=activate`
-  with `{code, device_id, device_token, platform, device_name, two_factor_code?}`
+  with `{code, device_id, device_token, platform, device_name}`
   returns a portal session cookie. The client generates a cryptographically
   random 32-byte device token and saves it securely before activation; the API
   stores only its hash and never returns the token. `session` and `logout` accept

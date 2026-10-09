@@ -66,7 +66,6 @@ try {
     $platform = strtolower(h_string($input['platform'] ?? ''));
     $deviceName = trim((string)($input['device_name'] ?? ''));
     $credential = trim((string)($input['device_token'] ?? ''));
-    $totpCode = preg_replace('/\s+/', '', (string)($input['two_factor_code'] ?? '')) ?: '';
     if ($code === '' || $deviceId === '' || !in_array($platform, ['android', 'ios'], true)
       || !preg_match('/^[A-Za-z0-9_-]{43}$/', $credential)) {
       json_response(['ok' => false, 'error' => 'Proverite aktivacioni kod i pokušajte ponovo.'], 400);
@@ -97,22 +96,6 @@ try {
       $pdo->rollBack();
       json_response(['ok' => false, 'error' => 'Reseller nalog nije aktivan. Kontaktirajte administratora.'], 403);
     }
-    $twoFactor = $pdo->prepare('SELECT secret_encrypted, enabled_at, last_totp_step FROM reseller_two_factor WHERE reseller_id = ? LIMIT 1 FOR UPDATE');
-    $twoFactor->execute([$resellerId]);
-    $factor = $twoFactor->fetch(PDO::FETCH_ASSOC) ?: [];
-    if (!empty($factor['enabled_at']) && !empty($factor['secret_encrypted'])) {
-      $secret = decrypt_secret((string)$factor['secret_encrypted']);
-      $counter = $secret !== '' ? matching_totp_counter($secret, $totpCode) : null;
-      if ($counter === null || ($factor['last_totp_step'] !== null && $counter <= (int)$factor['last_totp_step'])) {
-        $pdo->rollBack();
-        record_login_attempt($pdo, 'reseller_app_activation', 'account:' . $resellerId, false);
-        audit_event($pdo, 'reseller', $resellerId, 'app_device_activation_failed', 'failed', ['reason' => 'invalid_2fa', 'platform' => $platform]);
-        json_response(['ok' => false, 'error' => 'Unesite važeći novi 2-step kod iz Authenticator aplikacije.'], 401);
-      }
-      $pdo->prepare('UPDATE reseller_two_factor SET last_totp_step = ?, last_used_at = NOW(), updated_at = NOW() WHERE reseller_id = ?')
-        ->execute([$counter, $resellerId]);
-    }
-
     $activeCount = $pdo->prepare('SELECT COUNT(*) FROM reseller_app_devices WHERE reseller_id = ? AND revoked_at IS NULL FOR UPDATE');
     $activeCount->execute([$resellerId]);
     if ((int)$activeCount->fetchColumn() >= 10) {
