@@ -1,0 +1,61 @@
+/* "Real app" feel for the installed Home Screen app (html.app-standalone, set by pwa.js).
+   Nothing here affects the normal website in the browser. */
+html.app-standalone{background:var(--bg)}
+html.app-standalone body{
+  min-height:100vh;min-height:100dvh;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;-webkit-font-smoothing:antialiased;
+  animation:app-launch .6s cubic-bezier(.16,1,.3,1) both
+}
+html.app-standalone input,html.app-standalone textarea,html.app-standalone select,html.app-standalone [contenteditable]{-webkit-user-select:text;user-select:text}
+html.app-standalone a{-webkit-touch-callout:none}
+@keyframes app-launch{from{opacity:0;transform:scale(.985) translateY(10px)}to{opacity:1;transform:none}}
+@keyframes app-rise{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+
+/* status bar is translucent: keep content below it and above the home indicator */
+html.app-standalone .shell{padding-top:calc(env(safe-area-inset-top) + 16px);padding-bottom:calc(env(safe-area-inset-bottom) + 40px);padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+
+/* staggered entrance for the main blocks */
+html.app-standalone .main-column>*,html.app-standalone .app-column>*,html.app-standalone .side-column>*{animation:app-rise .6s cubic-bezier(.16,1,.3,1) both}
+html.app-standalone .main-column>*:nth-child(2),html.app-standalone .app-column>*:nth-child(2){animation-delay:.06s}
+html.app-standalone .main-column>*:nth-child(3),html.app-standalone .app-column>*:nth-child(3){animation-delay:.12s}
+html.app-standalone .main-column>*:nth-child(4),html.app-standalone .app-column>*:nth-child(4){animation-delay:.18s}
+html.app-standalone .main-column>*:nth-child(n+5),html.app-standalone .app-column>*:nth-child(n+5){animation-delay:.24s}
+
+/* tactile controls */
+html.app-standalone .btn,html.app-standalone button,html.app-standalone .history-filter,html.app-standalone .product-option{transition:transform .22s cubic-bezier(.16,1,.3,1),background-color .2s,box-shadow .25s,opacity .2s}
+html.app-standalone .btn:active,html.app-standalone .history-filter:active,html.app-standalone .product-option:active,html.app-standalone .product-picker-trigger:active{transform:scale(.965)}
+html.app-standalone .btn,html.app-standalone .product-picker-trigger,html.app-standalone .history-filter{min-height:48px}
+html.app-standalone input,html.app-standalone select,html.app-standalone textarea{font-size:16px} /* no iOS focus zoom */
+
+/* dialogs become bottom sheets with a spring-like slide */
+html.app-standalone .modal-backdrop:not(.login-progress-backdrop):not(.order-progress-backdrop),
+html.app-standalone .admin-modal-backdrop:not(.login-progress-backdrop){align-items:flex-end;padding:0}
+html.app-standalone .modal-backdrop:not(.login-progress-backdrop):not(.order-progress-backdrop) .modal,
+html.app-standalone .admin-modal-backdrop:not(.login-progress-backdrop) .admin-modal{
+  width:100%;max-width:560px;margin:0 auto;border-radius:28px 28px 0 0;
+  padding-bottom:calc(22px + env(safe-area-inset-bottom));
+  max-height:calc(100vh - env(safe-area-inset-top) - 20px);max-height:calc(100dvh - env(safe-area-inset-top) - 20px);
+  transform:translateY(106%);opacity:1;transition:transform .52s cubic-bezier(.32,.72,0,1)
+}
+html.app-standalone .modal-backdrop.open:not(.login-progress-backdrop):not(.order-progress-backdrop) .modal,
+html.app-standalone .admin-modal-backdrop.open:not(.login-progress-backdrop) .admin-modal{transform:translateY(0)}
+html.app-standalone .modal-backdrop:not(.login-progress-backdrop):not(.order-progress-backdrop) .modal::before,
+html.app-standalone .admin-modal-backdrop:not(.login-progress-backdrop) .admin-modal::before{
+  content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--line);margin:-8px auto 14px
+}
+
+/* the website-only blocks never show inside the installed app */
+html.app-standalone .get-app,html.app-standalone .login-switch,html.app-native .get-app,html.app-native .login-switch-web{display:none!important}
+
+/* code entry screen of the installed app */
+.app-activation[hidden],.app-activation [hidden]{display:none!important}
+.app-activation .app-code-input{height:58px;text-align:center;font:700 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase}
+.app-activation .app-activation-msg{min-height:20px;margin:10px 0 0;text-align:center;font-size:13px;color:var(--bad)}
+.app-activation .app-activation-msg.info{color:var(--muted)}
+.app-activation .app-activation-hint{margin:14px auto 0;text-align:center;font-size:12px;color:var(--muted)}
+
+@media (prefers-reduced-motion:reduce){
+  html.app-standalone body,html.app-standalone .main-column>*,html.app-standalone .app-column>*{animation:none}
+  html.app-standalone .modal-backdrop .modal,html.app-standalone .admin-modal-backdrop .admin-modal{transition:none}
+}

@@ -95,3 +95,17 @@ admin step-up, so critical admin actions still ask for the admin password (and
   can be disabled per phone in the same place (admin: Security tab).
 - `tests/e2e/run.sh` starts a throw-away MariaDB and PHP server and checks all of the above end to end
   (needs `mariadb-server`, `php-mysql`, `python3`).
+
+## iPhone (Home Screen app) and website download card
+
+- The login page has an "Aplikacija za telefon" card: the Android button downloads
+  `/downloads/PlayWorld-Reseller.apk` (published by the Android workflow on every build of `main`), the iPhone
+  button opens the "Add to Home Screen" guide. Tapping the Android button arms a step-by-step install guide
+  (including the Play Protect "Learn more" -> "Install anyway" steps) that appears the next time the site
+  is opened on that phone; it is shown once per tap. Both guides appear only in a phone browser, never inside
+  the installed app. `IOS_READY` / `ANDROID_READY` in `assets/onboarding.js` switch a button to "Uskoro dostupno".
+- Added to the Home Screen, the site runs full screen (`manifest.webmanifest`, `assets/app-mode.css`, splash
+  screens) and signs in with the same one-time code as the Android app (`assets/pwa.js` -> `device_auth.php`,
+  platform `ios`). Reseller and admin codes both work; the device credential lives in the app's local storage,
+  can be revoked from the admin panel and admin devices expire after 30 days idle.
+- `tests/e2e/run.sh` also drives this flow in a real mobile browser (`tests/e2e/pwa.js`).

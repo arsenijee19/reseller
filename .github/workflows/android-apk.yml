@@ -8,7 +8,7 @@ on:
       - ".github/workflows/android-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -68,3 +68,20 @@ jobs:
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      # The site's "Preuzmi za Android" button serves downloads/PlayWorld-Reseller.apk (deployed by cPanel Git).
+      - name: Publish APK to the site (main only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p downloads
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk downloads/PlayWorld-Reseller.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add downloads/PlayWorld-Reseller.apk
+          if git diff --cached --quiet; then echo "APK unchanged"; exit 0; fi
+          git commit -m "Publish Android APK build [skip ci]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((attempt * 4))
+          done
+          exit 1

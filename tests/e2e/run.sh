@@ -23,6 +23,8 @@ for f in 2026-10-09_reseller_app_devices.sql 2026-10-09_reseller_app_device_labe
 
 mkdir -p "$WORK/www"
 cp -r "$ROOT/api" "$ROOT/vendor" "$WORK/www/" 2>/dev/null || cp -r "$ROOT/api" "$WORK/www/"
+cp "$ROOT/index.html" "$ROOT/admin.html" "$ROOT/manifest.webmanifest" "$WORK/www/"
+cp -r "$ROOT/assets" "$ROOT/downloads" "$WORK/www/"
 ADMIN_HASH=$(php -r 'echo password_hash("AdminPass-12345", PASSWORD_DEFAULT);')
 cat > "$WORK/www/api/config.local.php" <<PHP
 <?php
@@ -40,3 +42,7 @@ php -S 127.0.0.1:$PORT -t "$WORK/www" >"$WORK/php.log" 2>&1 &
 PHP_PID=$!
 sleep 1
 WWW="$WORK/www" BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" python3 "$ROOT/tests/e2e/test_sessions.py"
+if [ "${SKIP_PWA:-0}" != "1" ] && command -v node >/dev/null; then
+  mkdir -p "${SHOTS:-/tmp/pw-e2e-shots}"
+  SHOTS="${SHOTS:-/tmp/pw-e2e-shots}" BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" node "$ROOT/tests/e2e/pwa.js"
+fi

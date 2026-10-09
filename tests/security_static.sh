@@ -10,6 +10,7 @@ sed -n '/<script>/,/<\/script>/p' admin.html | sed '1d;$d' >/tmp/reseller-admin-
 sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' >/tmp/reseller-index-security.js
 node --check /tmp/reseller-admin-security.js
 node --check /tmp/reseller-index-security.js
+for f in assets/*.js; do node --check "$f"; done
 composer validate --no-check-publish >/dev/null
 git diff --check
 
@@ -33,7 +34,7 @@ rg -q 'AndroidKeyStore' mobile/android/app/src/main/java/rs/playworld/reseller/M
 rg -q 'PlayWorldNative.logout' index.html
 
 # Theme buttons use fixed, source-controlled SVG strings; reject other unsafe DOM/eval APIs.
-if rg -n 'insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html api/*.php; then
+if rg -n 'insertAdjacentHTML|outerHTML|eval\(|new Function|document\.write' index.html admin.html assets/*.js api/*.php; then
   echo "Unsafe DOM/eval pattern found" >&2
   exit 1
 fi

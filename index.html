@@ -2,7 +2,29 @@
 <html lang="sr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#102a6b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="PlayWorld" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1320x2868.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1206x2622.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1290x2796.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1179x2556.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1284x2778.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1170x2532.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1125x2436.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1242x2688.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-828x1792.png" />
+  <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-750x1334.png" />
+  <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
+  <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
+  <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
   <script id="early-theme">
@@ -689,7 +711,39 @@
             </div>
           </form>
         </section>
+
+        <section class="panel section login-section app-activation" id="appActivationBox" hidden>
+          <div class="login-header-row"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="3"/><path d="M10 18.5h4"/></svg></span><h2>Aktivirajte uređaj</h2></div>
+          <p>Unesite jednokratni kod koji ste dobili od PlayWorld tima. Kod se unosi samo jednom, posle toga ostajete prijavljeni.</p>
+          <form id="appActivationForm" autocomplete="off">
+            <label for="appActivationCode">Aktivacioni kod</label>
+            <input id="appActivationCode" class="app-code-input" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="14" placeholder="XXXX-XXXX-XXXX" />
+            <div class="app-activation-msg" id="appActivationMsg" role="alert" aria-live="polite"></div>
+            <div class="actions login-actions">
+              <button class="btn primary" id="appActivationBtn" type="submit">Aktiviraj uređaj</button>
+              <button class="btn" id="appActivationRetry" type="button" hidden>Pokušaj ponovo</button>
+            </div>
+          </form>
+          <p class="app-activation-hint">Nemate kod? Zatražite ga od administratora.</p>
+        </section>
+
         <p class="login-switch">Administrator? <a href="/admin.html">Admin prijava</a></p>
+
+        <section class="panel get-app" id="getApp" aria-label="Aplikacija za telefon">
+          <div class="get-app-head"><strong>Aplikacija za telefon</strong><span>Brži pristup i prijava jednokratnim kodom.</span></div>
+          <div class="get-app-buttons">
+            <a class="store-btn android" id="getAndroidBtn" href="/downloads/PlayWorld-Reseller.apk" download>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 9.5h11v8a1.5 1.5 0 0 1-1.5 1.5h-.5v2.2a1.3 1.3 0 0 1-2.6 0V19h-1.8v2.2a1.3 1.3 0 0 1-2.6 0V19H8A1.5 1.5 0 0 1 6.5 17.5zM4.2 9.8a1.2 1.2 0 0 1 2.4 0v5.4a1.2 1.2 0 0 1-2.4 0zm13.2 0a1.2 1.2 0 0 1 2.4 0v5.4a1.2 1.2 0 0 1-2.4 0zM7 8.6a5 5 0 0 1 10 0zm3-2.4a.6.6 0 1 0 0 .01zm4 0a.6.6 0 1 0 0 .01z"/></svg>
+              <span><small>Preuzmi za</small><b>Android</b></span>
+            </a>
+            <button class="store-btn ios" id="getIosBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.2.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-1-2.5-3.8zM14.2 6c.6-.8 1.1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.8-1.3z"/></svg>
+              <span><small>Instaliraj na</small><b>iPhone</b></span>
+            </button>
+          </div>
+          <p class="get-app-note" id="getAppNote" role="status" aria-live="polite"></p>
+          <button class="get-app-help" id="getAppHelp" type="button" hidden>Pogledaj uputstvo za instalaciju</button>
+        </section>
 
         <div class="app-column" id="appBox" style="display:none">
           <section class="panel">
@@ -1049,7 +1103,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-session-hardening";
+    const RELEASE_VERSION = "2026-10-09-app-install";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1426,6 +1480,7 @@
       // Inside the Android app an ended session (deactivated, token changed, device revoked) is handed to the
       // app, which re-checks the device instead of showing the web token login.
       if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
+      else if (res.status === 401 && json.session_ended && window.PWApp && window.PWApp.standalone) window.PWApp.sessionEnded();
       if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
@@ -2922,12 +2977,14 @@
     profileLogoutBtn.addEventListener("click", async () => {
       await logout();
       if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
+      else if (inInstalledApp()) { await window.PWApp.logout(); showAppActivation(); }
     });
     markAllPaidBtn.addEventListener("click", markAllOrdersPaid);
     requestGameBtn.addEventListener("click", openGameRequest);
     logoutBtn.addEventListener("click", async () => {
       await logout();
       if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
+      else if (inInstalledApp()) { await window.PWApp.logout(); showAppActivation(); }
     });
     notesSearchToggle.addEventListener("click", () => {
       const isOpen = notesSearchWrap.classList.contains("open");
@@ -3057,7 +3114,55 @@
     });
     setTheme(defaultTheme());
     setLoggedInUi(false);
-    restoreSession();
+
+    // ---- installed Home Screen app: one-time device code instead of the reseller token ----
+    const appActivationBox = $("appActivationBox");
+    const appActivationCode = $("appActivationCode");
+    const appActivationMsg = $("appActivationMsg");
+    const appActivationBtn = $("appActivationBtn");
+    const appActivationRetry = $("appActivationRetry");
+    function inInstalledApp(){ return !!(window.PWApp && window.PWApp.standalone); }
+    function showAppActivation(message, kind){
+      loginBox.style.display = "none";
+      appActivationBox.hidden = false;
+      appActivationMsg.textContent = message || "";
+      appActivationMsg.classList.toggle("info", kind === "info");
+      appActivationRetry.hidden = kind !== "retry";
+      document.body.classList.remove("session-checking");
+    }
+    appActivationCode.addEventListener("input", () => {
+      const raw = appActivationCode.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+      appActivationCode.value = raw.replace(/(.{4})(?=.)/g, "$1-");
+    });
+    $("appActivationForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const code = appActivationCode.value.replace(/[^A-Za-z0-9]/g, "");
+      if (code.length !== 12) { appActivationMsg.classList.remove("info"); appActivationMsg.textContent = "Kod ima 12 znakova."; return; }
+      appActivationBtn.disabled = true; appActivationBtn.textContent = "Proveravam kod…";
+      appActivationMsg.classList.add("info"); appActivationMsg.textContent = "";
+      const result = await window.PWApp.activate(code);
+      appActivationBtn.disabled = false; appActivationBtn.textContent = "Aktiviraj uređaj";
+      if (!result.ok) { appActivationMsg.classList.remove("info"); appActivationMsg.textContent = result.error; return; }
+      if (result.role === "admin") { window.location.replace("/admin.html"); return; }
+      appActivationBox.hidden = true; loginBox.style.display = "block";
+      document.body.classList.add("session-checking");
+      await restoreSession();
+    });
+    appActivationRetry.addEventListener("click", () => { document.body.classList.add("session-checking"); startApp(); });
+
+    async function startApp(){
+      if (!inInstalledApp()) { restoreSession(); return; }
+      const renewal = await window.PWApp.renew();
+      if (renewal.ok) {
+        if (renewal.role === "admin") { window.location.replace("/admin.html"); return; }
+        await restoreSession();
+        return;
+      }
+      if (renewal.network) { showAppActivation("Nema veze sa serverom. Proverite internet vezu.", "retry"); return; }
+      showAppActivation(renewal.revoked ? "Pristup ovom uređaju je opozvan. Unesite novi kod." : "", renewal.revoked ? "" : "info");
+    }
+    startApp();
   </script>
+  <script src="/assets/onboarding.js?v=1" defer></script>
 </body>
 </html>

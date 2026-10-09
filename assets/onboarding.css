@@ -1,0 +1,55 @@
+/* Download card on the login screen + step-by-step install tutorial (phones only, in the browser). */
+.get-app{margin-top:16px;padding:18px}
+.get-app-head{display:grid;gap:3px;margin-bottom:14px;text-align:center}
+.get-app-head strong{font-size:16px;letter-spacing:-.01em}
+.get-app-head span{font-size:13px;color:var(--muted)}
+.get-app-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.store-btn{position:relative;display:flex;align-items:center;gap:11px;min-height:58px;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);text-decoration:none;font:inherit;text-align:left;cursor:pointer;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s,border-color .2s}
+.store-btn:active{transform:scale(.97)}
+.store-btn svg{flex:0 0 26px;width:26px;height:26px}
+.store-btn span{display:grid;gap:1px;min-width:0}
+.store-btn small{font-size:11px;color:var(--muted);line-height:1.2}
+.store-btn b{font-size:15px;line-height:1.2;letter-spacing:-.01em}
+.store-btn.android svg{color:#2fae6b}
+.store-btn.ios svg{color:var(--text)}
+.store-btn.soon{opacity:.62;cursor:default}
+.store-btn .soon-badge{position:absolute;top:-8px;right:10px;padding:3px 8px;border-radius:999px;background:linear-gradient(135deg,#ff8a3d,#ff5d73);color:#fff;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+.get-app-help{display:block;margin:12px auto 0;padding:6px 10px;border:0;background:none;color:var(--brand);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.get-app-note{margin:10px 0 0;text-align:center;font-size:12px;color:var(--muted)}
+.get-app-note:empty{display:none}
+@media (max-width:380px){.get-app-buttons{grid-template-columns:1fr}}
+
+/* tutorial sheet */
+.ob-backdrop{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,13,20,.0);backdrop-filter:blur(0);visibility:hidden;pointer-events:none;transition:background .3s,backdrop-filter .3s,visibility 0s linear .4s}
+.ob-backdrop.open{background:rgba(8,13,20,.62);backdrop-filter:blur(12px);visibility:visible;pointer-events:auto;transition:background .3s,backdrop-filter .3s,visibility 0s}
+.ob-sheet{width:100%;max-width:520px;max-height:94vh;max-height:94dvh;overflow:auto;padding:12px 20px calc(20px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:var(--panel);color:var(--text);box-shadow:0 -20px 60px rgba(0,0,0,.3);transform:translateY(105%);transition:transform .55s cubic-bezier(.32,.72,0,1);-webkit-user-select:none;user-select:none}
+.ob-backdrop.open .ob-sheet{transform:translateY(0)}
+.ob-grab{width:40px;height:5px;margin:0 auto 12px;border-radius:3px;background:var(--line)}
+.ob-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ob-kicker{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--brand)}
+.ob-close{width:36px;height:36px;border:0;border-radius:50%;background:var(--soft);color:var(--muted);font-size:18px;line-height:1;cursor:pointer}
+.ob-stage{position:relative;height:clamp(200px,36vh,292px);height:clamp(200px,36dvh,292px);margin:6px 0 4px;overflow:hidden}
+.ob-slide{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transform:translateX(40px) scale(.97);transition:opacity .4s ease,transform .5s cubic-bezier(.16,1,.3,1);pointer-events:none}
+.ob-slide.active{opacity:1;transform:none}
+.ob-slide.past{transform:translateX(-40px) scale(.97)}
+.ob-slide svg{width:100%;height:100%;max-width:340px}
+.ob-copy{min-height:96px;text-align:center}
+.ob-copy h3{margin:0 0 6px;font-size:20px;line-height:1.2;letter-spacing:-.02em}
+.ob-copy p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.ob-dots{display:flex;justify-content:center;gap:7px;margin:14px 0}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:width .3s cubic-bezier(.16,1,.3,1),background .3s}
+.ob-dot.active{width:22px;border-radius:4px;background:var(--brand)}
+.ob-actions{display:grid;grid-template-columns:auto 1fr;gap:10px}
+.ob-actions .ob-btn{min-height:50px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:700;padding:0 20px;cursor:pointer}
+.ob-actions .ob-btn.primary{border:0;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff}
+.ob-actions .ob-btn[hidden]{display:none}
+.get-app [hidden]{display:none!important}
+.ob-actions.single{grid-template-columns:1fr}
+
+/* illustration parts */
+.ob-pulse{transform-box:fill-box;transform-origin:center;animation:ob-pulse 1.6s ease-out infinite}
+.ob-pulse.d2{animation-delay:.5s}
+@keyframes ob-pulse{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.45);opacity:0}}
+.ob-bob{animation:ob-bob 1.8s ease-in-out infinite}
+@keyframes ob-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@media (prefers-reduced-motion:reduce){.ob-pulse,.ob-bob{animation:none}.ob-sheet,.ob-slide{transition:none}}

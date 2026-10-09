@@ -2,7 +2,17 @@
 <html lang="sr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#102a6b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="PlayWorld" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
+  <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Admin</title>
   <script id="early-theme">
@@ -1109,6 +1119,7 @@
         throw new Error(`Server nije vratio validan JSON (${res.status}).`);
       }
       if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
+      else if (res.status === 401 && json.session_ended && window.PWApp && window.PWApp.standalone) window.PWApp.sessionEnded();
       if (!json.ok) {
         const message = userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`;
         throw new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
@@ -2604,6 +2615,7 @@
       await api("logout", { method:"POST", body:JSON.stringify({}) });
       setAdmin2faLoginMode(false);
       setLoggedIn(false);
+      if (window.PWApp && window.PWApp.standalone) { await window.PWApp.logout(); window.location.replace("/"); return; }
       if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
     });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
@@ -2725,17 +2737,26 @@
       }
     });
 
-    api("session")
+    const bootAdminSession = () => api("session")
       .then(async (session) => {
         if (session.logged_in) {
           setLoggedIn(true);
           await load();
         } else if (window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") {
           window.PlayWorldNative.sessionExpired();
+        } else if (window.PWApp && window.PWApp.standalone) {
+          window.location.replace("/");   // the installed app signs in with a one-time code on the start page
         }
       })
       .catch(() => setLoggedIn(false))
       .finally(() => document.body.classList.remove("session-checking"));
+    (async () => {
+      if (window.PWApp && window.PWApp.standalone) {
+        const renewal = await window.PWApp.renew();
+        if (renewal.none || renewal.revoked || (renewal.ok && renewal.role !== "admin")) { window.location.replace("/"); return; }
+      }
+      bootAdminSession();
+    })();
     const scrollTopBtn = $("scrollTopBtn");
     window.addEventListener("scroll", () => scrollTopBtn.classList.toggle("is-visible", window.scrollY > 420), { passive:true });
     scrollTopBtn.addEventListener("click", () => {
