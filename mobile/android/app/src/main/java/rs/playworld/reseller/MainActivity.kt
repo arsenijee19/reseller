@@ -370,13 +370,19 @@ class MainActivity : android.app.Activity() {
                     return@thread
                 }
                 fun continueAfterCookies(index: Int) {
-                    if (index >= cookies.size) runOnUiThread { done(response, message) }
+                    if (index >= cookies.size) done(response, message)
                     else CookieManager.getInstance().setCookie(PORTAL_ORIGIN, cookies[index]) { accepted ->
-                        if (!accepted) runOnUiThread { done(response, "Ne možemo bezbedno da sačuvamo prijavu na uređaju. Pokušajte ponovo.") }
+                        if (!accepted) done(response, "Ne možemo bezbedno da sačuvamo prijavu na uređaju. Pokušajte ponovo.")
                         else continueAfterCookies(index + 1)
                     }
                 }
-                continueAfterCookies(0)
+                // CookieManager.setCookie with a callback needs a thread with a Looper (the UI thread);
+                // calling it from this worker thread threw IllegalStateException after the server had already succeeded.
+                runOnUiThread {
+                    try { continueAfterCookies(0) } catch (e: Exception) {
+                        done(response, "Ne možemo bezbedno da sačuvamo prijavu na uređaju (${e.javaClass.simpleName}). Pokušajte ponovo.")
+                    }
+                }
             } catch (e: Exception) {
                 val kind = when (e) {
                     is java.net.SocketTimeoutException -> "isteklo vreme"
