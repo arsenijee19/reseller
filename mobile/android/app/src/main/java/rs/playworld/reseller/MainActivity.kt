@@ -357,7 +357,12 @@ class MainActivity : android.app.Activity() {
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                 val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
                 val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                val json = JSONObject(payload.ifBlank { "{}" })
+                val json = try { JSONObject(payload.ifBlank { "{}" }) } catch (_: Exception) {
+                    // Non-JSON body (hosting firewall page, PHP warning, ...): show what came back, never the request.
+                    val snippet = payload.replace(Regex("<[^>]*>|\\s+"), " ").trim().take(90)
+                    runOnUiThread { done(JSONObject().put("http_status", conn.responseCode), "Server je vratio neočekivan odgovor (HTTP ${conn.responseCode}): $snippet") }
+                    return@thread
+                }
                 json.put("http_status", conn.responseCode)
                 val message = if (conn.responseCode in 200..299 && json.optBoolean("ok")) null else {
                     val serverMessage = json.optString("error").takeIf { it.isNotBlank() }
@@ -382,8 +387,14 @@ class MainActivity : android.app.Activity() {
                     }
                 }
                 continueAfterCookies(0)
-            } catch (_: Exception) {
-                runOnUiThread { done(null, "Ne možemo da se povežemo sa portalom. Proverite internet i pokušajte ponovo.") }
+            } catch (e: Exception) {
+                val kind = when (e) {
+                    is java.net.SocketTimeoutException -> "isteklo vreme"
+                    is java.net.UnknownHostException -> "adresa servera nije pronađena"
+                    is javax.net.ssl.SSLException -> "greška bezbedne veze (SSL)"
+                    else -> e.javaClass.simpleName
+                }
+                runOnUiThread { done(null, "Ne možemo da se povežemo sa portalom ($kind). Proverite internet i pokušajte ponovo.") }
             } finally { connection?.disconnect() }
         }
     }
