@@ -75,6 +75,7 @@
   - Telegram payment confirmations require a manually entered amount if absent from the notice; balance actions use five-minute pending records, unique idempotency keys, optional high-value Admin TOTP, and reversal transactions rather than deletion.
   - Telegram slash commands post a new temporary reply at the bottom of the chat and replace only that reply with the result; inline-action cards remain edited in place. Reseller-selection callbacks visibly show loading and replace the list with the profile or an inline error. Callback queries are acknowledged before API calls. Bot API calls no longer use a global 150 ms throttle/lock, and typed commands skip an unnecessary conversation lookup.
 - Partially implemented functionality:
+  - Android reseller shell is scaffolded under `mobile/android/` and loads the existing portal over HTTPS; the first debug APK has not yet been built or device-tested because Android Studio/SDK and JDK 17 are not installed in this workspace.
   - Order delivery automation is still delegated to the existing n8n webhook; import the updated workflow export to activate automatic order-note updates.
   - Admin edits dynamic table columns, but the UI intentionally highlights the most important order fields.
   - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
@@ -138,6 +139,9 @@
 - `api/order_paid_all.php` - reseller-owned bulk endpoint for marking all previous orders as internally paid.
 - `api/payment_notice.php` - reseller “Uplatio sam” email notification.
 - `api/game_request.php` - reseller requested-game suggestion email notification.
+- `mobile/android/` - isolated Android WebView app shell for the existing reseller portal; not included in cPanel deployment.
+- `mobile/README.md` - Android behavior, test build, and release-signing notes.
+- `.github/workflows/android-apk.yml` - builds and uploads an internal Android debug APK artifact when mobile source changes.
 - `api/admin.php` - admin login/dashboard/update API.
 - `api/webauthn.php` - WebAuthn option creation, serializer, server-side ceremony validation, and challenge storage helpers.
 - `sql/2026-08-27_admin_order_reversals.sql` - auditable order cancellation metadata.
@@ -221,7 +225,8 @@
   - Static/PHP project; on cPanel it runs directly through Apache/PHP.
   - Local syntax check: `for f in api/*.php; do php -l "$f"; done`
 - Build commands:
-  - None.
+  - PHP site: none; cPanel serves the static HTML/PHP files directly.
+  - Android debug APK: `gradle -p mobile/android assembleDebug` (requires JDK 17 and Android SDK 36).
 - Test commands:
   - PHP syntax check above.
   - Inline JS syntax check used during development: extract `<script>` contents to `/tmp` and run `node --check`.
@@ -275,6 +280,7 @@
   - Payment notices are informational only: they never add balance or mark a bank transfer as verified. Admin must check the payment and then adjust the reseller balance through the existing audited balance flow.
 
 ## Recent Changes
+- Added an isolated Android reseller app shell that loads the existing HTTPS portal, keeps its PHP/API/database and cPanel hosting unchanged, restricts embedded navigation to the reseller site, opens external links in the browser, and shows a retry screen when offline. Added a GitHub Actions workflow for internal debug APK artifacts; no release signing key or production APK has been created.
 - Fixed admin product grouping: platform extraction now loops over each variant's matches instead of chaining onto `forEach()`'s undefined return value, which had aborted every product group. Rendering retains per-row/group error boundaries and Safari-compatible own-property checks.
 - Recommended minimum resale prices now use the product's original base price for both the markup tier and final amount; reseller discounts affect only the reseller purchase price.
 - Reseller order history now requests and displays all orders, while preserving its existing status filters and notes search.
@@ -386,6 +392,7 @@
 - Added both requested admin notification recipients as safe defaults in the configuration template and private-runtime fallback.
 
 ## Current Priorities
+- Install/enable Android build tooling or use the Android Actions workflow, build the debug APK, and test reseller login, 2FA, ordering, keyboard/insets, and connection recovery on a physical Android phone. Before distributing a release APK, generate and securely back up a permanent signing key outside Git.
 - Deploy the Telegram panel API and additive migration to cPanel, configure admin token and BotFather token, then enable the isolated `reseller-tg-bot` webhook on VPS following `TELEGRAM_BOT_RUNBOOK.md`.
 - Confirm port 8443 reachability/firewall policy and run the Telegram manual acceptance checklist in staging before production financial actions.
 - Run pending SQL migrations on the live cPanel database, including `sql/2026-06-13_admin_panel.sql` and `sql/2026-06-14_reseller_order_notes.sql`.
@@ -402,6 +409,8 @@
 - Rotate the database password and n8n webhook because earlier commits contained those values.
 
 ## Known Issues
+- The Android project has not yet been compiled or tested on a device; the local machine currently has Java 8 and no Android Studio/SDK. Production release signing is intentionally not configured until a permanent private signing key can be generated and stored securely.
+- Android app requires an internet connection and displays the live portal in WebView; it does not provide offline order access. Portal updates are immediate, while native app-shell updates require a new APK.
 - Live cPanel DB is not available in the development workspace; reseller creation must be verified against production after deployment, especially if its legacy schema has custom required columns.
 - Local workspace has no access to the production database, so functional DB tests could not be completed locally.
 - `mail()` returns only a boolean and does not guarantee inbox delivery.
