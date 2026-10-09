@@ -6,6 +6,8 @@ import json, os, subprocess, sys, uuid, base64, http.cookiejar, urllib.request, 
 BASE = os.environ["BASE"]
 SOCK = os.environ["DB_SOCK"]
 ADMIN_PW = "AdminPass-12345"
+WWW = os.environ["WWW"]
+HERE = os.path.dirname(os.path.abspath(__file__))
 T1, T2, T3 = "Orbit-Lantern-4821-xq", "Velvet-Harbor-9137-mz", "Cobalt-Meadow-6052-wk"
 failures = []
 
@@ -47,6 +49,12 @@ def check(label, condition, detail=""):
 
 def reset_limits():
     sql("DELETE FROM login_attempts")
+
+def totp_enable(who, ident):
+    return subprocess.run(["php", f"{HERE}/totp.php", WWW, "enable", who, str(ident)], capture_output=True, text=True, check=True).stdout.strip()
+
+def totp_code(secret):
+    return subprocess.run(["php", f"{HERE}/totp.php", WWW, "code", secret], capture_output=True, text=True, check=True).stdout.strip()
 
 def reseller_login(token, name="web"):
     c = Client(name); s, p = c.call("/api/login.php", {"token": token}); return c, s, p
@@ -202,6 +210,29 @@ check("session that changed it stays logged in", adm.call("/api/admin.php?action
 check("other admin web session is logged out", other.call("/api/admin.php?action=2fa_status")[0] == 401)
 check("admin app device is logged out", x_app.call("/api/admin.php?action=2fa_status")[0] == 401)
 check("admin app device cannot renew (new code needed)", device_session(x_dev, x_secret)[1] == 401)
+
+print("\n== 8. Logins that use 2-step verification are bound to the credential too")
+ADMIN_PW = "NewAdminPass-98765"
+reset_limits()
+r_secret = totp_enable("reseller", RID)
+c = Client("2fa-reseller"); s, p = c.call("/api/login.php", {"token": T1})
+check("reseller with 2FA gets a pending login", s == 200 and p.get("requires_2fa") is True, (s, p))
+s, p = c.call("/api/2fa.php?action=challenge", {"code": totp_code(r_secret)})
+check("reseller 2FA code completes the login", s == 200 and p.get("ok"), (s, p))
+check("2FA reseller session works", sessions_ok(c) == (200, 200, 200))
+update_reseller(adm2 := admin_login(), RID, new_token=T3)
+check("token change ends the 2FA reseller session", sessions_ok(c) == (401, 401, 401))
+
+reset_limits()
+a_secret = totp_enable("admin", 1)
+c = Client("2fa-admin"); s, p = c.call("/api/admin.php?action=login", {"password": ADMIN_PW})
+check("admin with 2FA gets a pending login", s == 200 and p.get("requires_2fa") is True, (s, p))
+s, p = c.call("/api/admin.php?action=2fa_challenge", {"code": totp_code(a_secret)})
+check("admin 2FA code completes the login", s == 200 and p.get("ok"), (s, p))
+check("2FA admin session works", c.call("/api/admin.php?action=2fa_status")[0] == 200)
+s, p = adm2.call("/api/admin.php?action=change_password", {"current_password": ADMIN_PW, "new_password": "ThirdAdminPass-55555", "confirm_password": "ThirdAdminPass-55555"})
+check("password change from another session succeeds", s == 200 and p.get("ok"), (s, p))
+check("password change ends the 2FA admin session", c.call("/api/admin.php?action=2fa_status")[0] == 401)
 
 print()
 if failures:

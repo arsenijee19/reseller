@@ -39,4 +39,4 @@ sed -i "s|'host' => '127.0.0.1:$DBPORT'|'host' => '127.0.0.1;port=$DBPORT'|" "$W
 php -S 127.0.0.1:$PORT -t "$WORK/www" >"$WORK/php.log" 2>&1 &
 PHP_PID=$!
 sleep 1
-BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" python3 "$ROOT/tests/e2e/test_sessions.py"
+WWW="$WORK/www" BASE="http://127.0.0.1:$PORT" DB_SOCK="$WORK/db.sock" python3 "$ROOT/tests/e2e/test_sessions.py"
