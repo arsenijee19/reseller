@@ -103,6 +103,20 @@
     }
   });
 
+  // iOS keeps the page shifted after the keyboard closes inside a fixed layer; a tiny scroll nudge resets it.
+  if (isIOS) {
+    document.addEventListener("focusout", function (event) {
+      var t = event.target;
+      if (!t || !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      window.setTimeout(function () {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || "")) return;
+        var y = window.pageYOffset;
+        window.scrollTo(window.pageXOffset, y + 1);
+        window.scrollTo(window.pageXOffset, y);
+      }, 80);
+    });
+  }
+
   window.PWApp = {
     standalone: standalone, native: native, isIOS: isIOS, isAndroid: isAndroid,
     isMobile: isIOS || isAndroid, hasDevice: function () { return !!read(); },

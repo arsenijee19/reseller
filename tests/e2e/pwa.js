@@ -93,6 +93,48 @@ const standaloneInit = () => Object.defineProperty(navigator, "standalone", { ge
   check("revoked admin device is sent back to the code screen", await page.isVisible("#appActivationBox"));
   await ctx.close();
 
+  // ---------------------------------------------------------- 3b. admin drawer + code issuing on an iPhone (the "frozen screen" bug)
+  console.log("\n== C2. Admin: drawer and code issuing on an iPhone");
+  const adminPw = "AdminPass-12345";
+  sql("DELETE FROM admin_two_factor");
+  sql("UPDATE admin_users SET password_hash='" + execFileSync("php", ["-r", 'echo password_hash("' + adminPw + '", PASSWORD_DEFAULT);']).toString().replace(/'/g, "''") + "' WHERE id=1");
+  const codeD = "QRSTUVWXYZ23";
+  sql(`INSERT INTO admin_device_activation_codes (admin_id, code_hash, device_label, expires_at) VALUES (1,'${hash(codeD)}','Admin drawer',NOW() + INTERVAL 15 MINUTE)`);
+  ctx = await browser.newContext({ ...iphone }); await ctx.addInitScript(standaloneInit); page = await ctx.newPage();
+  await page.goto(BASE + "/"); await page.waitForSelector("#appActivationBox:not([hidden])");
+  await page.fill("#appActivationCode", codeD); await page.click("#appActivationBtn");
+  await page.waitForSelector("#adminPanel:not(.hidden)", { timeout: 10000 });
+  await page.waitForSelector(".reseller-actions .icon-action", { timeout: 10000 });
+  const vh = page.viewportSize().height, vw = page.viewportSize().width;
+  const drawerHit = () => page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return !!(el && el.closest(".reseller-drawer")); }, [vw / 2, vh * 0.6]);
+  const drawerScroll = async () => {
+    await page.evaluate(() => { document.querySelector(".drawer-content").scrollTop = 0; });
+    await page.mouse.move(vw / 2, vh * 0.6); await page.mouse.wheel(0, 500); await page.waitForTimeout(400);
+    return page.evaluate(() => document.querySelector(".drawer-content").scrollTop);
+  };
+  await page.click(".reseller-actions .icon-action");
+  await page.waitForSelector("#resellerDrawerBackdrop.open"); await page.waitForTimeout(500);
+  check("opening the drawer does not pop the keyboard up on iOS", await page.evaluate(() => !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)), await page.evaluate(() => document.activeElement.tagName));
+  check("drawer content is scrollable and scrolls", (await page.evaluate(() => { const c = document.querySelector(".drawer-content"); return c.scrollHeight > c.clientHeight; })) && (await drawerScroll()) > 0);
+  await page.evaluate(() => document.getElementById("appActivationDeviceLabel").scrollIntoView({ block: "center" }));
+  await page.fill("#appActivationDeviceLabel", "Test telefon");
+  await page.click("#createAppActivationCode");
+  await page.waitForSelector("#adminReauthModal.open", { timeout: 5000 });
+  await page.waitForTimeout(500);
+  const box = await page.locator("#adminReauthModal .admin-modal").boundingBox();
+  check("confirmation dialog with a password field is centered, not a bottom sheet", box.y > 40 && box.y + box.height < vh - 8, JSON.stringify(box));
+  check("confirmation dialog is above the drawer and receives touches", await page.evaluate(() => { const r = document.querySelector("#adminReauthModal .admin-modal").getBoundingClientRect(); const el = document.elementFromPoint(r.x + r.width / 2, r.y + 20); return !!el.closest("#adminReauthModal"); }));
+  await page.fill("#adminReauthPassword", adminPw);
+  await page.click("#adminReauthConfirmBtn");
+  await page.waitForSelector("#appActivationCodeOutput:not([hidden])", { timeout: 10000 });
+  await page.waitForTimeout(500);
+  check("a new device code is shown", /^[A-Z0-9]{12}$/.test((await page.textContent("#appActivationCodeValue")).trim()), await page.textContent("#appActivationCodeValue"));
+  check("no confirmation overlay is left blocking the screen", (await page.locator(".admin-modal-backdrop.open").count()) === 0);
+  check("touches still reach the drawer after issuing the code", await drawerHit());
+  check("drawer still scrolls after issuing the code", (await drawerScroll()) > 0);
+  await page.screenshot({ path: process.env.SHOTS + "/admin-drawer-ios.png" });
+  await ctx.close();
+
   // ---------------------------------------------------------- 4. website: download card + tutorial
   console.log("\n== D. Website on an Android phone");
   ctx = await browser.newContext({ ...devices["Pixel 7"] }); page = await ctx.newPage();

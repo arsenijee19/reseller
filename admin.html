@@ -982,6 +982,14 @@
       el.style.display="block";
     }
     let toastTimer = null;
+    // iPhone: a programmatic focus() right after an overlay opens pops the keyboard up inside a fixed layer and
+    // leaves the page stuck, so on iOS the admin taps the field himself.
+    function focusIfSafe(el){
+      if (!el) return;
+      if (window.PWApp && window.PWApp.isIOS) return;
+      el.focus();
+    }
+
     function showToast(type, message){
       const el = $("adminToast");
       if (!el) return;
@@ -1143,7 +1151,7 @@
       $("adminPasskeyLoginBtn").style.display = enabled ? "none" : "inline-flex";
       $("admin2faBackBtn").style.display = enabled ? "inline-flex" : "none";
       $("adminLoginBtn").textContent = enabled ? "Potvrdi 2FA" : "Uloguj se";
-      if (enabled) $("admin2faLoginCode").focus();
+      if (enabled) focusIfSafe($("admin2faLoginCode"));
     }
 
     function renderAdminTwoFactorStatus(info){
@@ -1455,7 +1463,7 @@
       $("resellerDrawerBackdrop").classList.add("open");
       $("resellerDrawerBackdrop").setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
-      setTimeout(() => $(focusBalance ? "drawerBalanceAmount" : "drawerName").focus(), 30);
+      setTimeout(() => focusIfSafe($(focusBalance ? "drawerBalanceAmount" : "drawerName")), 30);
       loadAppDeviceManagement(Number(reseller.id));
     }
 
@@ -1703,7 +1711,7 @@
       const nameField = $("newProductForm").querySelector('[data-column="product_name"]');
       if (nameField && groupTitle) nameField.value = groupTitle;
       const typeField = $("newProductForm").querySelector('[data-column="account_type"]');
-      requestAnimationFrame(() => (groupTitle ? typeField : nameField)?.focus());
+      requestAnimationFrame(() => focusIfSafe(groupTitle ? typeField : nameField));
       details.scrollIntoView({ behavior:"smooth", block:"center" });
     }
 
@@ -2237,7 +2245,7 @@
         $("adminReauthTwoFactorField").classList.toggle("hidden", !state.adminTwoFactorEnabled);
         $("adminReauthMsg").style.display = "none";
         $("adminReauthModal").classList.add("open");
-        $("adminReauthPassword").focus();
+        focusIfSafe($("adminReauthPassword"));
       });
     }
 
@@ -2540,7 +2548,7 @@
     }));
     $("newResellerToggle").addEventListener("click", () => {
       $("newResellerPanel").classList.toggle("hidden");
-      if (!$("newResellerPanel").classList.contains("hidden")) $("newResellerName").focus();
+      if (!$("newResellerPanel").classList.contains("hidden")) focusIfSafe($("newResellerName"));
     });
     $("closeNewResellerBtn").addEventListener("click", () => $("newResellerPanel").classList.add("hidden"));
     $("admin2faBannerBtn").addEventListener("click", () => {
