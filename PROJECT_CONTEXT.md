@@ -82,6 +82,7 @@
   - “Igra mi nije stigla” sends a dedicated `reseller_missing_game` payload to the existing n8n webhook; the local n8n workflow export routes that event to Telegram only and must be imported into live n8n.
   - 2FA setup currently provides a manual Authenticator key and `otpauth://` setup link instead of a locally rendered QR image, because no reviewed local QR generator dependency exists in this no-build project.
 - Unfinished work:
+  - Admin can issue 15-minute one-time codes in Admin → Sigurnost → Admin aplikacija na telefonu; entering one in the Android app registers an admin device (`admin_app_devices`, tables are created on first use, see `sql/2026-10-09_admin_app_devices.sql`) and opens `/admin.html` in-app. `api/device_auth.php` returns `role: admin|reseller`; admin device sessions never carry admin step-up.
   - Telegram bot is not production-active until cPanel code and migrations are deployed, the one-time panel API token is copied to the VPS, the user creates a BotFather token, webhook TLS is configured, and inbound VPS TCP 8443 is reachable. No tokens or passwords are stored in Git.
   - `TELEGRAM_BOT_RUNBOOK.md` documents production migration/setup. The cPanel DB was not available here, so SQL execution and financial concurrency need a staging/live test before enabling Telegram writes.
   - The isolated VPS deployment may be installed/built, but starting it without the BotFather token, panel API token, and webhook certificate cannot work and should not be attempted.

@@ -166,13 +166,9 @@ class MainActivity : android.app.Activity() {
         }
         val scroller = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val stack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
-        val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(24)) }
-        brand.addView(brandMark(44), LinearLayout.LayoutParams(dp(44), dp(44)))
-        val brandText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
-        brandText.addView(label("PlayWorld.rs", 17f, INK, true))
-        brandText.addView(label("Reseller Portal", 12f, MUTED, false))
-        brand.addView(brandText)
-        stack.addView(brand, LinearLayout.LayoutParams(-1, dp(60)))
+        // Full PlayWorld Reseller logo, centered above the card.
+        val logoSize = if (compact) 116 else 136
+        stack.addView(logoMark(logoSize), LinearLayout.LayoutParams(dp(logoSize), dp(logoSize)).apply { topMargin = dp(8); bottomMargin = dp(22) })
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(if (compact) 18 else 22), dp(22), dp(if (compact) 18 else 22), dp(22))
@@ -215,7 +211,7 @@ class MainActivity : android.app.Activity() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(24), dp(28), dp(24), dp(28))
             background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
         }
-        card.addView(brandMark(48), LinearLayout.LayoutParams(dp(48), dp(48)))
+        card.addView(logoMark(84), LinearLayout.LayoutParams(dp(84), dp(84)))
         card.addView(label("Bezbedno povezivanje", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(18), 0, dp(6)) })
         card.addView(label("Proveravamo prijavu ovog uređaja…", 14f, MUTED, false).apply { gravity = Gravity.CENTER })
         card.addView(ProgressBar(this@MainActivity).apply { indeterminateTintList = android.content.res.ColorStateList.valueOf(BLUE) }, LinearLayout.LayoutParams(dp(28), dp(28)).apply { topMargin = dp(20) })
@@ -318,13 +314,17 @@ class MainActivity : android.app.Activity() {
         }
     }
 
+    private fun isAdminRole() = DeviceVault.readRole(this) == "admin"
+
     private fun establishPortalSession(result: JSONObject, after: () -> Unit) {
+        // The server decides whether this device is a reseller or an admin device.
+        result.optString("role").takeIf { it == "admin" || it == "reseller" }?.let { DeviceVault.writeRole(this, it) }
         CookieManager.getInstance().flush()
         webView.post {
             showOnly(webView)
             if (reloadPortalAfterSession || webView.url.isNullOrBlank() || webView.url == "about:blank") {
                 reloadPortalAfterSession = false
-                webView.loadUrl(PORTAL_URL)
+                webView.loadUrl(if (isAdminRole()) "${PORTAL_URL}admin.html" else PORTAL_URL)
             }
             sessionLoadedAt = System.currentTimeMillis()
             after()
@@ -364,7 +364,7 @@ class MainActivity : android.app.Activity() {
                 val cookies = conn.headerFields.entries.flatMap { entry ->
                     if (entry.key?.equals("Set-Cookie", ignoreCase = true) == true) entry.value.orEmpty() else emptyList()
                 }
-                val hasSessionCookie = cookies.any { it.substringBefore(';').startsWith("PWRSRESELLERSESSID=") }
+                val hasSessionCookie = cookies.any { val name = it.substringBefore(';'); name.startsWith("PWRSRESELLERSESSID=") || name.startsWith("PWRSADMINSESSID=") }
                 if (response.optBoolean("ok") && action != "logout" && !hasSessionCookie) {
                     runOnUiThread { done(response, "Sesija nije potvrđena. Pokušajte ponovo.") }
                     return@thread
@@ -438,7 +438,7 @@ class MainActivity : android.app.Activity() {
     private inner class PortalWebViewClient : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             val uri = request.url
-            if (uri.scheme == "https" && uri.host == PORTAL_HOST && uri.path != "/admin.html") return false
+            if (uri.scheme == "https" && uri.host == PORTAL_HOST && (uri.path != "/admin.html" || isAdminRole())) return false
             openExternalLink(uri); return true
         }
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) { super.onReceivedError(view, request, error); if (request.isForMainFrame) showConnectionError() }
@@ -511,12 +511,16 @@ class MainActivity : android.app.Activity() {
         imeOptions = EditorInfo.IME_ACTION_NEXT; setSingleLine(true); setPadding(dp(15), 0, dp(15), 0); background = rounded(WHITE, dp(13), STROKE)
     }
     private fun matchWrap(height: Int) = LinearLayout.LayoutParams(-1, height)
-    private fun brandMark(size: Int) = ImageView(this).apply {
-        setImageResource(R.drawable.ic_gamepad_mark)
-        background = gradient(BLUE, PURPLE, 13)
-        setPadding(dp(size / 4), dp(size / 4), dp(size / 4), dp(size / 4))
+    private fun logoMark(sizeDp: Int) = ImageView(this).apply {
+        setImageResource(R.drawable.pw_logo)
         scaleType = ImageView.ScaleType.FIT_CENTER
-        contentDescription = "PlayWorld.rs"
+        contentDescription = "PlayWorld Reseller"
+        val radius = dp(sizeDp) * 0.22f
+        outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) { outline.setRoundRect(0, 0, view.width, view.height, radius) }
+        }
+        clipToOutline = true
+        elevation = dp(4).toFloat()
     }
     private fun primaryButton(title: String, action: () -> Unit) = Button(this).apply {
         text = title; isAllCaps = false; setTextColor(Color.WHITE); textSize = 15f
@@ -577,9 +581,16 @@ private object DeviceVault {
         } catch (_: Exception) { clear(activity); null }
     }
 
+    fun writeRole(activity: android.app.Activity, role: String) {
+        activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putString("role", role).commit()
+    }
+
+    fun readRole(activity: android.app.Activity): String =
+        activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString("role", "reseller") ?: "reseller"
+
     fun clear(activity: android.app.Activity) {
         activity.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit()
-            .remove("device_id").remove(SECRET).remove(IV).commit()
+            .remove("device_id").remove(SECRET).remove(IV).remove("role").commit()
         try { KeyStore.getInstance("AndroidKeyStore").apply { load(null); if (containsAlias(KEY_ALIAS)) deleteEntry(KEY_ALIAS) } } catch (_: Exception) { }
     }
 

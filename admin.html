@@ -637,6 +637,27 @@
         <div id="passkeyList" class="passkey-list"></div>
         <div class="msg" id="passkeyMsg"></div>
       </div>
+      <div class="form-panel admin-app-panel">
+        <div class="section-head">
+          <div class="section-title">
+            <h2>Admin aplikacija na telefonu</h2>
+            <p>Napravite jednokratni kod i unesite ga u PlayWorld Reseller aplikaciju da se telefon prijavi kao admin. Kod važi 15 minuta. Osetljive akcije i dalje traže admin šifru.</p>
+          </div>
+        </div>
+        <section class="app-device-panel" aria-label="Admin pristup aplikaciji">
+          <label for="adminAppDeviceLabel">Naziv uređaja za ovaj kod</label>
+          <input id="adminAppDeviceLabel" type="text" maxlength="120" autocomplete="off" placeholder="npr. Arso Samsung S25" />
+          <button class="btn primary" id="createAdminAppCode" type="button">Napravi kod za admin aplikaciju</button>
+          <div class="app-code-output" id="adminAppCodeOutput" hidden>
+            <strong>Admin kod · važi 15 minuta</strong>
+            <div class="app-code-value" id="adminAppCodeValue"></div>
+            <small id="adminAppCodeExpiry"></small>
+            <button class="btn" id="copyAdminAppCode" type="button">Kopiraj kod</button>
+          </div>
+          <div class="app-device-list" id="adminAppCodesList" aria-live="polite"></div>
+          <div class="app-device-list" id="adminAppDevicesList"></div>
+        </section>
+      </div>
       <div class="form-panel telegram-settings-panel">
         <div class="section-head"><div class="section-title"><h2>Telegram admin bot</h2><p>Obaveštenja i bezbedne admin akcije u Telegramu. Bot tajne se čuvaju van panela.</p></div></div>
         <div id="telegramBotStatus" class="muted">Status bota se učitava...</div>
@@ -1491,6 +1512,68 @@
       }finally{ button.disabled = false; }
     }
 
+    function renderAdminAppDevices(data){
+      const codeList = $("adminAppCodesList"); codeList.replaceChildren();
+      const deviceList = $("adminAppDevicesList"); deviceList.replaceChildren();
+      const codes = data.activation_codes || [];
+      const devices = data.devices || [];
+      text(codeList, "strong", "Kodovi · poslednjih 30");
+      if (!codes.length) text(codeList, "p", "Još nema admin kodova.", "app-device-empty");
+      codes.forEach((code) => {
+        const item = document.createElement("div"); item.className = "app-device-item";
+        const top = document.createElement("div"); top.className = "app-device-item-top";
+        const copy = document.createElement("div");
+        const status = code.revoked_at ? "Opozvan" : code.consumed_at ? "Iskorišćen" : Number(code.expired) ? "Istekao" : "Aktivan";
+        text(copy, "strong", `Kod #${code.id} · ${code.device_label || "Uređaj"} · ${status}`);
+        text(copy, "small", `Izdato: ${appDate(code.created_at)} · ističe: ${appDate(code.expires_at)}${code.consumed_at ? ` · iskorišćen: ${appDate(code.consumed_at)}` : ""}`);
+        top.append(copy);
+        if (status === "Aktivan") {
+          const revoke = document.createElement("button"); revoke.className = "btn"; revoke.type = "button"; revoke.textContent = "Opozovi";
+          revoke.addEventListener("click", () => revokeAdminAppAccess("admin_device_activation_revoke", { activation_id:Number(code.id) }, revoke));
+          top.append(revoke);
+        }
+        item.append(top); codeList.append(item);
+      });
+      text(deviceList, "strong", `Uređaji · ${devices.filter((device) => !device.revoked_at).length} aktivnih`);
+      if (!devices.length) text(deviceList, "p", "Još nema aktiviranih admin uređaja.", "app-device-empty");
+      devices.forEach((device) => {
+        const item = document.createElement("div"); item.className = "app-device-item";
+        const top = document.createElement("div"); top.className = "app-device-item-top";
+        const copy = document.createElement("div");
+        const assignedName = device.activation_label || device.device_name || "Uređaj";
+        const model = device.activation_label && device.device_name ? ` (${device.device_name})` : "";
+        text(copy, "strong", `${assignedName}${model} · ${String(device.platform || "").toUpperCase()}${device.revoked_at ? " · Opozvan" : " · Aktivan"}`);
+        text(copy, "small", `Prijavljen: ${appDate(device.created_at)} · poslednja aktivnost: ${appDate(device.last_seen_at)}${device.last_ip_address ? ` · IP ${device.last_ip_address}` : ""}`);
+        top.append(copy);
+        if (!device.revoked_at) {
+          const revoke = document.createElement("button"); revoke.className = "btn"; revoke.type = "button"; revoke.textContent = "Odjavi uređaj";
+          revoke.addEventListener("click", () => revokeAdminAppAccess("admin_device_revoke", { device_record_id:Number(device.id) }, revoke));
+          top.append(revoke);
+        }
+        item.append(top); deviceList.append(item);
+      });
+    }
+
+    async function loadAdminAppDevices(){
+      const codeList = $("adminAppCodesList");
+      try{
+        renderAdminAppDevices(await api("admin_device_management"));
+      }catch(error){
+        codeList.replaceChildren(); text(codeList, "p", error.message, "app-device-empty");
+      }
+    }
+
+    async function revokeAdminAppAccess(action, extra, button){
+      button.disabled = true;
+      try{
+        await ensureAdminStepUp();
+        await api(action, { method:"POST", body:JSON.stringify(extra) });
+        await loadAdminAppDevices();
+        showToast("ok", action === "admin_device_revoke" ? "Uređaj je odjavljen." : "Admin kod je opozvan.");
+      }catch(error){ showToast("bad", error.message); }
+      finally{ button.disabled = false; }
+    }
+
     function closeResellerDrawer(){
       $("resellerDrawerBackdrop").classList.remove("open");
       $("resellerDrawerBackdrop").setAttribute("aria-hidden", "true");
@@ -2185,7 +2268,7 @@
       const snapshot = captureUiState();
       state.data = await api("dashboard", { query:queryFromFilters(state.filters) });
       render();
-      await Promise.all([loadAdminTwoFactorStatus(), loadPasskeys()]);
+      await Promise.all([loadAdminTwoFactorStatus(), loadPasskeys(), loadAdminAppDevices()]);
       restoreUiState(snapshot);
     }
 
@@ -2467,6 +2550,27 @@
         const message = $("drawerResellerMsg"); message.className = "msg bad"; message.textContent = error.message; message.style.display = "block";
       }finally{ button.disabled = false; button.textContent = "Izdaj jednokratni kod"; }
     });
+    $("createAdminAppCode").addEventListener("click", async () => {
+      const deviceLabel = $("adminAppDeviceLabel").value.trim();
+      if (!deviceLabel) { $("adminAppDeviceLabel").focus(); showToast("bad", "Unesite naziv uređaja za ovaj kod."); return; }
+      const button = $("createAdminAppCode"); button.disabled = true; button.textContent = "Pravim kod…";
+      $("adminAppCodeOutput").hidden = true; $("adminAppCodeValue").textContent = "";
+      try{
+        await ensureAdminStepUp();
+        const result = await api("admin_device_activation_create", { method:"POST", body:JSON.stringify({ device_label:deviceLabel }) });
+        $("adminAppCodeValue").textContent = result.code;
+        $("adminAppDeviceLabel").value = "";
+        $("adminAppCodeExpiry").textContent = `Ističe ${appDate(result.expires_at)}. Unesite ga u aplikaciju odmah; kasnije neće moći ponovo da se otkrije.`;
+        $("adminAppCodeOutput").hidden = false;
+        await loadAdminAppDevices();
+      }catch(error){ showToast("bad", error.message); }
+      finally{ button.disabled = false; button.textContent = "Napravi kod za admin aplikaciju"; }
+    });
+    $("copyAdminAppCode").addEventListener("click", async () => {
+      const code = $("adminAppCodeValue").textContent;
+      try{ await navigator.clipboard.writeText(code); showToast("ok", "Admin kod je kopiran."); }
+      catch(_){ const range = document.createRange(); range.selectNodeContents($("adminAppCodeValue")); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); showToast("warn", "Kod je označen. Kopirajte ga ručno."); }
+    });
     $("copyAppActivationCode").addEventListener("click", async () => {
       const code = $("appActivationCodeValue").textContent;
       try{ await navigator.clipboard.writeText(code); showToast("ok", "Aktivacioni kod je kopiran."); }
@@ -2482,6 +2586,7 @@
       await api("logout", { method:"POST", body:JSON.stringify({}) });
       setAdmin2faLoginMode(false);
       setLoggedIn(false);
+      if (window.PlayWorldNative && typeof window.PlayWorldNative.logout === "function") window.PlayWorldNative.logout();
     });
     $("applyFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));
     $("applyInventoryFiltersBtn").addEventListener("click", () => load(currentFilters()).catch((e) => showMsg("bad", e.message)));

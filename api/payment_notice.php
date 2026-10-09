@@ -82,6 +82,39 @@ try {
     }
   }
 
+  // The notice is durably stored, so answer immediately and send the email afterwards;
+  // SMTP latency used to make the "Uplatio sam" button feel stuck.
+  if ($noticeId !== null) {
+    $csrf = csrf_token();
+    $earlyResponse = json_encode([
+      'ok' => true,
+      'notice_id' => $noticeId,
+      'notice_recorded' => true,
+      'mail_sent' => null,
+      'message' => 'Obaveštenje je evidentirano i šalje se adminu.',
+      'csrf_token' => $csrf,
+    ], JSON_UNESCAPED_UNICODE);
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    ignore_user_abort(true);
+    @set_time_limit(30);
+    http_response_code(200);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, max-age=0');
+    if (function_exists('fastcgi_finish_request')) {
+      echo $earlyResponse;
+      fastcgi_finish_request();
+    } else {
+      header('Connection: close');
+      header('Content-Length: ' . strlen($earlyResponse));
+      echo $earlyResponse;
+      while (ob_get_level() > 0) {
+        if (!@ob_end_flush()) break;
+      }
+      flush();
+    }
+    $deferred = true;
+  }
+
   $result = send_text_notification_email($recipients, $subject, $message);
   if ($noticeId !== null) {
     $update = $pdo->prepare('UPDATE payment_notice_requests SET status = ?, attempts = attempts + 1, error_message = ?, updated_at = NOW() WHERE id = ?');
@@ -99,6 +132,8 @@ try {
     ]);
   } catch (Throwable $ignored) {}
 
+  if (!empty($deferred)) exit;
+
   json_response([
     'ok' => true,
     'notice_id' => $noticeId,
@@ -114,5 +149,9 @@ try {
     'csrf_token' => csrf_token(),
   ]);
 } catch (Throwable $e) {
+  if (!empty($deferred)) {
+    error_log('payment_notice_deferred_failed class=' . get_class($e));
+    exit;
+  }
   json_response(['ok' => false, 'error' => 'Greška pri slanju obaveštenja.'], 500);
 }

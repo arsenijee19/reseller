@@ -69,3 +69,12 @@ release, or Android will not install updates over the existing app. Configure
 the release signing values through a protected build environment before creating
 the first reseller-facing APK. Never distribute a debug build as the production
 app.
+
+## Admin devices
+
+An administrator can generate a 15-minute one-time code in Admin → Sigurnost →
+"Admin aplikacija na telefonu". Entering it in the app (same activation screen)
+registers the phone as an admin device (`admin_app_devices`, up to 5) and opens
+`/admin.html` in the WebView with an admin session. Device sessions do not grant
+admin step-up, so critical admin actions still ask for the admin password (and
+2-step code when enabled). Devices can be revoked from the same admin panel.

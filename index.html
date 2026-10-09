@@ -612,6 +612,8 @@
       .picker-type-filter{min-height:40px}
       .history-filter{min-height:40px}
     }
+    /* Dialogs taller than the screen (My Profile on phones) must scroll instead of being cut off */
+    .modal{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
     @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1037,7 +1039,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-admin-modal-layer";
+    const RELEASE_VERSION = "2026-10-09-admin-app-login";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -2770,7 +2772,7 @@
       paidBtn.querySelector(".paid-btn-label").textContent = "Šaljem...";
       try{
         const result = await api("/api/payment_notice.php", { method:"POST", body:JSON.stringify({}) });
-        show(paidMsg, result.mail_sent ? "ok" : "warn", result.message || "Obaveštenje je evidentirano. Proverićemo uplatu i ažurirati balance.");
+        show(paidMsg, result.mail_sent === false ? "warn" : "ok", result.message || "Obaveštenje je evidentirano. Proverićemo uplatu i ažurirati balance.");
       }catch(e){
         show(paidMsg, "bad", e.message);
       }finally{

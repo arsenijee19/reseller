@@ -623,6 +623,27 @@ try {
     json_response(['ok' => true, 'passkeys' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'csrf_token' => csrf_token()]);
   }
 
+  if ($action === 'admin_device_management') {
+    $admin = require_admin();
+    ensure_admin_app_device_tables($pdo);
+    $adminId = (int)$admin['id'];
+    $codes = $pdo->prepare("SELECT id, device_label, expires_at, consumed_at, consumed_device_id, revoked_at, created_at,
+        CASE WHEN expires_at <= NOW() THEN 1 ELSE 0 END AS expired
+      FROM admin_device_activation_codes WHERE admin_id = ? ORDER BY id DESC LIMIT 30");
+    $codes->execute([$adminId]);
+    $devices = $pdo->prepare("SELECT d.id, d.device_id, d.device_name, d.platform, d.created_at, d.last_seen_at,
+        d.last_ip_address, d.revoked_at,
+        (SELECT c.device_label FROM admin_device_activation_codes c WHERE c.consumed_device_id = d.device_id AND c.admin_id = d.admin_id ORDER BY c.id DESC LIMIT 1) AS activation_label
+      FROM admin_app_devices d WHERE d.admin_id = ? ORDER BY d.revoked_at IS NULL DESC, d.last_seen_at DESC, d.id DESC");
+    $devices->execute([$adminId]);
+    json_response([
+      'ok' => true,
+      'activation_codes' => $codes->fetchAll(PDO::FETCH_ASSOC),
+      'devices' => $devices->fetchAll(PDO::FETCH_ASSOC),
+      'csrf_token' => csrf_token(),
+    ]);
+  }
+
   if ($action === 'admin_reauth') {
     $admin = require_admin();
     require_post();
@@ -692,6 +713,50 @@ try {
       $stmt->execute([$deviceRecordId, $resellerId]);
       if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Uređaj je već opozvan ili ne postoji.'], 409);
       audit_event($pdo, 'admin', $adminId, 'app_device_revoked', 'success', ['reseller_id' => $resellerId, 'device_record_id' => $deviceRecordId]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+  }
+
+  if (in_array($action, ['admin_device_activation_create', 'admin_device_activation_revoke', 'admin_device_revoke'], true)) {
+    $admin = require_admin();
+    require_recent_admin_step_up();
+    ensure_admin_app_device_tables($pdo);
+    $adminId = (int)$admin['id'];
+
+    if ($action === 'admin_device_activation_create') {
+      $deviceLabel = normalize_app_device_label((string)($input['device_label'] ?? ''));
+      if ($deviceLabel === '') json_response(['ok' => false, 'error' => 'Unesite naziv uređaja za ovaj kod.'], 400);
+      $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM admin_device_activation_codes
+        WHERE admin_id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()");
+      $pendingStmt->execute([$adminId]);
+      if ((int)$pendingStmt->fetchColumn() >= 3) {
+        json_response(['ok' => false, 'error' => 'Već imate tri važeća neiskorišćena admin koda. Sačekajte da isteknu ili opozovite neki kod.'], 409);
+      }
+      $code = app_activation_code();
+      $stmt = $pdo->prepare('INSERT INTO admin_device_activation_codes (admin_id, code_hash, device_label, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))');
+      $stmt->execute([$adminId, hash('sha256', $code), $deviceLabel]);
+      $id = (int)$pdo->lastInsertId();
+      $expiry = $pdo->prepare('SELECT expires_at FROM admin_device_activation_codes WHERE id = ?');
+      $expiry->execute([$id]);
+      audit_event($pdo, 'admin', $adminId, 'admin_app_activation_code_created', 'success', ['activation_id' => $id]);
+      json_response(['ok' => true, 'code' => $code, 'expires_at' => $expiry->fetchColumn(), 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'admin_device_activation_revoke') {
+      $activationId = (int)($input['activation_id'] ?? 0);
+      $stmt = $pdo->prepare('UPDATE admin_device_activation_codes SET revoked_at = NOW() WHERE id = ? AND admin_id = ? AND consumed_at IS NULL AND revoked_at IS NULL');
+      $stmt->execute([$activationId, $adminId]);
+      if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Kod više nije aktivan ili ne postoji.'], 409);
+      audit_event($pdo, 'admin', $adminId, 'admin_app_activation_code_revoked', 'success', ['activation_id' => $activationId]);
+      json_response(['ok' => true, 'csrf_token' => csrf_token()]);
+    }
+
+    if ($action === 'admin_device_revoke') {
+      $deviceRecordId = (int)($input['device_record_id'] ?? 0);
+      $stmt = $pdo->prepare('UPDATE admin_app_devices SET revoked_at = NOW() WHERE id = ? AND admin_id = ? AND revoked_at IS NULL');
+      $stmt->execute([$deviceRecordId, $adminId]);
+      if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Uređaj je već opozvan ili ne postoji.'], 409);
+      audit_event($pdo, 'admin', $adminId, 'admin_app_device_revoked', 'success', ['device_record_id' => $deviceRecordId]);
       json_response(['ok' => true, 'csrf_token' => csrf_token()]);
     }
   }
