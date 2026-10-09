@@ -1,4 +1,4 @@
-name: Android test APK
+name: Android APK
 
 on:
   workflow_dispatch:
@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_VERSION_CODE: ${{ github.run_number }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -36,8 +38,38 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Build debug APK
-        run: gradle -p mobile/android assembleDebug
+      # The permanent signing key lives only in GitHub Secrets (this repository is public).
+      # Without it a throw-away key is used: the build is still tested, but it can not update an installed app,
+      # so it is published without forcing anyone to update.
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          KS="$RUNNER_TEMP/release.jks"
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
+            echo "STABLE_KEY=true" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            PW="$(openssl rand -hex 16)"
+            echo "::add-mask::$PW"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -alias temp -keyalg RSA -keysize 2048 -validity 3650 \
+              -storepass "$PW" -keypass "$PW" -dname "CN=PlayWorld temporary build"
+            echo "STABLE_KEY=false" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=temp" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$PW" >> "$GITHUB_ENV"
+            echo "::warning::ANDROID_KEYSTORE_* secrets are not set: building with a temporary key (updates over an installed app will not work)."
+          fi
+          echo "ANDROID_KEYSTORE_FILE=$KS" >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: gradle -p mobile/android assembleRelease -PversionCode="$APP_VERSION_CODE"
 
       - name: Enable KVM for Android emulator
         run: |
@@ -52,32 +84,45 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            adb install mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            adb install mobile/android/app/build/outputs/apk/release/app-release.apk
             adb logcat -c
-            adb shell am start -W -n rs.playworld.reseller.debug/rs.playworld.reseller.MainActivity
+            adb shell am start -W -n rs.playworld.reseller/rs.playworld.reseller.MainActivity
             sleep 8
             ! adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'
-            test -n "$(adb shell pidof rs.playworld.reseller.debug)"
+            test -n "$(adb shell pidof rs.playworld.reseller)"
             adb shell uiautomator dump /sdcard/playworld-window.xml >/dev/null
             adb shell cat /sdcard/playworld-window.xml | grep -q 'Povežite uređaj'
 
-      - name: Upload test APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: playworld-reseller-android-test
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
 
       # The site's "Preuzmi za Android" button serves downloads/PlayWorld-Reseller.apk (deployed by cPanel Git).
+      # downloads/app-version.json tells every installed app which version is the minimum allowed to run.
       - name: Publish APK to the site (main only)
         if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p downloads
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk downloads/PlayWorld-Reseller.apk
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk downloads/PlayWorld-Reseller.apk
+          python3 - <<'PY'
+          import hashlib, json, os, datetime
+          code = int(os.environ["APP_VERSION_CODE"])
+          stable = os.environ.get("STABLE_KEY") == "true"
+          sha = hashlib.sha256(open("downloads/PlayWorld-Reseller.apk", "rb").read()).hexdigest()
+          json.dump({"android": {
+              "code": code, "name": f"1.0.{code}",
+              # Only a build signed with the permanent key can replace an installed app, so only then it is mandatory.
+              "min_code": code if stable else 1, "stable_key": stable, "sha256": sha,
+              "published_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}},
+              open("downloads/app-version.json", "w"), indent=2)
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add downloads/PlayWorld-Reseller.apk
+          git add downloads/PlayWorld-Reseller.apk downloads/app-version.json
           if git diff --cached --quiet; then echo "APK unchanged"; exit 0; fi
           git commit -m "Publish Android APK build [skip ci]"
           for attempt in 1 2 3 4; do

@@ -211,6 +211,12 @@ check("other admin web session is logged out", other.call("/api/admin.php?action
 check("admin app device is logged out", x_app.call("/api/admin.php?action=2fa_status")[0] == 401)
 check("admin app device cannot renew (new code needed)", device_session(x_dev, x_secret)[1] == 401)
 
+print("\n== 9. Mandatory app update info")
+s_, v = Client("ver").call("/api/version.php")
+a = v.get("android", {})
+check("version endpoint publishes the Android release info", s_ == 200 and {"code", "min_code", "apk_url"} <= set(a), v)
+check("update info is public but contains no secrets", set(a) <= {"code", "name", "min_code", "stable_key", "apk_url"}, a)
+
 print("\n== 8. Logins that use 2-step verification are bound to the credential too")
 ADMIN_PW = "NewAdminPass-98765"
 reset_limits()

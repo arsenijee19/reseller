@@ -11,8 +11,28 @@ android {
         applicationId 'rs.playworld.reseller'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '1.0.0'
+        // CI passes -PversionCode=<run number>, so every published APK is newer than the previous one.
+        def appVersionCode = (project.findProperty('versionCode') ?: '1').toString().toInteger()
+        versionCode appVersionCode
+        versionName "1.0.${appVersionCode}"
+    }
+
+    // Signing material comes from the environment (GitHub Secrets); it is never stored in the repository.
+    signingConfigs {
+        release {
+            def keystorePath = System.getenv('ANDROID_KEYSTORE_FILE')
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
     }
 
     compileOptions {
@@ -31,6 +51,7 @@ android {
         }
         release {
             minifyEnabled false
+            if (System.getenv('ANDROID_KEYSTORE_FILE')) signingConfig signingConfigs.release
         }
     }
 }

@@ -67,6 +67,11 @@ class MainActivity : android.app.Activity() {
     private lateinit var activationButton: Button
     private lateinit var messageView: TextView
     private lateinit var connectionMessageView: TextView
+    private lateinit var updateView: View
+    private lateinit var updateMessageView: TextView
+    private var updateRequired = false
+    private var updateUrl = ""
+    private var lastVersionCheckAt = 0L
     private lateinit var lockView: View
     private lateinit var lockMessageView: TextView
     private var locked = true
@@ -147,9 +152,13 @@ class MainActivity : android.app.Activity() {
         lockView = createLockView()
         root.addView(lockView, FrameLayout.LayoutParams(-1, -1))
         lockView.visibility = View.GONE
+        updateView = createUpdateView()
+        root.addView(updateView, FrameLayout.LayoutParams(-1, -1))
+        updateView.visibility = View.GONE
         applyScreenshotPolicy()
         animateIn(loadingView)
-        restoreOrActivate()
+        // The app does not start (activation, sign-in, portal) while a newer version is mandatory.
+        checkForcedUpdate { restoreOrActivate() }
     }
 
     override fun onResume() {
@@ -159,6 +168,8 @@ class MainActivity : android.app.Activity() {
         sessionHandler.removeCallbacks(sessionRefreshTask)
         sessionHandler.postDelayed(sessionRefreshTask, SESSION_REFRESH_MS)
         if (!::root.isInitialized || !::webView.isInitialized) return
+        if (System.currentTimeMillis() - lastVersionCheckAt > VERSION_CHECK_MS) checkForcedUpdate()
+        if (updateRequired) return
         val away = if (backgroundedAt > 0L) System.currentTimeMillis() - backgroundedAt else 0L
         if (lockRequired() && !locked && away > LOCK_TIMEOUT_MS) locked = true
         if (lockRequired() && locked) { showLock(); return }
@@ -180,7 +191,10 @@ class MainActivity : android.app.Activity() {
     }
 
     @Deprecated("Deprecated in Android; retained for supported devices")
-    override fun onBackPressed() { if (webView.visibility == View.VISIBLE && webView.canGoBack()) webView.goBack() else super.onBackPressed() }
+    override fun onBackPressed() {
+        if (updateRequired) { moveTaskToBack(true); return }
+        if (webView.visibility == View.VISIBLE && webView.canGoBack()) webView.goBack() else super.onBackPressed()
+    }
 
     override fun onDestroy() { if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }; super.onDestroy() }
 
@@ -329,7 +343,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun refreshDeviceSession(silent: Boolean = false) {
-        if (checkingSession) return
+        if (checkingSession || updateRequired) return
         val saved = DeviceVault.read(this) ?: return
         checkingSession = true
         apiWithRetry("session", JSONObject().put("device_id", saved.first).put("device_token", saved.second)) { result, error ->
@@ -341,6 +355,68 @@ class MainActivity : android.app.Activity() {
                 DeviceVault.clear(this)
                 clearPortalCookies { showActivation("Pristup ovom uređaju je opozvan. Unesite novi jednokratni kod.") }
             } else establishPortalSession(result) { sessionLoadedAt = System.currentTimeMillis() }
+        }
+    }
+
+    // ---- mandatory update: the installed build must be at least the version the server publishes ----
+    private fun createUpdateView() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(24), dp(24), dp(24), dp(24)); background = gradient(BG, WHITE, 24)
+        isClickable = true; isFocusable = true
+        val card = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), dp(28), dp(24), dp(24))
+            background = rounded(WHITE, dp(18), STROKE); elevation = dp(3).toFloat()
+        }
+        card.addView(logoMark(84), LinearLayout.LayoutParams(dp(84), dp(84)))
+        card.addView(label("Potrebno je ažuriranje", 19f, INK, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(18), 0, dp(6)) })
+        updateMessageView = label("Dostupna je nova verzija aplikacije. Preuzmite je i instalirajte preko postojeće. Prijava i podaci ostaju.", 14f, MUTED, false).apply {
+            gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(0, 0, 0, dp(20))
+        }
+        card.addView(updateMessageView)
+        card.addView(primaryButton("Preuzmi ažuriranje") { if (updateUrl.isNotEmpty()) openExternalLink(Uri.parse(updateUrl)) }, matchWrap(dp(48)))
+        card.addView(label("Posle preuzimanja otvorite fajl i dodirnite Instaliraj. Ako Play Protect upozori, izaberite Learn more pa Install anyway.", 12f, MUTED, false).apply {
+            gravity = Gravity.CENTER; setLineSpacing(dp(2).toFloat(), 1f); setPadding(0, dp(16), 0, 0)
+        })
+        addView(card, LinearLayout.LayoutParams(minOf(dp(resources.configuration.screenWidthDp - 48), dp(420)), -2).apply { gravity = Gravity.CENTER })
+    }
+
+    /** Asks the server for the minimum allowed build. Network problems never block the app (fail open). */
+    private fun checkForcedUpdate(afterOk: (() -> Unit)? = null) {
+        lastVersionCheckAt = System.currentTimeMillis()
+        thread(name = "portal-version-check") {
+            var required = false
+            var url = ""
+            var name = ""
+            try {
+                val conn = (URL("$PORTAL_ORIGIN/api/version.php").openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000; readTimeout = 8000
+                    setRequestProperty("Accept", "application/json"); setRequestProperty("Cache-Control", "no-cache")
+                }
+                try {
+                    if (conn.responseCode in 200..299) {
+                        val android = JSONObject(conn.inputStream.bufferedReader().use { it.readText() }).optJSONObject("android")
+                        val minCode = android?.optInt("min_code", 0) ?: 0
+                        if (minCode > BuildConfig.VERSION_CODE) {
+                            required = true
+                            name = android?.optString("name").orEmpty()
+                            url = PORTAL_ORIGIN + (android?.optString("apk_url").orEmpty().ifBlank { "/downloads/PlayWorld-Reseller.apk" })
+                        }
+                    }
+                } finally { conn.disconnect() }
+            } catch (_: Exception) { }
+            runOnUiThread {
+                if (required) {
+                    updateRequired = true; updateUrl = url
+                    updateMessageView.text = "Dostupna je nova verzija aplikacije" + (if (name.isNotBlank()) " ($name)" else "") +
+                        ". Preuzmite je i instalirajte preko postojeće. Prijava i podaci ostaju."
+                    lockView.visibility = View.GONE
+                    updateView.visibility = View.VISIBLE
+                    updateView.bringToFront()
+                } else {
+                    updateRequired = false
+                    updateView.visibility = View.GONE
+                    afterOk?.invoke()
+                }
+            }
         }
     }
 
@@ -531,6 +607,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun showLock() {
+        if (updateRequired) return
         runOnUiThread {
             lockView.visibility = View.VISIBLE
             lockView.bringToFront()
@@ -698,6 +775,7 @@ class MainActivity : android.app.Activity() {
         private const val PREFS = "reseller_device"
         private const val SESSION_REFRESH_MS = 45L * 60L * 1000L
         private const val LOCK_TIMEOUT_MS = 60L * 1000L
+        private const val VERSION_CHECK_MS = 60L * 1000L
         private const val RESUME_CHECK_MS = 20L * 1000L
         private const val REQ_UNLOCK = 4711
         private const val BLUE = 0xFF2563EB.toInt()

@@ -109,3 +109,18 @@ admin step-up, so critical admin actions still ask for the admin password (and
   platform `ios`). Reseller and admin codes both work; the device credential lives in the app's local storage,
   can be revoked from the admin panel and admin devices expire after 30 days idle.
 - `tests/e2e/run.sh` also drives this flow in a real mobile browser (`tests/e2e/pwa.js`).
+
+## Releases and mandatory updates
+
+- Every push to `main` that touches `mobile/android/**` builds a **release** APK (`versionCode` = workflow run number),
+  tests it on an emulator and publishes it to `downloads/PlayWorld-Reseller.apk` together with
+  `downloads/app-version.json` (code, `min_code`, sha256). cPanel deploy copies both to the site.
+- `api/version.php` returns that info. On every start and when returning to the app (at most once a minute) the
+  Android app compares its own `versionCode` with `min_code`; if it is older the app shows a blocking
+  "Potrebno je ažuriranje" screen with a download button and does not start until the new APK is installed
+  (network errors never block the app).
+- Only a build signed with the **permanent key** is mandatory (`stable_key`); otherwise `min_code` stays 1.
+  The key is stored only in GitHub Secrets (the repository is public): `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Never commit a keystore.
+- iPhone/Home Screen app: nothing to install per release; it loads the site on every start, so a normal cPanel
+  deploy updates it (icon/name/splash changes need a one-time re-add to the Home Screen).
