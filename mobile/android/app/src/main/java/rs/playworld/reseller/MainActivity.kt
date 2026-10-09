@@ -44,10 +44,6 @@ class MainActivity : android.app.Activity() {
             view.setPadding(0, systemBars.top, 0, maxOf(systemBars.bottom, ime.bottom))
             insets
         }
-        WindowInsetsControllerCompat(window, root).apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
-        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.WHITE)
@@ -93,6 +89,12 @@ class MainActivity : android.app.Activity() {
         root.addView(errorPanel, FrameLayout.LayoutParams(-1, -1))
         errorPanel.visibility = View.GONE
         setContentView(root)
+        root.post {
+            WindowInsetsControllerCompat(window, root).apply {
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
+            }
+        }
 
         if (savedInstanceState == null) {
             webView.loadUrl(PORTAL_URL)
