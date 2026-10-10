@@ -105,6 +105,7 @@
   }
   async function typeInto(input, text, myRun) {
     if (!input) return;
+    try { input.blur(); } catch (e) {}
     input.value = "";
     for (var i = 0; i < text.length; i++) {
       if (myRun !== run) return;
@@ -150,8 +151,13 @@
         run: async function (my) { resetUi(); setTarget(null); var cell = firstSlot(); if (!cell) return; await scrollTo(cell); if (my !== run) return; setTarget(cell.parentElement); click(cell); await wait(450);
           await tap(cell, true); await wait(450); if (my !== run) return; finger.classList.remove("show"); setTarget(document.querySelector("#confirmModal .modal")); } },
       { kicker: "Korak 5 · Beleške", title: "Tvoje beleške i plaćanje", text: "U svakoj porudžbini možeš da upišeš internu belešku (ime kupca, telefon, dogovor). Vidiš je samo ti. Označi i da li je porudžbina plaćena, pa filtriraj Plaćeno / Neplaćeno ili pretraži beleške lupom.",
-        run: async function (my) { resetUi(); setTarget(null); var item = document.querySelector("#historyList .history-item") || $("historyList"); await scrollTo(item, Math.round(window.innerHeight * 0.12)); if (my !== run) return; setTarget(item);
-          var actions = item.querySelector ? item.querySelector(".history-note-toggle") : null; if (actions) await tap(actions, false); await fit(item); } },
+        run: async function (my) { resetUi(); setTarget(null); await wait(200); if (my !== run) return;
+          var item = document.querySelector("#historyList .history-item") || $("historyList");
+          var toggle = item.querySelector ? item.querySelector(".history-note-toggle") : null;
+          var row = toggle ? toggle.parentElement : item;
+          // put the buttons row in the upper third, clear of the step card, so the finger and its target are both visible
+          await scrollTo(row, Math.round(window.innerHeight * 0.3)); if (my !== run) return;
+          setTarget(row); if (toggle) await tap(toggle, false); await fit(row); } },
       { kicker: "Korak 6 · Balans", title: "Klik na BALANS", text: "Klik na balans otvara spisak svih transakcija do sada: uplate, porudžbine i ispravke, sa opisom i iznosom.",
         run: async function (my) { resetUi(); setTarget(null); await scrollTo($("balanceBtn"), 90); if (my !== run) return; setTarget($("balanceBtn")); await tap($("balanceBtn"), true); await wait(700); if (my !== run) return; finger.classList.remove("show"); setTarget(document.querySelector("#transactionsModal .modal")); } },
       { kind: "center", kicker: "Gotovo", title: "To je to!", text: "Tutorial možeš da pustiš ponovo kad god želiš, dugmetom „Tutorial“ u kartici Nova porudžbina.", primary: "Zatvori" }
@@ -176,6 +182,15 @@
     if (step.run) { try { await step.run(my); } catch (e) {} }
   }
 
+  // inputs get inputmode="none" while the tour runs so the on-screen keyboard can never pop up over it
+  function noKeyboard(on) {
+    ["productSearch", "priceListSearch"].forEach(function (id) {
+      var el = $(id); if (!el) return;
+      if (on) { el.setAttribute("inputmode", "none"); try { el.blur(); } catch (e) {} } else el.removeAttribute("inputmode");
+    });
+    if (on && document.activeElement && document.activeElement.blur) { try { document.activeElement.blur(); } catch (e) {} }
+  }
+
   function finish() {
     if (!active) return;
     active = false; run++; clearTimers(); window.cancelAnimationFrame(rafId);
@@ -184,14 +199,14 @@
     try { localStorage.setItem(SEEN, "1"); } catch (e) {}
     document.querySelectorAll(".tour-banner.attention").forEach(function (b) { b.classList.remove("attention"); });
     layer.classList.remove("show");
-    window.PWTourActive = false; document.querySelectorAll(".tour-rec").forEach(function (n) { n.classList.remove("tour-rec"); });
+    window.PWTourActive = false; noKeyboard(false); document.querySelectorAll(".tour-rec").forEach(function (n) { n.classList.remove("tour-rec"); });
     window.setTimeout(function () { if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; document.removeEventListener("keydown", onKey); window.scrollTo({ top: saved.scroll, behavior: "smooth" }); }, 280);
   }
 
   function start() {
     if (active || !document.body.classList.contains("is-authenticated")) return;
     if (!state.products.length) { return; }
-    active = true; window.PWTourActive = true;
+    active = true; window.PWTourActive = true; noKeyboard(true);
     saved.scroll = window.pageYOffset; try { saved.product = productSelect.value; } catch (e) {}
     build(); buildSteps();
     layer.getBoundingClientRect(); layer.classList.add("show");

@@ -1216,7 +1216,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-balance";
+    const RELEASE_VERSION = "2026-10-10-tour-kbd";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3209,7 +3209,7 @@
       if (productPickerTrigger.disabled) return;
       const isOpen = productPicker.classList.toggle("open");
       productPickerTrigger.setAttribute("aria-expanded", String(isOpen));
-      if (isOpen) productSearch.focus({ preventScroll:true });
+      if (isOpen && !window.PWTourActive) productSearch.focus({ preventScroll:true });
     });
     document.addEventListener("click", (event) => {
       // Filter buttons are replaced while rendering, so their original click target is detached here.
@@ -3349,6 +3349,6 @@
     startApp();
   </script>
   <script src="/assets/onboarding.js?v=2" defer></script>
-  <script src="/assets/tour.js?v=5" defer></script>
+  <script src="/assets/tour.js?v=6" defer></script>
 </body>
 </html>

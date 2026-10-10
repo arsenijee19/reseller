@@ -148,6 +148,7 @@ async function closeReleaseNotes(page, tag) {
       if (i === 0) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-1.png` });
       if (i === 2) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-3.png` });
       if (i === 3) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-4.png` });
+      if (i === 4) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-5.png` });
       if (i === 5) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-6.png` });
     }
     check("tour step 1 types into the real search", seen.search);
