@@ -152,6 +152,13 @@ try {
   ]);
   $newBal = (int)$wallet['balance_after_rsd'];
 
+  // Still in plus after this order: the order is already covered by the reseller's balance, so it is paid.
+  if ($newBal >= 0 && has_column($pdo, 'orders', 'reseller_paid')) {
+    $paidSets = ['reseller_paid = 1'];
+    if (has_column($pdo, 'orders', 'reseller_paid_at')) $paidSets[] = 'reseller_paid_at = NOW()';
+    $pdo->prepare('UPDATE orders SET ' . implode(', ', $paidSets) . ' WHERE id = ? AND reseller_id = ?')->execute([$orderDbId, $reseller_id]);
+  }
+
   telegram_enqueue($pdo, 'order-' . $orderDbId, 'new_order', [
     'order_id' => $orderDbId, 'reseller_id' => $reseller_id, 'reseller_email' => $reseller_email,
     'reseller_name' => $reseller_name, 'product_name' => (string)$p['product_name'],

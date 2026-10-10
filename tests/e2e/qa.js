@@ -117,6 +117,7 @@ async function closeReleaseNotes(page, tag) {
     check("order is created", Number(ordered) >= 7, "orders=" + ordered);
     await page.screenshot({ path: `${SHOTS}/qa-${name}-5-success.png` });
     if (await page.locator("#successModal.open").count()) { await page.click("#closeSuccessBtn"); await page.waitForTimeout(500); }
+    check("order placed while still in plus is marked paid automatically", sql("SELECT reseller_paid FROM orders WHERE reseller_id=1 ORDER BY id DESC LIMIT 1").trim() === "1", sql("SELECT reseller_paid FROM orders WHERE reseller_id=1 ORDER BY id DESC LIMIT 1"));
     check("balance went down after the order", !/^25[. ]?000/.test((await page.textContent("#balanceText")).trim()), await page.textContent("#balanceText"));
 
     // console colours on the slots (search filters from the picker step must be cleared first)
