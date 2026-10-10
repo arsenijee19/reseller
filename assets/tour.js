@@ -55,15 +55,31 @@
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
     return wait(420);
   }
+  function rectOf(el) {
+    var list = Array.isArray(el) ? el : [el], l = 1e9, t = 1e9, r = -1e9, b = -1e9, any = false;
+    list.forEach(function (n) {
+      if (!n) return;
+      var q = n.getBoundingClientRect();
+      if (!q.width && !q.height) return;
+      any = true; l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom);
+    });
+    return any ? { left: l, top: t, width: r - l, height: b - t } : null;
+  }
   function placeSpot(el) {
-    if (!el) { spot.classList.add("none"); return; }
-    var r = el.getBoundingClientRect();
-    if (!r.width && !r.height) { spot.classList.add("none"); return; }
+    var r = el ? rectOf(el) : null;
+    if (!r) { spot.classList.add("none"); return; }
     var pad = 8;
-    spot.classList.remove("none");
+    if (spot.classList.contains("none")) {
+      // coming back from "no target": appear in place instead of growing from the screen centre
+      spot.style.transition = "none";
+      spot.style.left = (r.left - pad) + "px"; spot.style.top = (r.top - pad) + "px";
+      spot.style.width = (r.width + pad * 2) + "px"; spot.style.height = (r.height + pad * 2) + "px";
+      spot.classList.remove("none"); void spot.offsetWidth; spot.style.transition = "";
+    }
     spot.style.left = (r.left - pad) + "px"; spot.style.top = (r.top - pad) + "px";
     spot.style.width = (r.width + pad * 2) + "px"; spot.style.height = (r.height + pad * 2) + "px";
-    var radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 12;
+    var first = Array.isArray(el) ? el[0] : el;
+    var radius = parseFloat(getComputedStyle(first).borderTopLeftRadius) || 12;
     spot.style.borderRadius = Math.min(radius + 6, 28) + "px";
   }
   function loop() { if (!active) return; placeSpot(target); rafId = window.requestAnimationFrame(loop); }
@@ -124,7 +140,7 @@
       { kicker: "Korak 2 · Cenovnik", title: "Ista pretraga i u cenovniku", text: "Dok kucaš, cenovnik se odmah sužava na igre koje tražiš.",
         run: async function (my) { resetUi(); setTarget(null); await scrollTo($("priceListSearch")); if (my !== run) return; setTarget($("priceListSearch")); await tap($("priceListSearch"), false); await typeInto($("priceListSearch"), sampleWord(), my); } },
       { kicker: "Korak 3 · Prvi klik", title: "Preporučena minimalna cena", text: "Jedan klik na cenu (slot) pokazuje preporučenu minimalnu prodajnu cenu, ispod koje ne bi trebalo da prodaješ.",
-        run: async function (my) { resetUi(); setTarget(null); var cell = firstSlot(); if (!cell) return; await scrollTo(cell); if (my !== run) return; setTarget(cell.parentElement); await tap(cell, true); await fit(cell.parentElement); } },
+        run: async function (my) { resetUi(); setTarget(null); var cell = firstSlot(); if (!cell) return; await scrollTo(cell); if (my !== run) return; setTarget(cell.parentElement); await tap(cell, true); var rec = document.getElementById(cell.getAttribute("aria-controls")); setTarget(rec ? [cell.parentElement, rec] : cell.parentElement); if (rec) rec.classList.add("tour-rec"); await fit(cell.parentElement); } },
       { kicker: "Korak 4 · Drugi klik", title: "Potvrda porudžbine", text: "Drugi klik na isti slot otvara potvrdu porudžbine. Proveri proizvod, tip naloga i cenu pa potvrdi.", note: "Ovo je demonstracija: potvrda ovde ne šalje ništa.",
         run: async function (my) { resetUi(); setTarget(null); var cell = firstSlot(); if (!cell) return; await scrollTo(cell); if (my !== run) return; setTarget(cell.parentElement); click(cell); await wait(450);
           await tap(cell, true); await wait(450); if (my !== run) return; finger.classList.remove("show"); setTarget(document.querySelector("#confirmModal .modal")); } },
@@ -163,7 +179,7 @@
     try { localStorage.setItem(SEEN, "1"); } catch (e) {}
     document.querySelectorAll(".tour-banner.attention").forEach(function (b) { b.classList.remove("attention"); });
     layer.classList.remove("show");
-    window.PWTourActive = false;
+    window.PWTourActive = false; document.querySelectorAll(".tour-rec").forEach(function (n) { n.classList.remove("tour-rec"); });
     window.setTimeout(function () { if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; document.removeEventListener("keydown", onKey); window.scrollTo({ top: saved.scroll, behavior: "smooth" }); }, 280);
   }
 
