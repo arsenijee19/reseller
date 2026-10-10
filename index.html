@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
   <link rel="stylesheet" href="/assets/tour.css?v=4" />
-  <link rel="stylesheet" href="/assets/sidenav.css?v=1" />
+  <link rel="stylesheet" href="/assets/sidenav.css?v=2" />
   <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
@@ -1217,7 +1217,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-sidenav";
+    const RELEASE_VERSION = "2026-10-10-sidenav-links";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3351,6 +3351,6 @@
   </script>
   <script src="/assets/onboarding.js?v=2" defer></script>
   <script src="/assets/tour.js?v=6" defer></script>
-  <script src="/assets/sidenav.js?v=1" defer></script>
+  <script src="/assets/sidenav.js?v=2" defer></script>
 </body>
 </html>

@@ -17,13 +17,17 @@
   var backdrop = document.createElement("div"); backdrop.className = "sn-backdrop";
   var drawer = document.createElement("nav"); drawer.className = "sn-drawer"; drawer.setAttribute("aria-label", "Sekcije panela");
   drawer.innerHTML = '<div class="sn-head"><strong>Idi na</strong><button class="sn-close" type="button" aria-label="Zatvori">✕</button></div><div class="sn-list"></div>' +
-    '<div class="sn-top"><button class="sn-item" type="button" data-top>' + icon('<path d="M12 19V5M5 12l7-7 7 7"/>') + "Na vrh</button></div>";
+    '<div class="sn-top"><a class="sn-item" href="https://support.playworld.rs" target="_blank" rel="noopener" data-link>' + icon('<path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 10v4.5M12 17.6h.01"/>') + '<span>Prijavi problem</span></a><button class="sn-item" type="button" data-top>' + icon('<path d="M12 19V5M5 12l7-7 7 7"/>') + "Na vrh</button></div>";
   var list = drawer.querySelector(".sn-list"), items = {};
   SECTIONS.forEach(function (s) {
     var b = document.createElement("button"); b.className = "sn-item"; b.type = "button"; b.dataset.target = s.id;
     b.innerHTML = icon(s.icon) + "<span>" + s.label + "</span>";
     list.appendChild(b); items[s.id] = b;
   });
+  var site = document.createElement("a");
+  site.className = "sn-item sn-site"; site.href = "https://playworld.rs"; site.target = "_blank"; site.rel = "noopener"; site.setAttribute("data-link", "");
+  site.innerHTML = icon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 2.6 15.2 0 18M12 3c-2.6 2.8-2.6 15.2 0 18"/>') + "<span>PlayWorld.rs</span>";
+  list.appendChild(site);
   document.body.appendChild(backdrop); document.body.appendChild(drawer); document.body.appendChild(fab);
 
   function setOpen(on) {
@@ -53,6 +57,7 @@
   drawer.querySelector(".sn-close").addEventListener("click", function () { setOpen(false); });
   drawer.addEventListener("click", function (e) {
     var b = e.target.closest(".sn-item"); if (!b) return;
+    if (b.hasAttribute("data-link")) { setOpen(false); return; }   // real links open on their own
     goTo(b.hasAttribute("data-top") ? null : b.dataset.target);
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
