@@ -149,7 +149,7 @@
           var actions = item.querySelector ? item.querySelector(".history-note-toggle") : null; if (actions) await tap(actions, false); await fit(item); } },
       { kicker: "Korak 6 · Balans", title: "Klik na BALANS", text: "Klik na balans otvara spisak svih transakcija do sada: uplate, porudžbine i ispravke, sa opisom i iznosom.",
         run: async function (my) { resetUi(); setTarget(null); await scrollTo($("balanceBtn"), 90); if (my !== run) return; setTarget($("balanceBtn")); await tap($("balanceBtn"), true); await wait(700); if (my !== run) return; finger.classList.remove("show"); setTarget(document.querySelector("#transactionsModal .modal")); } },
-      { kind: "center", kicker: "Gotovo", title: "To je to!", text: "Tutorial možeš da pustiš ponovo kad god želiš, dugmetom „Tutorial“ iznad pretrage.", primary: "Zatvori" }
+      { kind: "center", kicker: "Gotovo", title: "To je to!", text: "Tutorial možeš da pustiš ponovo kad god želiš, dugmetom „Tutorial“ u kartici Nova porudžbina.", primary: "Zatvori" }
     ];
   }
 

@@ -921,7 +921,6 @@
                   <span class="section-icon teal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.4 7.4a1.7 1.7 0 0 1 0 2.4Z"/><circle cx="8" cy="8" r="1.2"/></svg></span>
                   <div class="section-copy"><h2>Cenovnik</h2><p class="meta">Pregled cena za Vaš reseller nalog.</p></div>
                 </div>
-                <button class="tour-link" type="button" data-tour-start>▶ Tutorial</button>
                 <input class="price-search" id="priceListSearch" type="search" autocomplete="off" placeholder="Pretraži igru..." aria-label="Pretraži cenovnik" />
               </div>
               <div class="prices" id="pricesList">Učitavanje...</div>
@@ -1210,7 +1209,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-chip-colours";
+    const RELEASE_VERSION = "2026-10-10-tour-btn";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3337,6 +3336,6 @@
     startApp();
   </script>
   <script src="/assets/onboarding.js?v=2" defer></script>
-  <script src="/assets/tour.js?v=3" defer></script>
+  <script src="/assets/tour.js?v=4" defer></script>
 </body>
 </html>
