@@ -672,9 +672,9 @@
     .slot-dots{display:inline-flex;align-items:center}
     .slot-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(15,23,42,.35)}
     .slot-dots .slot-dot+.slot-dot{margin-left:-3px}
-    .slot-dot.ps5{background:#fff}
+    .slot-dot.ps5{background:linear-gradient(135deg,#fff,#cfd6f0)}
     .slot-dot.ps4{background:#2f6bff;border-color:#1d4ed8}
-    .slot-chip.ps5{background:#fff;color:#101a33;border-color:#cdd5e6;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+    .slot-chip.ps5{background:linear-gradient(100deg,#ffffff 0%,#eef1fb 45%,#d3d9f2 100%);color:#101a33;border-color:#c3cbe6;box-shadow:0 1px 2px rgba(15,23,42,.08)}
     .slot-chip.ps4{background:#2f6bff;color:#fff;border-color:#2257d6}
     .slot-chip.ps4 .slot-dot{border-color:#fff}
     .slot-chip.mix{background:linear-gradient(100deg,#fff 0%,#dbe6ff 42%,#8fb0ff 100%);color:#0b1f4d;border-color:#a9c0f5}
@@ -689,7 +689,7 @@
     .history-order-meta{align-items:center;gap:8px}
     .history-order-meta .slot-chip{font-size:11.5px;padding:2px 9px 2px 6px}
     .price-variant-label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:850;color:var(--text);letter-spacing:.01em}
-    .price-variant.slot-ps5{background:#fff;border-color:#cdd5e6;color:#0f1b3a}
+    .price-variant.slot-ps5{background:linear-gradient(145deg,#ffffff 0%,#eef1fb 42%,#d3d9f2 100%);border-color:#c3cbe6;color:#0f1b3a}
     .price-variant.slot-ps5 .price-variant-label,.price-variant.slot-ps5 strong{color:#0f1b3a}
     .price-variant.slot-ps4{background:linear-gradient(160deg,#3b78ff,#2358e0);border-color:#2257d6;color:#fff}
     .price-variant.slot-ps4 .price-variant-label,.price-variant.slot-ps4 strong{color:#fff}
@@ -698,12 +698,12 @@
     .price-variant.slot-mix{background:linear-gradient(115deg,#fff 0%,#e3ecff 40%,#9db9ff 100%);border-color:#a9c0f5;color:#0b1f4d}
     .price-variant.slot-mix .price-variant-label,.price-variant.slot-mix strong{color:#0b1f4d}
     .price-variant[class*="slot-"]:not(.slot-other):hover{box-shadow:0 8px 20px rgba(37,99,235,.22)}
-    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(20,128,74,.14)}
+    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(255,255,255,.85);color:#0f7a43;box-shadow:inset 0 0 0 1px rgba(15,122,67,.25)}
     .price-variant.slot-ps4 .discount-badge{background:rgba(255,255,255,.22);color:#fff}
     .price-variant[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(47,107,255,.35)}
-    .platform-badge.ps5{background:#fff;color:#101a33;border:1px solid #cdd5e6}
+    .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#101a33;border:1px solid #c3cbe6}
     .platform-badge.ps4{background:#2f6bff;color:#fff}
-    :root[data-theme="dark"] .platform-badge.ps5{background:#fff;color:#101a33}
+    :root[data-theme="dark"] .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#101a33}
     :root[data-theme="dark"] .platform-badge.ps4{background:#2f6bff;color:#fff}
     :root[data-theme="dark"] .picker-type-filter.has-chip{background:transparent}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
@@ -1175,7 +1175,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-slots-tour";
+    const RELEASE_VERSION = "2026-10-10-ps5-gradient";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
