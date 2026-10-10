@@ -24,6 +24,7 @@
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-750x1334.png" />
   <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
+  <link rel="stylesheet" href="/assets/tour.css?v=1" />
   <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
@@ -662,6 +663,49 @@
       .transactions-table td.transactions-empty{grid-area:auto;grid-column:1/-1;padding:6px 0}
       .transactions-table-wrap{max-height:min(60vh,560px)}
     }
+    /* ---- console slots: PS5 white, PS4 blue, PS4 / PS5 both ---- */
+    .slot-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 10px 3px 7px;border:1px solid transparent;border-radius:999px;font-size:12.5px;line-height:1.25;white-space:nowrap}
+    .slot-chip b{font-weight:850;letter-spacing:.01em}
+    .slot-chip em{font-style:normal;font-weight:650;opacity:.9}
+    .slot-chip.lg{padding:5px 12px 5px 8px;font-size:13px}
+    .slot-chip.secondary{border-style:dashed}
+    .slot-dots{display:inline-flex;align-items:center}
+    .slot-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(15,23,42,.35)}
+    .slot-dots .slot-dot+.slot-dot{margin-left:-3px}
+    .slot-dot.ps5{background:#fff}
+    .slot-dot.ps4{background:#2f6bff;border-color:#1d4ed8}
+    .slot-chip.ps5{background:#fff;color:#101a33;border-color:#cdd5e6;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+    .slot-chip.ps4{background:#2f6bff;color:#fff;border-color:#2257d6}
+    .slot-chip.ps4 .slot-dot{border-color:#fff}
+    .slot-chip.mix{background:linear-gradient(100deg,#fff 0%,#dbe6ff 42%,#8fb0ff 100%);color:#0b1f4d;border-color:#a9c0f5}
+    .slot-chip.other{background:var(--soft);color:var(--text);border-color:var(--line)}
+    .slot-chip.ps5.secondary{border-color:#9aa6c4}
+    .slot-chip.ps4.secondary{border-color:#bcd0ff}
+    .picker-type-filter.has-chip{padding:3px;border-radius:999px;background:transparent;border:2px solid transparent}
+    .picker-type-filter.has-chip.active,.picker-type-filter.has-chip:hover{border-color:var(--brand);background:transparent;transform:none}
+    .product-option-main .slot-chip{margin-top:1px;justify-self:start}
+    .product-picker-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+    .product-picker-price{font-size:12px;font-weight:800;color:var(--muted)}
+    .history-order-meta{align-items:center;gap:8px}
+    .history-order-meta .slot-chip{font-size:11.5px;padding:2px 9px 2px 6px}
+    .price-variant-label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:850;color:var(--text);letter-spacing:.01em}
+    .price-variant.slot-ps5{background:#fff;border-color:#cdd5e6;color:#0f1b3a}
+    .price-variant.slot-ps5 .price-variant-label,.price-variant.slot-ps5 strong{color:#0f1b3a}
+    .price-variant.slot-ps4{background:linear-gradient(160deg,#3b78ff,#2358e0);border-color:#2257d6;color:#fff}
+    .price-variant.slot-ps4 .price-variant-label,.price-variant.slot-ps4 strong{color:#fff}
+    .price-variant.slot-ps4 .price-original{color:rgba(255,255,255,.75)}
+    .price-variant.slot-ps4 .slot-dot{border-color:#fff}
+    .price-variant.slot-mix{background:linear-gradient(115deg,#fff 0%,#e3ecff 40%,#9db9ff 100%);border-color:#a9c0f5;color:#0b1f4d}
+    .price-variant.slot-mix .price-variant-label,.price-variant.slot-mix strong{color:#0b1f4d}
+    .price-variant[class*="slot-"]:not(.slot-other):hover{box-shadow:0 8px 20px rgba(37,99,235,.22)}
+    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(20,128,74,.14)}
+    .price-variant.slot-ps4 .discount-badge{background:rgba(255,255,255,.22);color:#fff}
+    .price-variant[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(47,107,255,.35)}
+    .platform-badge.ps5{background:#fff;color:#101a33;border:1px solid #cdd5e6}
+    .platform-badge.ps4{background:#2f6bff;color:#fff}
+    :root[data-theme="dark"] .platform-badge.ps5{background:#fff;color:#101a33}
+    :root[data-theme="dark"] .platform-badge.ps4{background:#2f6bff;color:#fff}
+    :root[data-theme="dark"] .picker-type-filter.has-chip{background:transparent}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
     @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -775,6 +819,10 @@
                 <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg></span>
                 <div class="section-copy"><h2>Nova porudžbina</h2><p>Pretraži i izaberi proizvod za novu porudžbinu.</p></div>
               </div>
+              <button class="tour-banner" type="button" data-tour-start>
+                <span class="tour-play" aria-hidden="true">▶</span>
+                <span><b>Tutorial</b><small>Kako se poručuje, pretraga, beleške i balans · oko 1 minut</small></span>
+              </button>
               <div class="order-controls">
                 <div>
                   <label for="product">Proizvod</label>
@@ -838,6 +886,7 @@
                   <span class="section-icon teal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.4 7.4a1.7 1.7 0 0 1 0 2.4Z"/><circle cx="8" cy="8" r="1.2"/></svg></span>
                   <div class="section-copy"><h2>Cenovnik</h2><p class="meta">Pregled cena za Vaš reseller nalog.</p></div>
                 </div>
+                <button class="tour-link" type="button" data-tour-start>▶ Tutorial</button>
                 <input class="price-search" id="priceListSearch" type="search" autocomplete="off" placeholder="Pretraži igru..." aria-label="Pretraži cenovnik" />
               </div>
               <div class="prices" id="pricesList">Učitavanje...</div>
@@ -1126,7 +1175,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-09-phone-qa";
+    const RELEASE_VERSION = "2026-10-10-slots-tour";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1977,6 +2026,36 @@
       return priced.product_name || product.name || product.id;
     }
 
+    // Console colours: PS5 = white, PS4 = blue, PS4 / PS5 = both. Primary / Secondary stays as text.
+    function slotKind(typeText){
+      const platforms = (String(typeText || "").match(/PS[45]/gi) || []).map((p) => p.toUpperCase());
+      const has4 = platforms.includes("PS4"), has5 = platforms.includes("PS5");
+      return has4 && has5 ? "mix" : has5 ? "ps5" : has4 ? "ps4" : "other";
+    }
+    function slotRoleText(typeText){
+      const t = String(typeText || "");
+      if (/secondary/i.test(t)) return "Secondary";
+      if (/primary/i.test(t)) return "Primary";
+      return t.replace(/PS[45]\s*[\/+&]?\s*/gi, "").trim();
+    }
+    function slotChip(typeText, size){
+      const kind = slotKind(typeText);
+      const chip = document.createElement("span");
+      chip.className = `slot-chip ${kind}${/secondary/i.test(String(typeText || "")) ? " secondary" : ""}${size ? " " + size : ""}`;
+      if (kind !== "other") {
+        const dots = document.createElement("span");
+        dots.className = "slot-dots";
+        (kind === "mix" ? ["ps4", "ps5"] : [kind]).forEach((k) => { const d = document.createElement("i"); d.className = `slot-dot ${k}`; dots.appendChild(d); });
+        chip.appendChild(dots);
+        appendText(chip, "b", kind === "mix" ? "PS4 / PS5" : kind.toUpperCase());
+        const role = slotRoleText(typeText);
+        if (role) appendText(chip, "em", role);
+      } else {
+        appendText(chip, "b", String(typeText || "Proizvod"));
+      }
+      return chip;
+    }
+
     function productType(product){
       const priced = state.prices.get(String(product.id)) || {};
       return priced.account_type || "Proizvod";
@@ -2000,7 +2079,11 @@
       const priced = state.prices.get(String(product.id)) || {};
       productPickerValue.textContent = "";
       appendText(productPickerValue, "strong", productLabel(product));
-      appendText(productPickerValue, "span", `${productType(product)}${priced.price ? " · " + price(priced.price) + " " + (priced.currency || "RSD") : ""}`);
+      const valueLine = document.createElement("span");
+      valueLine.className = "product-picker-sub";
+      valueLine.appendChild(slotChip(productType(product)));
+      if (priced.price) appendText(valueLine, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-picker-price");
+      productPickerValue.appendChild(valueLine);
       closeProductPicker();
       productSelect.dispatchEvent(new Event("change", { bubbles:true }));
     }
@@ -2064,7 +2147,8 @@
         button.type = "button";
         button.dataset.pickerType = value;
         button.setAttribute("aria-pressed", String(state.productTypeFilter === value));
-        button.textContent = label;
+        button.setAttribute("aria-label", label);
+        if (value) { button.classList.add("has-chip"); button.appendChild(slotChip(label, "lg")); } else button.textContent = label;
         button.addEventListener("click", () => {
           state.productTypeFilter = value;
           renderProductOptions();
@@ -2099,7 +2183,7 @@
             const main = document.createElement("span");
             main.className = "product-option-main";
             appendText(main, "strong", productLabel(product));
-            appendText(main, "span", productType(product));
+            main.appendChild(slotChip(productType(product)));
             option.appendChild(main);
             if (priced.price !== undefined) appendText(option, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-option-price");
             option.addEventListener("click", () => chooseProduct(product.id));
@@ -2122,7 +2206,11 @@
           productPickerValue.textContent = "";
           appendText(productPickerValue, "strong", productLabel(selected));
           const priced = state.prices.get(String(selected.id)) || {};
-          appendText(productPickerValue, "span", `${productType(selected)}${priced.price ? " · " + price(priced.price) + " " + (priced.currency || "RSD") : ""}`);
+          const valueLine = document.createElement("span");
+      valueLine.className = "product-picker-sub";
+      valueLine.appendChild(slotChip(productType(selected)));
+      if (priced.price) appendText(valueLine, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-picker-price");
+      productPickerValue.appendChild(valueLine);
         }
       }
     }
@@ -2222,11 +2310,20 @@
             item.className = "price-variant-wrap";
             const cell = document.createElement("button");
             cell.type = "button";
-            cell.className = "price-variant";
+            cell.className = `price-variant slot-${slotKind(slot.label)}`;
             cell.setAttribute("aria-expanded", "false");
             const detailsId = `recommended-${groupIndex}-${periodIndex}-${productIndex}`;
             cell.setAttribute("aria-controls", detailsId);
-            appendText(cell, "span", slot.label, "price-variant-label");
+            const slotLabel = document.createElement("span");
+            slotLabel.className = "price-variant-label";
+            const slotKindName = slotKind(slot.label);
+            if (slotKindName !== "other") {
+              const dots = document.createElement("span"); dots.className = "slot-dots";
+              (slotKindName === "mix" ? ["ps4", "ps5"] : [slotKindName]).forEach((k) => { const d = document.createElement("i"); d.className = `slot-dot ${k}`; dots.appendChild(d); });
+              slotLabel.appendChild(dots);
+            }
+            appendText(slotLabel, "span", slot.label);
+            cell.appendChild(slotLabel);
             const currentPrice = document.createElement("strong");
             currentPrice.textContent = `${price(product.price)} ${product.currency || "RSD"}`;
             cell.appendChild(currentPrice);
@@ -2461,8 +2558,11 @@
         const main = document.createElement("div");
         main.className = "history-item-main";
         appendText(main, "strong", name);
-        const metaParts = [accountType, compactOrderDateTime(order.created_at)].filter(Boolean);
-        appendText(main, "div", metaParts.join(" · "), "history-order-meta");
+        const metaLine = document.createElement("div");
+        metaLine.className = "history-order-meta";
+        if (accountType) metaLine.appendChild(slotChip(accountType));
+        appendText(metaLine, "span", compactOrderDateTime(order.created_at));
+        main.appendChild(metaLine);
         const priceStatus = document.createElement("div");
         priceStatus.className = "history-order-price";
         appendText(priceStatus, "strong", `${price(order.price_rsd)} RSD`);
@@ -2839,6 +2939,7 @@
     }
 
     async function submitConfirmedOrder(){
+      if (window.PWTourActive) return;   // the tutorial opens the real confirmation as a demo only
       if (state.orderInProgress || !state.pendingOrder) return;
       const details = state.pendingOrder;
       const startedAt = performance.now();
@@ -3189,5 +3290,6 @@
     startApp();
   </script>
   <script src="/assets/onboarding.js?v=1" defer></script>
+  <script src="/assets/tour.js?v=1" defer></script>
 </body>
 </html>

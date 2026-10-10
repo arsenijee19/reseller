@@ -5,10 +5,11 @@ const { execFileSync } = require("child_process");
 const BASE = process.env.BASE, SOCK = process.env.DB_SOCK, SHOTS = process.env.SHOTS || "/tmp/pw-e2e-shots";
 const TOKEN = "Qa-Reseller-Token-7391", ADMIN_PW = "AdminPass-12345";
 let failed = 0; const notes = [];
-const sql = (q) => execFileSync("mariadb", [`--socket=${SOCK}`, "-uroot", "pw", "-N", "-e", q]).toString().trim();
+const sql = (q) => execFileSync("mariadb", [`--socket=${SOCK}`, "--default-character-set=utf8mb4", "-uroot", "pw", "-N", "-e", q]).toString().trim();
 const phpHash = (v) => execFileSync("php", ["-r", 'echo password_hash($argv[1], PASSWORD_DEFAULT);', v]).toString().replace(/'/g, "''");
 const check = (label, ok, detail = "") => { console.log((ok ? "PASS  " : "FAIL  ") + label + (ok ? "" : "   -> " + detail)); if (!ok) failed++; };
 
+const ONLY = (process.env.QA_ONLY || "").split(",").filter(Boolean);
 const PHONES = [
   ["iPhone-SE", { ...devices["iPhone SE"] }],
   ["iPhone-15", { ...devices["iPhone 15"] }],
@@ -62,14 +63,14 @@ async function closeReleaseNotes(page, tag) {
     ["fc27-ps5", "EA SPORTS FC 27", "PS5 Primary", 2400], ["fc27-ps4", "EA SPORTS FC 27", "PS4 Primary", 2200],
     ["gta5-ps5", "Grand Theft Auto V Enhanced", "PS5 Primary", 1800], ["gow-ps5", "God of War Ragnarök", "PS5 Primary", 3100],
     ["fifa-ps4", "FIFA 23", "PS4 Secondary", 900], ["crash-ps4", "Crash Bandicoot N. Sane Trilogy", "PS4 / PS5 Primary", 1500],
-    ["ps-plus-12", "PlayStation Plus Essential 12 meseci", "PS4 / PS5 Subscription", 7900], ["longname", "The Elder Scrolls V: Skyrim Anniversary Edition Collector's Pack Ultimate", "PS5 Primary", 3500],
+    ["ps-plus-12", "PlayStation Plus Essential 12 meseci", "PS4 / PS5 Subscription", 7900], ["crash-sec", "Crash Bandicoot N. Sane Trilogy", "PS4 / PS5 Secondary", 1100], ["longname", "The Elder Scrolls V: Skyrim Anniversary Edition Collector's Pack Ultimate", "PS5 Primary", 3500],
   ];
   products.forEach(([id, n, t, p]) => sql(`INSERT INTO product_prices (product_id, product_name, account_type, price) VALUES ('${id}','${n.replace(/'/g, "''")}','${t}',${p})`));
   for (let i = 0; i < 6; i++) sql(`INSERT INTO orders (request_id, reseller_id, reseller_email, product_id, buyer_email, price_rsd, created_at) VALUES ('r${i}', 1, 'qa.reseller@example.test', '${products[i][0]}', 'buyer${i}@example.test', ${products[i][3]}, NOW() - INTERVAL ${i + 1} DAY)`);
   for (let i = 0; i < 5; i++) sql(`INSERT INTO wallet_transactions (reseller_id, amount_rsd, type, description, created_at) VALUES (1, ${i % 2 ? -2000 : 5000}, '${i % 2 ? "ORDER" : "TOPUP"}', 'QA test ${i}', NOW() - INTERVAL ${i} DAY)`);
 
   const browser = await chromium.launch();
-  for (const [name, dev] of PHONES) {
+  for (const [name, dev] of PHONES.filter(([n]) => !ONLY.length || ONLY.includes(n))) {
     console.log(`\n================ ${name} (${dev.viewport.width}x${dev.viewport.height}) ================`);
     sql("DELETE FROM login_attempts");
     let ctx = await browser.newContext({ ...dev });
@@ -117,6 +118,44 @@ async function closeReleaseNotes(page, tag) {
     await page.screenshot({ path: `${SHOTS}/qa-${name}-5-success.png` });
     if (await page.locator("#successModal.open").count()) { await page.click("#closeSuccessBtn"); await page.waitForTimeout(500); }
     check("balance went down after the order", !/^25[. ]?000/.test((await page.textContent("#balanceText")).trim()), await page.textContent("#balanceText"));
+
+    // console colours on the slots (search filters from the picker step must be cleared first)
+    await page.evaluate(() => { for (const id of ["productSearch", "priceListSearch"]) { const i = document.getElementById(id); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); } });
+    await page.waitForTimeout(500);
+    const slotColours = await page.evaluate(() => { const bg = (el) => getComputedStyle(el).backgroundImage + " " + getComputedStyle(el).backgroundColor; const q = (s) => document.querySelector(s); return { ps5: q("#pricesList .price-variant.slot-ps5") && bg(q("#pricesList .price-variant.slot-ps5")), ps4: q("#pricesList .price-variant.slot-ps4") && bg(q("#pricesList .price-variant.slot-ps4")), mix: q("#pricesList .price-variant.slot-mix") && bg(q("#pricesList .price-variant.slot-mix")) }; });
+    check("price slots are coloured by console (PS5 white, PS4 blue, PS4/PS5 mix)", !!(slotColours.ps5 && slotColours.ps4 && slotColours.mix) && /255, 255, 255/.test(slotColours.ps5) && /47, 107, 255|59, 120, 255/.test(slotColours.ps4) && /gradient/.test(slotColours.mix), JSON.stringify(slotColours));
+    await page.locator("#pricesList").scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SHOTS}/qa-${name}-prices.png` });
+
+    // guided tour: runs on the real screen, nothing may be ordered, the screen is restored afterwards
+    const ordersBefore = sql("SELECT COUNT(*) FROM orders WHERE reseller_id=1");
+    const productBefore = await page.evaluate(() => document.getElementById("product").value);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator(".tour-banner").first().click();
+    await page.waitForSelector(".tour-layer.show", { timeout: 4000 });
+    check("tutorial opens with an intro card", /Kako se poručuje/.test(await page.textContent("#tourTitle")));
+    const seen = { confirm: false, tx: false, search: false, expanded: false };
+    for (let i = 0; i < 7; i++) {
+      await page.click("#tourNext");
+      await page.waitForTimeout(i === 3 || i === 4 ? 4200 : 3600);
+      const title = await page.textContent("#tourTitle");
+      if (/Novi, pametniji/.test(title)) seen.search = (await page.inputValue("#productSearch")).length >= 2;
+      if (/Preporučena/.test(title)) seen.expanded = (await page.locator('#pricesList .price-variant[aria-expanded="true"]').count()) === 1;
+      if (/Potvrda porudžbine/.test(title)) seen.confirm = await page.locator("#confirmModal.open").count() === 1;
+      if (/Klik na BALANS/.test(title)) seen.tx = await page.locator("#transactionsModal.open").count() === 1;
+      if (i === 0) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-1.png` });
+      if (i === 2) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-3.png` });
+      if (i === 3) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-4.png` });
+      if (i === 5) await page.screenshot({ path: `${SHOTS}/qa-${name}-tour-6.png` });
+    }
+    check("tour step 1 types into the real search", seen.search);
+    check("tour step 3: first tap shows the recommended price", seen.expanded);
+    check("tour step 4: second tap opens the order confirmation", seen.confirm);
+    check("tour step 6: tapping BALANS opens the transactions", seen.tx);
+    await page.click("#tourNext"); await page.waitForTimeout(800);
+    check("tour closes and leaves no dialog open", !(await page.locator(".tour-layer").count()) && (await page.locator(".modal-backdrop.open").count()) === 0);
+    check("tour did not place an order", sql("SELECT COUNT(*) FROM orders WHERE reseller_id=1") === ordersBefore);
+    check("tour restored the selected product", (await page.evaluate(() => document.getElementById("product").value)) === productBefore);
 
     // "Uplatio sam"
     await page.evaluate(() => window.scrollTo(0, 0));
