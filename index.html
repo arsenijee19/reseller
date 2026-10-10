@@ -24,7 +24,7 @@
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-750x1334.png" />
   <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
-  <link rel="stylesheet" href="/assets/tour.css?v=3" />
+  <link rel="stylesheet" href="/assets/tour.css?v=4" />
   <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
@@ -1209,7 +1209,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-tour-btn";
+    const RELEASE_VERSION = "2026-10-10-login-calm";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -1372,7 +1372,12 @@
       };
       balanceAnimationFrame = window.requestAnimationFrame(tick);
     }
-    function setLoggedInUi(isLoggedIn){ document.body.classList.toggle("is-authenticated", isLoggedIn); }
+    function setLoggedInUi(isLoggedIn){
+      const changed = document.body.classList.contains("is-authenticated") !== isLoggedIn;
+      document.body.classList.toggle("is-authenticated", isLoggedIn);
+      // login <-> panel always starts at the top, never at the scroll position of the other screen
+      if (changed) { try { window.scrollTo({ top:0, left:0, behavior:"instant" }); } catch(e) { window.scrollTo(0, 0); } }
+    }
     function show(el,type,text){ el.className = el === loginMsg ? "login-token-error" : "msg " + type; el.textContent = text; el.hidden = false; el.style.display = "block"; }
     function hide(el){ el.style.display = "none"; el.hidden = true; el.textContent = ""; el.className = el === loginMsg ? "login-token-error" : "msg"; }
     let loginProgressTimer = 0;
@@ -1645,7 +1650,7 @@
       if (isInternalEmail(profileEmail.value)) {
         show(profileMsg, "warn", "Unesite Vaš lični email. Interni PlayWorld email nije za prijem porudžbina i verifikacionih kodova.");
       }
-      profileEmail.focus();
+      profileEmail.focus({ preventScroll:true });
     }
 
     function closeProfileModal(){
@@ -1660,7 +1665,7 @@
       tokenChangeFields.style.display = "none";
       toggleTokenChangeBtn.textContent = "Želim da promenim token";
       settingsModal.classList.add("open");
-      settingsName.focus();
+      settingsName.focus({ preventScroll:true });
       loadTwoFactorStatus();
       loadNativeSettings();
     }
@@ -1725,7 +1730,7 @@
       if (twoFactorSetupBox.style.display === "none") {
         twoFactorSetupBox.style.display = "block";
         start2faBtn.textContent = "Generiši setup ključ";
-        twoFactorCurrentToken.focus();
+        twoFactorCurrentToken.focus({ preventScroll:true });
         return;
       }
       start2faBtn.disabled = true;
@@ -1734,7 +1739,7 @@
         twoFactorManualKey.textContent = j.manual_key || "";
         twoFactorOtpLink.href = j.otpauth_uri || "#";
         show(twoFactorMsg, "ok", "Unesite ključ u Authenticator aplikaciju, zatim upišite šestocifreni kod.");
-        twoFactorSetupCode.focus();
+        twoFactorSetupCode.focus({ preventScroll:true });
       }catch(e){
         show(twoFactorMsg, "bad", e.message);
       }finally{
@@ -1764,7 +1769,7 @@
       twoFactorManageBox.style.display = "block";
       if (!twoFactorManageToken.value || !twoFactorManageCode.value) {
         show(twoFactorMsg, "warn", "Unesite trenutni token i kod iz aplikacije, pa kliknite ponovo.");
-        twoFactorManageToken.focus();
+        twoFactorManageToken.focus({ preventScroll:true });
         return;
       }
       try{
@@ -1782,7 +1787,7 @@
       twoFactorManageBox.style.display = "block";
       if (!twoFactorManageToken.value || !twoFactorManageCode.value) {
         show(twoFactorMsg, "warn", "Za isključivanje unesite trenutni token i kod iz aplikacije ili recovery kod, pa kliknite ponovo.");
-        twoFactorManageToken.focus();
+        twoFactorManageToken.focus({ preventScroll:true });
         return;
       }
       if (!confirm("Isključiti verifikaciju u 2 koraka?")) return;
@@ -1799,7 +1804,7 @@
       hide(twoFactorLoginMsg);
       twoFactorLoginCode.value = "";
       twoFactorLoginModal.classList.add("open");
-      twoFactorLoginCode.focus();
+      twoFactorLoginCode.focus({ preventScroll:true });
     }
 
     function closeTwoFactorLogin(){
@@ -1836,7 +1841,8 @@
 
     function shouldShowReleaseNotes(){
       try{
-        return localStorage.getItem("pw-release-seen") !== RELEASE_VERSION;
+        // "What's new" is a one-time welcome on a device's first login, not a pop-up after every update
+        return localStorage.getItem("pw-release-seen") === null;
       }catch(e){
         return false;
       }
@@ -2487,7 +2493,7 @@
       });
       state.pendingOrder = details;
       confirmModal.classList.add("open");
-      confirmOrderBtn.focus();
+      confirmOrderBtn.focus({ preventScroll:true });
     }
 
     function closeConfirmation(){
@@ -2499,7 +2505,7 @@
       hide(gameRequestMsg);
       gameRequestText.value = "";
       requestGameModal.classList.add("open");
-      gameRequestText.focus();
+      gameRequestText.focus({ preventScroll:true });
     }
 
     function closeGameRequest(){
@@ -2509,7 +2515,7 @@
 
     function openReleaseNotes(){
       releaseModal.classList.add("open");
-      dismissReleaseBtn.focus();
+      dismissReleaseBtn.focus({ preventScroll:true });
     }
 
     function dismissReleaseNotes(){
@@ -2520,7 +2526,7 @@
       successModal.classList.remove("open");
       void successModal.offsetWidth;
       successModal.classList.add("open");
-      closeSuccessBtn.focus();
+      closeSuccessBtn.focus({ preventScroll:true });
     }
 
     function closeSuccessModal(){
@@ -2532,7 +2538,7 @@
       notesSearchToggle.setAttribute("aria-expanded", String(open));
       notesSearchToggle.title = open ? "Zatvori pretragu" : "Pretraži notes";
       notesSearchToggle.setAttribute("aria-label", notesSearchToggle.title);
-      if (open) notesSearchInput.focus();
+      if (open) notesSearchInput.focus({ preventScroll:true });
     }
 
     function clearNotesSearch(){
@@ -2737,7 +2743,7 @@
           const open = noteBox.hidden;
           noteBox.hidden = !open;
           noteToggle.setAttribute("aria-expanded", String(open));
-          if (open) noteInput.focus();
+          if (open) noteInput.focus({ preventScroll:true });
         });
         div.appendChild(noteBox);
         historyList.appendChild(div);
@@ -2817,13 +2823,13 @@
 
     function openTransactionsModal(){
       transactionsModal.classList.add("open");
-      closeTransactionsBtn.focus();
+      closeTransactionsBtn.focus({ preventScroll:true });
       void loadTransactions();
     }
 
     function closeTransactionsModal(){
       transactionsModal.classList.remove("open");
-      balanceBtn.focus();
+      balanceBtn.focus({ preventScroll:true });
     }
 
     async function sendVerificationCode(){
@@ -3126,7 +3132,7 @@
       tokenInput.type = visible ? "text" : "password";
       tokenVisibilityBtn.setAttribute("aria-pressed", String(visible));
       tokenVisibilityBtn.setAttribute("aria-label", visible ? "Sakrij token" : "Prikaži token");
-      tokenInput.focus();
+      tokenInput.focus({ preventScroll:true });
     });
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
@@ -3137,7 +3143,7 @@
       const isOpen = tokenChangeFields.style.display !== "none";
       tokenChangeFields.style.display = isOpen ? "none" : "block";
       toggleTokenChangeBtn.textContent = isOpen ? "Želim da promenim token" : "Ne želim sada da menjam token";
-      if (!isOpen) currentToken.focus();
+      if (!isOpen) currentToken.focus({ preventScroll:true });
     });
     saveSettingsBtn.addEventListener("click", () => saveProfile("settings", false));
     closeSettingsBtn.addEventListener("click", closeSettingsModal);
@@ -3196,7 +3202,7 @@
       if (productPickerTrigger.disabled) return;
       const isOpen = productPicker.classList.toggle("open");
       productPickerTrigger.setAttribute("aria-expanded", String(isOpen));
-      if (isOpen) productSearch.focus();
+      if (isOpen) productSearch.focus({ preventScroll:true });
     });
     document.addEventListener("click", (event) => {
       // Filter buttons are replaced while rendering, so their original click target is detached here.

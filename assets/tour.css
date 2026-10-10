@@ -56,3 +56,5 @@
 
 .price-variant-details.tour-rec{background:#ecfdf5!important;color:#065f46!important;border:2px solid #10b981!important;font-size:13px!important;font-weight:700!important;box-shadow:0 0 0 4px rgba(16,185,129,.28),0 14px 30px rgba(0,0,0,.3)!important;animation:tourRec 1.4s ease-in-out infinite}
 @keyframes tourRec{50%{box-shadow:0 0 0 8px rgba(16,185,129,.18),0 14px 30px rgba(0,0,0,.3)}}
+
+@media (min-width:900px){.tour-banner{width:auto;max-width:460px}}

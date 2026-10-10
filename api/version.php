@@ -21,6 +21,6 @@ if (is_file($file)) {
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-10-tour-btn',
+  'version' => '2026-10-10-login-calm',
   'android' => $android,
 ], JSON_UNESCAPED_SLASHES);

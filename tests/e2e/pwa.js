@@ -170,9 +170,8 @@ const standaloneInit = () => Object.defineProperty(navigator, "standalone", { ge
 
   console.log("\n== F. Website on a desktop");
   ctx = await browser.newContext({ viewport: { width: 1200, height: 800 } }); page = await ctx.newPage();
-  await page.goto(BASE + "/"); await page.waitForSelector("#getApp", { state: "visible" });
-  await page.click("#getIosBtn");
-  check("iPhone button on a desktop only explains what to do", (await page.textContent("#getAppNote")).includes("iPhone") && !(await page.locator(".ob-backdrop.open").count()));
+  await page.goto(BASE + "/"); await page.waitForSelector("#loginBox", { state: "visible" });
+  check("desktop login screen has no install card", !(await page.locator("#getApp").isVisible()));
   check("no JavaScript errors", errors.length === 0, errors.join("|"));
   await browser.close();
   console.log(failed ? `\n${failed} FAILED` : "\nALL PWA TESTS PASSED");
