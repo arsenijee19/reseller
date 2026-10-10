@@ -37,6 +37,7 @@ function app_device_credential_hash(string $credential): string {
 function ensure_admin_app_device_tables(PDO $pdo): void {
   static $done = false;
   if ($done) return;
+  if (schema_ensured('ensure_admin_app_device_tables')) { $done = true; return; }
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS admin_device_activation_codes (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -72,6 +73,7 @@ function ensure_admin_app_device_tables(PDO $pdo): void {
       KEY idx_admin_app_devices_owner (admin_id, revoked_at, last_seen_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   ");
+  schema_mark_ensured('ensure_admin_app_device_tables');
   $done = true;
 }
 

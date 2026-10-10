@@ -256,12 +256,69 @@ function is_internal_reseller_email(string $email): bool {
   return $email !== '' && substr($email, -strlen($suffix)) === $suffix;
 }
 
+// ---- persistent schema cache --------------------------------------------------------------------------
+// INFORMATION_SCHEMA and the "CREATE TABLE IF NOT EXISTS" self-healing checks cost seconds per request on shared
+// MySQL, and the admin dashboard issues dozens of them. Results are kept in a small file next to the PHP temp dir
+// (15 minutes; any deploy of bootstrap.php starts a fresh cache) so only the first request after that pays.
+function schema_cache_path(): string {
+  return rtrim(sys_get_temp_dir(), '/\\') . '/pw_schema_' . substr(sha1(__DIR__ . '|' . (string)@filemtime(__FILE__)), 0, 16) . '.json';
+}
+
+function schema_cache(?array $replace = null): array {
+  static $data = null;
+  if ($replace !== null) {
+    $data = $replace;
+    $path = schema_cache_path();
+    $tmp = $path . '.' . bin2hex(random_bytes(4));
+    if (@file_put_contents($tmp, json_encode($data), LOCK_EX) !== false) @rename($tmp, $path); else @unlink($tmp);
+    return $data;
+  }
+  if ($data === null) {
+    $raw = @file_get_contents(schema_cache_path());
+    $decoded = is_string($raw) ? json_decode($raw, true) : null;
+    $data = is_array($decoded) ? $decoded : [];
+  }
+  return $data;
+}
+
+function schema_cache_get(string $bucket, string $key, int $ttl = 900) {
+  $entry = schema_cache()[$bucket][$key] ?? null;
+  if (!is_array($entry) || !isset($entry['t']) || time() - (int)$entry['t'] > $ttl) return null;
+  return $entry['v'];
+}
+
+function schema_cache_put(string $bucket, string $key, $value): void {
+  $data = schema_cache();
+  $data[$bucket][$key] = ['t' => time(), 'v' => $value];
+  schema_cache($data);
+}
+
+function schema_cache_forget(string $bucket, string $key): void {
+  $data = schema_cache();
+  if (isset($data[$bucket][$key])) { unset($data[$bucket][$key]); schema_cache($data); }
+}
+
+function schema_ensured(string $name): bool {
+  return schema_cache_get('ensured', $name, 3600) === true;
+}
+
+function schema_mark_ensured(string $name): void {
+  schema_cache_put('ensured', $name, true);
+}
+
+
 function table_columns(PDO $pdo, string $table, bool $refresh = false): array {
   // INFORMATION_SCHEMA is slow on shared MySQL, so cache per request. Empty
   // results (missing table) are never cached and ALTERs call with $refresh.
   static $cache = [];
   $key = spl_object_id($pdo) . ':' . $table;
   if (!$refresh && isset($cache[$key])) return $cache[$key];
+  if (!$refresh) {
+    $stored = schema_cache_get('columns', $table);
+    if (is_array($stored) && $stored) return $cache[$key] = $stored;
+  } else {
+    schema_cache_forget('columns', $table);
+  }
   $stmt = $pdo->prepare("
     SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
     FROM INFORMATION_SCHEMA.COLUMNS
@@ -272,6 +329,7 @@ function table_columns(PDO $pdo, string $table, bool $refresh = false): array {
   $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
   if ($columns) {
     $cache[$key] = $columns;
+    schema_cache_put('columns', $table, $columns);
   } else {
     unset($cache[$key]);
   }
@@ -287,9 +345,13 @@ function has_column(PDO $pdo, string $table, string $column): bool {
 }
 
 function table_exists(PDO $pdo, string $table): bool {
+  static $known = [];
+  if (isset($known[$table]) || schema_cache_get('tables', $table) === true) return $known[$table] = true;
   $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
   $stmt->execute([$table]);
-  return (int)$stmt->fetchColumn() > 0;
+  $exists = (int)$stmt->fetchColumn() > 0;
+  if ($exists) { $known[$table] = true; schema_cache_put('tables', $table, true); }   // a missing table is always re-checked
+  return $exists;
 }
 
 function normalize_email(string $email): string {
@@ -332,6 +394,7 @@ function safe_public_error(string $message): string {
 function ensure_security_tables(PDO $pdo): void {
   static $done = false;
   if ($done) return;
+  if (schema_ensured('ensure_security_tables')) { $done = true; return; }
 
   foreach ([
     'display_name VARCHAR(120) NULL',
@@ -528,12 +591,14 @@ function ensure_security_tables(PDO $pdo): void {
     }
   }
 
+  schema_mark_ensured('ensure_security_tables');
   $done = true;
 }
 
 function ensure_order_cancellation_columns(PDO $pdo): void {
   static $done = false;
   if ($done) return;
+  if (schema_ensured('ensure_order_cancellation_columns')) { $done = true; return; }
 
   foreach ([
     'canceled_at DATETIME NULL',
@@ -547,12 +612,14 @@ function ensure_order_cancellation_columns(PDO $pdo): void {
     }
   }
 
+  schema_mark_ensured('ensure_order_cancellation_columns');
   $done = true;
 }
 
 function ensure_order_observability_tables(PDO $pdo): void {
   static $done = false;
   if ($done) return;
+  if (schema_ensured('ensure_order_observability_tables')) { $done = true; return; }
 
   $pdo->exec(<<<'SQL'
     CREATE TABLE IF NOT EXISTS order_delivery_events (
@@ -595,6 +662,7 @@ SQL
 SQL
   );
 
+  schema_mark_ensured('ensure_order_observability_tables');
   $done = true;
 }
 
