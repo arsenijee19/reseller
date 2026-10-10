@@ -172,6 +172,10 @@ const standaloneInit = () => Object.defineProperty(navigator, "standalone", { ge
   ctx = await browser.newContext({ viewport: { width: 1200, height: 800 } }); page = await ctx.newPage();
   await page.goto(BASE + "/"); await page.waitForSelector("#loginBox", { state: "visible" });
   check("desktop login screen has no install card", !(await page.locator("#getApp").isVisible()));
+  // smooth switch: the admin login must be visible right after the click, not hidden behind the session check
+  await page.route("**/api/admin.php*", async (route) => { await new Promise((r) => setTimeout(r, 1500)); route.continue(); });
+  await page.click(".login-switch a"); await page.waitForURL("**/admin.html");
+  await page.waitForSelector("#adminLoginBtn", { state: "visible", timeout: 700 }).then(() => check("admin login is visible at once after the switch (no 'checking' phase)", true), () => check("admin login is visible at once after the switch (no 'checking' phase)", false));
   check("no JavaScript errors", errors.length === 0, errors.join("|"));
   await browser.close();
   console.log(failed ? `\n${failed} FAILED` : "\nALL PWA TESTS PASSED");

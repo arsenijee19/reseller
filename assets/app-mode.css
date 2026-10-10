@@ -71,3 +71,13 @@ html.is-ios .drawer-content,html.is-ios .modal,html.is-ios .admin-modal,html.is-
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain
 }
 html.is-ios .drawer-content{touch-action:pan-y}
+
+/* Reseller <-> Admin login switch: cross-fade between the two pages and no hidden "checking session" phase on arrival */
+@view-transition{navigation:auto}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.16s;animation-timing-function:ease}
+html.from-switch body.session-checking .layout,
+html.from-switch body.session-checking .login,
+html.from-switch body.session-checking .login-switch{visibility:visible!important}
+html.from-switch body.session-checking #adminPanel,html.from-switch body.session-checking .app-column{visibility:hidden}
+html.from-switch .session-restore{display:none!important}
+html.from-switch .layout,html.from-switch .login,html.from-switch .login-switch{animation:none!important}

@@ -22,11 +22,12 @@
   <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/assets/splash-1242x2688.png" />
   <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-828x1792.png" />
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-750x1334.png" />
-  <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
+  <link rel="stylesheet" href="/assets/app-mode.css?v=2" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
   <link rel="stylesheet" href="/assets/tour.css?v=4" />
   <link rel="stylesheet" href="/assets/sidenav.css?v=2" />
   <script src="/assets/pwa.js?v=1"></script>
+  <script src="/assets/switch.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
   <script id="early-theme">
@@ -1222,7 +1223,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-balance-fix";
+    const RELEASE_VERSION = "2026-10-10-smooth-switch";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
