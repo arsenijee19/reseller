@@ -647,12 +647,17 @@
       body.is-authenticated .get-app{top:64px;right:14px}
     }
     @media(max-width:400px){.status .app-menu-btn{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;flex-basis:36px;padding:8px!important}body.is-authenticated .topbar{grid-template-columns:minmax(0,1fr) repeat(4,36px)}}
-    /* balance: caption and amount share one left edge and one tight vertical rhythm */
-    .balance-pill .balance-caption,.balance-pill .balance-amount{grid-column:2;justify-self:start;margin:0;padding:0;text-align:left}
-    .balance-pill .balance-caption{grid-row:1;align-self:end;line-height:1.1;padding-bottom:2px}
-    .balance-pill .balance-amount{grid-row:2;align-self:start;line-height:1.1}
-    .balance-pill .balance-icon{grid-row:1 / 3;align-self:center}
+    /* balance: on phones the pill is a grid - caption and amount share one left edge; on desktop it is one row */
+    .balance-pill .balance-caption,.balance-pill .balance-amount{margin:0;padding:0;text-align:left}
     .balance-amount #balanceText{min-width:0!important;text-align:left}
+    .balance-pill{align-items:center;column-gap:10px;row-gap:0}
+    .paid-header-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px}
+    @media(max-width:640px){
+      .balance-pill .balance-caption,.balance-pill .balance-amount{grid-column:2;justify-self:start}
+      .balance-pill .balance-caption{grid-row:1;align-self:end;line-height:1.1;padding-bottom:2px}
+      .balance-pill .balance-amount{grid-row:2;align-self:start;line-height:1.1}
+      .balance-pill .balance-icon{grid-row:1 / 3;align-self:center}
+    }
     /* a11y polish: readable captions in both themes, bigger touch targets on touch devices */
     .balance-caption{color:var(--muted)}
     .status-indicator{color:var(--muted)}
@@ -1217,7 +1222,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-sidenav-links";
+    const RELEASE_VERSION = "2026-10-10-balance-fix";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
