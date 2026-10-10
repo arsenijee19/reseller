@@ -53,7 +53,7 @@
     var r = el.getBoundingClientRect();
     var y = window.pageYOffset + r.top - (offset == null ? Math.round(window.innerHeight * 0.18) : offset);
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-    return wait(650);
+    return wait(420);
   }
   function placeSpot(el) {
     if (!el) { spot.classList.add("none"); return; }
@@ -75,11 +75,11 @@
     var x = r.left + Math.min(r.width * 0.6, r.width - 14), y = r.top + r.height * 0.55;
     finger.classList.add("show");
     finger.style.left = x + "px"; finger.style.top = y + "px";
-    await wait(900);
+    await wait(430);
     finger.classList.add("tap"); ripple.style.left = x + "px"; ripple.style.top = y + "px"; ripple.classList.remove("go"); void ripple.offsetWidth; ripple.classList.add("go");
-    await wait(220);
+    await wait(150);
     if (doClick) click(el);
-    await wait(260);
+    await wait(160);
     finger.classList.remove("tap");
   }
   async function typeInto(input, text, myRun) {
@@ -89,7 +89,7 @@
       if (myRun !== run) return;
       input.value += text.charAt(i);
       input.dispatchEvent(new Event("input", { bubbles: true }));
-      await wait(150);
+      await wait(90);
     }
   }
   function sampleWord() {
@@ -104,12 +104,12 @@
   // Keep the highlighted element above the step card (small phones): scroll a little if the card would cover it.
   async function fit(el) {
     if (!el || el.closest(".modal")) return;
-    await wait(80);
+    await wait(40);
     var tr = tip.getBoundingClientRect(), r = el.getBoundingClientRect();
     var overflow = r.bottom - (tr.top - 14);
     if (overflow > 0) {
       var shift = Math.min(overflow, Math.max(0, r.top - 12));
-      if (shift > 2) { window.scrollBy({ top: shift, behavior: "smooth" }); await wait(550); }
+      if (shift > 2) { window.scrollBy({ top: shift, behavior: "smooth" }); await wait(380); }
     }
   }
   var firstSlot = function () { return document.querySelector("#pricesList .price-variant"); };

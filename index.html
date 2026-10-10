@@ -24,7 +24,7 @@
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/assets/splash-750x1334.png" />
   <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
-  <link rel="stylesheet" href="/assets/tour.css?v=1" />
+  <link rel="stylesheet" href="/assets/tour.css?v=2" />
   <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
@@ -626,6 +626,25 @@
       .price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media(max-width:560px){.scroll-top-btn{right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));width:44px;height:44px;border-radius:14px}}
+    /* phone-app button in the header: opens the Android / iPhone card as a popover */
+    .app-menu-btn{display:none}
+    body.is-authenticated .app-menu-btn{display:inline-flex;align-items:center;justify-content:center}
+    html.app-standalone .app-menu-btn,html.app-native .app-menu-btn{display:none!important}
+    .app-menu-btn{width:44px;height:44px;min-width:44px;min-height:44px;flex:0 0 44px;padding:10px;border-radius:12px}
+    .app-menu-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    body.is-authenticated .get-app{display:none;position:fixed;z-index:60;top:72px;right:max(14px,calc((100vw - 1180px)/2 + 14px));width:min(360px,calc(100vw - 28px));margin:0;box-shadow:0 24px 60px rgba(15,23,42,.28)}
+    body.is-authenticated .get-app.open{display:block;animation:appPopIn .22s cubic-bezier(.16,1,.3,1)}
+    @keyframes appPopIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+    @media(hover:hover) and (pointer:fine){body:not(.is-authenticated) .get-app{display:none}}
+    @media(max-width:640px){
+      body.is-authenticated .topbar{grid-template-columns:minmax(0,1fr) repeat(4,40px)}
+      body.is-authenticated .status .app-menu-btn{grid-column:2;grid-row:1;margin:0;width:40px;height:40px;min-width:40px;min-height:40px;padding:9px}
+      body.is-authenticated .status .account-icon-btn{grid-column:3}
+      body.is-authenticated .status .theme-btn{grid-column:4}
+      body.is-authenticated .status .logout-icon-btn{grid-column:5}
+      body.is-authenticated .get-app{top:64px;right:14px}
+    }
+    @media(max-width:400px){.status .app-menu-btn{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;flex-basis:36px;padding:8px!important}body.is-authenticated .topbar{grid-template-columns:minmax(0,1fr) repeat(4,36px)}}
     /* a11y polish: readable captions in both themes, bigger touch targets on touch devices */
     .balance-caption{color:var(--muted)}
     .status-indicator{color:var(--muted)}
@@ -740,6 +759,7 @@
         </div>
         <div class="pill" id="discountText" style="display:none"></div>
         <button class="btn account-icon-btn" id="accountSettingsBtn" type="button" title="Podešavanja naloga" aria-label="Podešavanja naloga"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></button>
+        <button class="btn app-menu-btn" id="appMenuBtn" type="button" title="Aplikacija za telefon" aria-label="Aplikacija za telefon" aria-expanded="false" aria-controls="getApp"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.6"/><path d="M11 18.5h2"/></svg></button>
         <button class="btn theme-btn" id="themeBtn" type="button" aria-label="Uključi dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"/></svg></button>
         <button class="btn logout-icon-btn" id="logoutBtn" type="button" title="Odjavi se" aria-label="Odjavi se">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1173,7 +1193,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-slot-colours";
+    const RELEASE_VERSION = "2026-10-10-app-menu";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3306,7 +3326,7 @@
     }
     startApp();
   </script>
-  <script src="/assets/onboarding.js?v=1" defer></script>
-  <script src="/assets/tour.js?v=1" defer></script>
+  <script src="/assets/onboarding.js?v=2" defer></script>
+  <script src="/assets/tour.js?v=2" defer></script>
 </body>
 </html>

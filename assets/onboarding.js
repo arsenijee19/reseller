@@ -275,6 +275,15 @@
     help.addEventListener("click", function () { open(mine()); });
   }
 
+  var menuBtn = $("appMenuBtn");
+  if (menuBtn) {
+    var setOpen = function (on) { card.classList.toggle("open", on); menuBtn.setAttribute("aria-expanded", on ? "true" : "false"); };
+    menuBtn.addEventListener("click", function (e) { e.stopPropagation(); setOpen(!card.classList.contains("open")); });
+    document.addEventListener("click", function (e) { if (card.classList.contains("open") && !card.contains(e.target)) setOpen(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
+    window.addEventListener("scroll", function () { if (card.classList.contains("open")) setOpen(false); }, { passive: true });
+  }
+
   window.addEventListener("pageshow", maybeShow);
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") maybeShow(); });
   window.PWOnboarding = { open: open };
