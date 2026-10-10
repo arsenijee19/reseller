@@ -730,6 +730,12 @@
     .price-variant[class*="slot-"]:not(.slot-other):hover{border-color:#4f81e0;box-shadow:0 0 0 3px rgba(79,129,224,.16),0 8px 18px rgba(37,99,235,.14)}
     .price-variant[class*="slot-"][aria-expanded="true"]{border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.38)}
     @media(max-width:640px){.price-variant{min-height:86px;padding:10px 11px}}
+    /* chips (history, picker, filters) use exactly the same colours as the price cards */
+    .slot-chip.ps5{background:linear-gradient(160deg,#ffffff 0%,#edf2fc 100%);border-color:#c8d3ee;color:#0f1b3d;box-shadow:none}
+    .slot-chip.ps4{background:linear-gradient(160deg,#e6f0ff 0%,#bcd3ff 100%);border-color:#8fb0ee;color:#08215f;box-shadow:none}
+    .slot-chip.mix{background:linear-gradient(115deg,#ffffff 0%,#ffffff 38%,#cfe0ff 70%,#b3ccff 100%);border-color:#a9c2ee;color:#08215f;box-shadow:none}
+    .slot-chip.secondary{border-style:solid}
+    .slot-chip em{font-weight:500}
     :root[data-theme="dark"] .platform-badge.ps5{background:linear-gradient(100deg,#fff,#cbd9f8);color:#0f1b3d}
     :root[data-theme="dark"] .platform-badge.ps4{background:linear-gradient(100deg,#d6e6ff,#6d9bf5);color:#08215f}
     :root[data-theme="dark"] .picker-type-filter.has-chip{background:transparent}
@@ -1204,7 +1210,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-price-cards";
+    const RELEASE_VERSION = "2026-10-10-chip-colours";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
