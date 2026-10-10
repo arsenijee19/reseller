@@ -129,6 +129,17 @@ async function closeReleaseNotes(page, tag) {
     await page.locator("#pricesList").scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
     await page.screenshot({ path: `${SHOTS}/qa-${name}-prices.png` });
 
+    // side menu: two taps to reach any section
+    await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
+    await page.click(".sn-fab"); await page.waitForTimeout(400);
+    await page.screenshot({ path: `${SHOTS}/qa-${name}-sidenav.png` });
+    await page.click('.sn-item[data-target="secPrices"]'); await page.waitForTimeout(1200);
+    const toPrices = await page.evaluate(() => Math.round(document.getElementById("secPrices").getBoundingClientRect().top));
+    check("side menu: 2 taps scroll to the price list", toPrices >= -4 && toPrices < 80 && !(await page.locator(".sn-drawer.open").count()), String(toPrices));
+    await page.click(".sn-fab"); await page.click('.sn-item[data-target="secHistory"]'); await page.waitForTimeout(1200);
+    const toHist = await page.evaluate(() => Math.round(document.getElementById("secHistory").getBoundingClientRect().top));
+    check("side menu: 2 taps scroll to previous orders", toHist >= -4 && toHist < 80, String(toHist));
+
     // guided tour: runs on the real screen, nothing may be ordered, the screen is restored afterwards
     const ordersBefore = sql("SELECT COUNT(*) FROM orders WHERE reseller_id=1");
     const productBefore = await page.evaluate(() => document.getElementById("product").value);

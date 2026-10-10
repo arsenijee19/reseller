@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="/assets/app-mode.css?v=1" />
   <link rel="stylesheet" href="/assets/onboarding.css?v=1" />
   <link rel="stylesheet" href="/assets/tour.css?v=4" />
+  <link rel="stylesheet" href="/assets/sidenav.css?v=1" />
   <script src="/assets/pwa.js?v=1"></script>
   <meta name="color-scheme" content="light dark" />
   <title>PlayWorld.rs - Reseller Portal</title>
@@ -855,7 +856,7 @@
         <p class="login-switch">Administrator? <a href="/admin.html">Admin prijava</a></p>
 
         <div class="app-column" id="appBox" style="display:none">
-          <section class="panel">
+          <section class="panel" id="secOrder">
             <div class="section">
               <div class="section-heading">
                 <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg></span>
@@ -903,7 +904,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="secCode">
             <div class="section">
               <div class="section-heading">
                 <span class="section-icon purple" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg></span>
@@ -922,7 +923,7 @@
             </div>
           </section>
 
-          <section class="panel section price-section">
+          <section class="panel section price-section" id="secPrices">
               <div class="section-head">
                 <div class="section-heading">
                   <span class="section-icon teal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.4 7.4a1.7 1.7 0 0 1 0 2.4Z"/><circle cx="8" cy="8" r="1.2"/></svg></span>
@@ -935,7 +936,7 @@
         </div>
       </div>
 
-      <aside class="panel auth-only">
+      <aside class="panel auth-only" id="secHistory">
         <div class="section">
           <div class="history-head">
             <div>
@@ -1216,7 +1217,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-tour-kbd";
+    const RELEASE_VERSION = "2026-10-10-sidenav";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3350,5 +3351,6 @@
   </script>
   <script src="/assets/onboarding.js?v=2" defer></script>
   <script src="/assets/tour.js?v=6" defer></script>
+  <script src="/assets/sidenav.js?v=1" defer></script>
 </body>
 </html>
