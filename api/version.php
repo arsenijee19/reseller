@@ -21,6 +21,6 @@ if (is_file($file)) {
 
 echo json_encode([
   'ok' => true,
-  'version' => '2026-10-10-ps5-gradient',
+  'version' => '2026-10-10-console-logos',
   'android' => $android,
 ], JSON_UNESCAPED_SLASHES);

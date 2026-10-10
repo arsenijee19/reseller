@@ -663,48 +663,45 @@
       .transactions-table td.transactions-empty{grid-area:auto;grid-column:1/-1;padding:6px 0}
       .transactions-table-wrap{max-height:min(60vh,560px)}
     }
-    /* ---- console slots: PS5 white, PS4 blue, PS4 / PS5 both ---- */
-    .slot-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 10px 3px 7px;border:1px solid transparent;border-radius:999px;font-size:12.5px;line-height:1.25;white-space:nowrap}
+    /* ---- console slots: PS5 silver, PS4 soft blue, PS4 / PS5 both; the console logo is transparent and follows the text colour ---- */
+    .slot-chip{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:4px 11px 4px 9px;border:1px solid transparent;border-radius:999px;font-size:12.5px;line-height:1.25;white-space:nowrap}
     .slot-chip b{font-weight:850;letter-spacing:.01em}
-    .slot-chip em{font-style:normal;font-weight:650;opacity:.9}
-    .slot-chip.lg{padding:5px 12px 5px 8px;font-size:13px}
+    .slot-chip em{font-style:normal;font-weight:750}
+    .slot-chip.lg{padding:6px 13px 6px 10px;font-size:13px}
     .slot-chip.secondary{border-style:dashed}
-    .slot-dots{display:inline-flex;align-items:center}
-    .slot-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(15,23,42,.35)}
-    .slot-dots .slot-dot+.slot-dot{margin-left:-3px}
-    .slot-dot.ps5{background:linear-gradient(135deg,#fff,#cfd6f0)}
-    .slot-dot.ps4{background:#2f6bff;border-color:#1d4ed8}
-    .slot-chip.ps5{background:linear-gradient(100deg,#ffffff 0%,#eef1fb 45%,#d3d9f2 100%);color:#101a33;border-color:#c3cbe6;box-shadow:0 1px 2px rgba(15,23,42,.08)}
-    .slot-chip.ps4{background:#2f6bff;color:#fff;border-color:#2257d6}
-    .slot-chip.ps4 .slot-dot{border-color:#fff}
-    .slot-chip.mix{background:linear-gradient(100deg,#fff 0%,#dbe6ff 42%,#8fb0ff 100%);color:#0b1f4d;border-color:#a9c0f5}
+    .slot-logos{display:inline-flex;align-items:center;gap:4px}
+    .slot-logos .slot-sep{font-style:normal;font-weight:700;opacity:.55;font-size:.9em}
+    .slot-logo{display:block;width:46px;height:10.8px;fill:currentColor;stroke:currentColor;stroke-width:.32;stroke-linejoin:round;flex:0 0 auto}
+    .slot-chip.lg .slot-logo{width:52px;height:12.2px}
+    .slot-chip.ps5{background:linear-gradient(100deg,#ffffff 0%,#eef1fb 45%,#d3d9f2 100%);color:#16203f;border-color:#c3cbe6;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+    .slot-chip.ps4{background:linear-gradient(100deg,#eef4ff 0%,#cfe0ff 50%,#a9c5ff 100%);color:#0d2a6b;border-color:#9db9f2;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+    .slot-chip.mix{background:linear-gradient(100deg,#ffffff 0%,#e6edff 40%,#a9c5ff 100%);color:#0d2a6b;border-color:#b3c6f0;box-shadow:0 1px 2px rgba(15,23,42,.08)}
     .slot-chip.other{background:var(--soft);color:var(--text);border-color:var(--line)}
-    .slot-chip.ps5.secondary{border-color:#9aa6c4}
-    .slot-chip.ps4.secondary{border-color:#bcd0ff}
     .picker-type-filter.has-chip{padding:3px;border-radius:999px;background:transparent;border:2px solid transparent}
     .picker-type-filter.has-chip.active,.picker-type-filter.has-chip:hover{border-color:var(--brand);background:transparent;transform:none}
     .product-option-main .slot-chip{margin-top:1px;justify-self:start}
     .product-picker-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
     .product-picker-price{font-size:12px;font-weight:800;color:var(--muted)}
     .history-order-meta{align-items:center;gap:8px}
-    .history-order-meta .slot-chip{font-size:11.5px;padding:2px 9px 2px 6px}
-    .price-variant-label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:850;color:var(--text);letter-spacing:.01em}
-    .price-variant.slot-ps5{background:linear-gradient(145deg,#ffffff 0%,#eef1fb 42%,#d3d9f2 100%);border-color:#c3cbe6;color:#0f1b3a}
-    .price-variant.slot-ps5 .price-variant-label,.price-variant.slot-ps5 strong{color:#0f1b3a}
-    .price-variant.slot-ps4{background:linear-gradient(160deg,#3b78ff,#2358e0);border-color:#2257d6;color:#fff}
-    .price-variant.slot-ps4 .price-variant-label,.price-variant.slot-ps4 strong{color:#fff}
-    .price-variant.slot-ps4 .price-original{color:rgba(255,255,255,.75)}
-    .price-variant.slot-ps4 .slot-dot{border-color:#fff}
-    .price-variant.slot-mix{background:linear-gradient(115deg,#fff 0%,#e3ecff 40%,#9db9ff 100%);border-color:#a9c0f5;color:#0b1f4d}
-    .price-variant.slot-mix .price-variant-label,.price-variant.slot-mix strong{color:#0b1f4d}
-    .price-variant[class*="slot-"]:not(.slot-other):hover{box-shadow:0 8px 20px rgba(37,99,235,.22)}
-    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(255,255,255,.85);color:#0f7a43;box-shadow:inset 0 0 0 1px rgba(15,122,67,.25)}
-    .price-variant.slot-ps4 .discount-badge{background:rgba(255,255,255,.22);color:#fff}
+    .history-order-meta .slot-chip{font-size:11.5px;padding:3px 10px 3px 8px}
+    .history-order-meta .slot-logo{width:41px;height:9.6px}
+    .price-variant-label{display:grid;gap:3px;justify-items:start;font-size:12.5px;font-weight:850;color:inherit;letter-spacing:.01em}
+    .price-variant-label .slot-logo{width:49px;height:11.4px}
+    .price-variant-label .slot-role{font-size:12.5px;font-weight:800;opacity:.9}
+    .price-variant.slot-ps5{background:linear-gradient(145deg,#ffffff 0%,#eef1fb 42%,#d3d9f2 100%);border-color:#c3cbe6;color:#16203f}
+    .price-variant.slot-ps4{background:linear-gradient(145deg,#eef4ff 0%,#cfe0ff 50%,#a9c5ff 100%);border-color:#9db9f2;color:#0d2a6b}
+    .price-variant.slot-mix{background:linear-gradient(115deg,#ffffff 0%,#e6edff 40%,#a9c5ff 100%);border-color:#b3c6f0;color:#0d2a6b}
+    .price-variant.slot-ps5 strong,.price-variant.slot-ps4 strong,.price-variant.slot-mix strong{color:inherit}
+    .price-variant[class*="slot-"]:not(.slot-other):hover{box-shadow:0 8px 20px rgba(37,99,235,.2)}
+    .price-variant.slot-ps5 .price-original,.price-variant.slot-ps4 .price-original,.price-variant.slot-mix .price-original{color:rgba(22,32,63,.6)}
+    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-ps4 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(255,255,255,.85);color:#0f7a43;box-shadow:inset 0 0 0 1px rgba(15,122,67,.25)}
     .price-variant[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(47,107,255,.35)}
-    .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#101a33;border:1px solid #c3cbe6}
-    .platform-badge.ps4{background:#2f6bff;color:#fff}
-    :root[data-theme="dark"] .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#101a33}
-    :root[data-theme="dark"] .platform-badge.ps4{background:#2f6bff;color:#fff}
+    .platform-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:7px;border:1px solid transparent}
+    .platform-badge .slot-logo{width:38px;height:8.9px}
+    .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#16203f;border-color:#c3cbe6}
+    .platform-badge.ps4{background:linear-gradient(100deg,#eef4ff,#a9c5ff);color:#0d2a6b;border-color:#9db9f2}
+    :root[data-theme="dark"] .platform-badge.ps5{background:linear-gradient(100deg,#fff,#d3d9f2);color:#16203f}
+    :root[data-theme="dark"] .platform-badge.ps4{background:linear-gradient(100deg,#eef4ff,#a9c5ff);color:#0d2a6b}
     :root[data-theme="dark"] .picker-type-filter.has-chip{background:transparent}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
@@ -721,6 +718,7 @@
   </style>
 </head>
 <body class="session-checking">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><!-- PlayStation 4 / 5 wordmarks (Simple Icons, CC0). PlayStation is a trademark of Sony Interactive Entertainment. --><path id="p-ps4" d="M12.302 13.18v-2.387c0-.486.227-.834.712-.834h2.99c.017 0 .035-.018.035-.036v-.475c0-.004 0-.008-.003-.012h-3.66c-.792.1-1.18.653-1.18 1.357v2.386c0 .482-.233.831-.71.831H7.332c-.018 0-.036.012-.036.036v.475c0 .02.01.035.023.04h3.584c.933-.025 1.393-.62 1.393-1.385zM.024 14.564h1.05a.042.042 0 00.025-.04v-1.52c0-.487.275-.823.676-.823h4.323c.974 0 1.445-.6 1.445-1.384 0-.705-.386-1.257-1.18-1.357H.006c0 .003-.006.005-.006.01v.475c0 .024.013.036.037.036h5.697c.484 0 .712.35.712.833 0 .484-.227.836-.712.836H1.226c-.7 0-1.226.592-1.226 1.373v1.519c0 .02.01.036.028.04zm15.998-.55h5.738c.017 0 .03.012.03.024v.483c0 .024.017.036.035.036h1.035c.018 0 .036-.01.036-.036v-.475c0-.018.02-.036.04-.036h1.028c.024 0 .036-.018.036-.036v-.484c0-.018-.01-.036-.035-.036h-1.03c-.02 0-.037-.017-.037-.035V9.96c0-.283-.104-.463-.28-.523h-.3a1.153 1.153 0 00-.303.132l-6.18 3.815c-.24.15-.323.318-.263.445.048.104.185.182.454.182zm.895-.637l4.79-2.961c.03-.024.09-.018.09.048v2.961c0 .018-.016.036-.034.036h-4.817c-.04 0-.06-.012-.065-.024-.006-.024.005-.042.036-.06z"/><path id="p-ps5" d="M10.4499 14.56905a1.38287 1.38287 0 001.38287-1.38287v-2.37841a.83315.83315 0 01.83416-.83315h2.68403a.03732.03732 0 00.03631-.03732V9.4612a.03631.03631 0 00-.0363-.0363H12.1172a1.38287 1.38287 0 00-1.38388 1.38286v2.38043a.83416.83416 0 01-.83315.83415H7.25347a.03631.03631 0 00-.03631.03632v.47608a.03631.03631 0 00.03631.03631zm6.04488-3.21156V9.4612a.03631.03631 0 01.0363-.0363h7.30772a.03732.03732 0 01.03732.0363v.47609a.03833.03833 0 01-.03732.03732h-6.20929a.03631.03631 0 00-.0363.03631v1.2356a.3954.3954 0 00.3964.39741h4.62267a1.46457 1.46457 0 010 2.9251h-6.0812a.03631.03631 0 01-.0363-.0363v-.47407a.03631.03631 0 01.0363-.03632h5.53047a.91586.91586 0 10-.00706-1.8307h-4.72656a.83315.83315 0 01-.83315-.83416m-10.84608.28645a.83466.83466 0 000-1.66932H.03654a.03732.03732 0 01-.03632-.03732V9.4612a.03631.03631 0 01.03632-.0363h6.1528a1.38388 1.38388 0 010 2.76673H1.9328a.83315.83315 0 00-.83315.83416v1.51299a.03631.03631 0 01-.03631.0363H.03654a.03631.03631 0 01-.03632-.04034v-1.51298a1.38287 1.38287 0 011.38388-1.37783Z"/></defs></svg>
   <main class="shell">
     <header class="topbar">
       <div class="brand">
@@ -1175,7 +1173,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-ps5-gradient";
+    const RELEASE_VERSION = "2026-10-10-console-logos";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -2038,16 +2036,29 @@
       if (/primary/i.test(t)) return "Primary";
       return t.replace(/PS[45]\s*[\/+&]?\s*/gi, "").trim();
     }
+    function slotLogos(kind){
+      const wrap = document.createElement("span");
+      wrap.className = "slot-logos";
+      (kind === "mix" ? ["ps4", "ps5"] : [kind]).forEach((k, i) => {
+        if (i) appendText(wrap, "i", "/", "slot-sep");
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", `slot-logo ${k}`);
+        svg.setAttribute("viewBox", "0 9.2 24 5.6");
+        svg.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `#p-${k}`);
+        svg.appendChild(use);
+        wrap.appendChild(svg);
+      });
+      return wrap;
+    }
     function slotChip(typeText, size){
       const kind = slotKind(typeText);
       const chip = document.createElement("span");
       chip.className = `slot-chip ${kind}${/secondary/i.test(String(typeText || "")) ? " secondary" : ""}${size ? " " + size : ""}`;
+      chip.setAttribute("title", String(typeText || ""));
       if (kind !== "other") {
-        const dots = document.createElement("span");
-        dots.className = "slot-dots";
-        (kind === "mix" ? ["ps4", "ps5"] : [kind]).forEach((k) => { const d = document.createElement("i"); d.className = `slot-dot ${k}`; dots.appendChild(d); });
-        chip.appendChild(dots);
-        appendText(chip, "b", kind === "mix" ? "PS4 / PS5" : kind.toUpperCase());
+        chip.appendChild(slotLogos(kind));
         const role = slotRoleText(typeText);
         if (role) appendText(chip, "em", role);
       } else {
@@ -2283,7 +2294,13 @@
         group.products.forEach((product) => {
           `${product.product_name || ""} ${product.account_type || ""}`.match(/PS[45]/gi)?.forEach((platform) => platforms.add(platform.toUpperCase()));
         });
-        [...platforms].sort().forEach((platform) => appendText(heading, "span", platform, `platform-badge ${platform.toLowerCase()}`));
+        [...platforms].sort().forEach((platform) => {
+          const badge = document.createElement("span");
+          badge.className = `platform-badge ${platform.toLowerCase()}`;
+          badge.setAttribute("title", platform);
+          badge.appendChild(slotLogos(platform.toLowerCase()));
+          heading.appendChild(badge);
+        });
         card.appendChild(heading);
 
         const byDuration = new Map();
@@ -2318,11 +2335,11 @@
             slotLabel.className = "price-variant-label";
             const slotKindName = slotKind(slot.label);
             if (slotKindName !== "other") {
-              const dots = document.createElement("span"); dots.className = "slot-dots";
-              (slotKindName === "mix" ? ["ps4", "ps5"] : [slotKindName]).forEach((k) => { const d = document.createElement("i"); d.className = `slot-dot ${k}`; dots.appendChild(d); });
-              slotLabel.appendChild(dots);
+              slotLabel.appendChild(slotLogos(slotKindName));
+              appendText(slotLabel, "span", slotRoleText(slot.label) || "", "slot-role");
+            } else {
+              appendText(slotLabel, "span", slot.label);
             }
-            appendText(slotLabel, "span", slot.label);
             cell.appendChild(slotLabel);
             const currentPrice = document.createElement("strong");
             currentPrice.textContent = `${price(product.price)} ${product.currency || "RSD"}`;

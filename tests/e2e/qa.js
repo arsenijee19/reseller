@@ -123,7 +123,9 @@ async function closeReleaseNotes(page, tag) {
     await page.evaluate(() => { for (const id of ["productSearch", "priceListSearch"]) { const i = document.getElementById(id); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); } });
     await page.waitForTimeout(500);
     const slotColours = await page.evaluate(() => { const bg = (el) => getComputedStyle(el).backgroundImage + " " + getComputedStyle(el).backgroundColor; const q = (s) => document.querySelector(s); return { ps5: q("#pricesList .price-variant.slot-ps5") && bg(q("#pricesList .price-variant.slot-ps5")), ps4: q("#pricesList .price-variant.slot-ps4") && bg(q("#pricesList .price-variant.slot-ps4")), mix: q("#pricesList .price-variant.slot-mix") && bg(q("#pricesList .price-variant.slot-mix")) }; });
-    check("price slots are coloured by console (PS5 white, PS4 blue, PS4/PS5 mix)", !!(slotColours.ps5 && slotColours.ps4 && slotColours.mix) && /255, 255, 255/.test(slotColours.ps5) && /47, 107, 255|59, 120, 255/.test(slotColours.ps4) && /gradient/.test(slotColours.mix), JSON.stringify(slotColours));
+    const logos = await page.evaluate(() => ({ ps5: document.querySelectorAll('#pricesList .price-variant.slot-ps5 svg.slot-logo use[href="#p-ps5"]').length, ps4: document.querySelectorAll('#pricesList .price-variant.slot-ps4 svg.slot-logo use[href="#p-ps4"]').length, mix: document.querySelectorAll('#pricesList .price-variant.slot-mix svg.slot-logo').length, dots: document.querySelectorAll(".slot-dot").length }));
+    check("slots show the transparent console logos (PS5, PS4, both for PS4 / PS5) and no colour dots", logos.ps5 > 0 && logos.ps4 > 0 && logos.mix >= 2 && logos.dots === 0, JSON.stringify(logos));
+    check("price slots are coloured by console (PS5 white, PS4 blue, PS4/PS5 mix)", !!(slotColours.ps5 && slotColours.ps4 && slotColours.mix) && /255, 255, 255/.test(slotColours.ps5) && /gradient/.test(slotColours.ps4) && /gradient/.test(slotColours.mix), JSON.stringify(slotColours));
     await page.locator("#pricesList").scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
     await page.screenshot({ path: `${SHOTS}/qa-${name}-prices.png` });
 
