@@ -48,12 +48,17 @@
       if (details) details.hidden = true;
     });
   }
+  // While the page scrolls there is no spotlight and no finger (they would slide around); they come back once it settles.
   function scrollTo(el, offset) {
     if (!el) return Promise.resolve();
-    var r = el.getBoundingClientRect();
-    var y = window.pageYOffset + r.top - (offset == null ? Math.round(window.innerHeight * 0.18) : offset);
-    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-    return wait(420);
+    setTarget(null); finger.classList.remove("show", "tap");
+    var off = offset == null ? Math.round(window.innerHeight * 0.18) : offset;
+    var aim = function () { return Math.max(0, window.pageYOffset + el.getBoundingClientRect().top - off); };
+    window.scrollTo({ top: aim(), behavior: "smooth" });
+    return wait(420).then(function () {
+      // layout may have moved meanwhile (a dropdown closed, a list shrank): correct once, without animation
+      if (Math.abs(aim() - window.pageYOffset) > 12) { window.scrollTo({ top: aim(), behavior: "auto" }); return wait(60); }
+    });
   }
   function rectOf(el) {
     var list = Array.isArray(el) ? el : [el], l = 1e9, t = 1e9, r = -1e9, b = -1e9, any = false;
@@ -125,7 +130,7 @@
     var overflow = r.bottom - (tr.top - 14);
     if (overflow > 0) {
       var shift = Math.min(overflow, Math.max(0, r.top - 12));
-      if (shift > 2) { window.scrollBy({ top: shift, behavior: "smooth" }); await wait(380); }
+      if (shift > 2) { var keep = target; setTarget(null); window.scrollBy({ top: shift, behavior: "smooth" }); await wait(380); setTarget(keep); }
     }
   }
   var firstSlot = function () { return document.querySelector("#pricesList .price-variant"); };
@@ -138,7 +143,7 @@
         run: async function (my) { resetUi(); await scrollTo($("productPickerTrigger")); click($("productPickerTrigger")); await wait(500); if (my !== run) return;
           var box = document.querySelector(".picker-search-wrap") || $("productSearch"); setTarget(box); await tap($("productSearch"), false); await typeInto($("productSearch"), sampleWord(), my); await fit(box); } },
       { kicker: "Korak 2 · Cenovnik", title: "Ista pretraga i u cenovniku", text: "Dok kucaš, cenovnik se odmah sužava na igre koje tražiš.",
-        run: async function (my) { resetUi(); setTarget(null); await scrollTo($("priceListSearch")); if (my !== run) return; setTarget($("priceListSearch")); await tap($("priceListSearch"), false); await typeInto($("priceListSearch"), sampleWord(), my); } },
+        run: async function (my) { resetUi(); setTarget(null); await wait(260); if (my !== run) return; await scrollTo($("priceListSearch")); if (my !== run) return; setTarget($("priceListSearch")); await tap($("priceListSearch"), false); await typeInto($("priceListSearch"), sampleWord(), my); } },
       { kicker: "Korak 3 · Prvi klik", title: "Preporučena minimalna cena", text: "Jedan klik na cenu (slot) pokazuje preporučenu minimalnu prodajnu cenu, ispod koje ne bi trebalo da prodaješ.",
         run: async function (my) { resetUi(); setTarget(null); var cell = firstSlot(); if (!cell) return; await scrollTo(cell); if (my !== run) return; setTarget(cell.parentElement); await tap(cell, true); var rec = document.getElementById(cell.getAttribute("aria-controls")); setTarget(rec ? [cell.parentElement, rec] : cell.parentElement); if (rec) rec.classList.add("tour-rec"); await fit(cell.parentElement); } },
       { kicker: "Korak 4 · Drugi klik", title: "Potvrda porudžbine", text: "Drugi klik na isti slot otvara potvrdu porudžbine. Proveri proizvod, tip naloga i cenu pa potvrdi.", note: "Ovo je demonstracija: potvrda ovde ne šalje ništa.",

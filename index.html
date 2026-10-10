@@ -167,6 +167,7 @@
     .support-actions{align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
     .support-actions .support-label{margin-right:4px;color:var(--muted);font-size:12px}
     .support-actions .btn{min-height:44px;font-size:15px;font-weight:600}
+    .support-actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px}
     .support-actions .btn svg{width:17px;height:17px;flex:0 0 17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .verification-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:14px}
     .verification-controls label{margin-top:0}
@@ -1209,7 +1210,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const RELEASE_VERSION = "2026-10-10-login-calm";
+    const RELEASE_VERSION = "2026-10-10-tour-smooth";
     const state = { csrf: "", orderInProgress: false, codeInProgress: false, products: [], prices: new Map(), orders: [], transactions: [], productSearch: "", productLetter: "", productTypeFilter: "", notesSearch: "", ordersFilter: "all", pendingOrder: null, deliveryOfferProductId: "", me: null };
 
     const statusIndicator = document.querySelector(".status-indicator");
@@ -3342,6 +3343,6 @@
     startApp();
   </script>
   <script src="/assets/onboarding.js?v=2" defer></script>
-  <script src="/assets/tour.js?v=4" defer></script>
+  <script src="/assets/tour.js?v=5" defer></script>
 </body>
 </html>
