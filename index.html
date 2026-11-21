@@ -199,9 +199,9 @@
     .product-picker-value span{font-size:11px;color:var(--muted)}
     .product-picker-chevron{width:11px;height:11px;flex:0 0 auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-3px) rotate(45deg);transition:transform .18s var(--ease),border-color .16s var(--ease)}
     .product-picker.open .product-picker-chevron{transform:translateY(3px) rotate(225deg);border-color:var(--brand)}
-    .product-picker-menu{position:absolute;left:0;right:0;top:calc(100% + 8px);display:none;max-height:min(520px,65vh);overflow:auto;overscroll-behavior:contain;border:1px solid rgba(23,105,224,.2);border-radius:14px;background:linear-gradient(180deg,var(--panel),var(--soft));box-shadow:0 24px 70px rgba(15,23,42,.22);padding:10px}
+    .product-picker-menu{position:absolute;left:0;right:0;top:calc(100% + 8px);display:none;max-height:var(--picker-max-h,min(520px,65vh));overflow:auto;overscroll-behavior:contain;border:1px solid rgba(23,105,224,.2);border-radius:14px;background:linear-gradient(180deg,var(--panel),var(--soft));box-shadow:0 24px 70px rgba(15,23,42,.22);padding:10px}
     .product-picker.open .product-picker-menu{display:block;animation:message-in .18s var(--ease)}
-    .picker-search-wrap{position:sticky;top:0;z-index:2;padding:2px 2px 10px;background:linear-gradient(180deg,var(--panel) 78%,transparent)}
+    .picker-search-wrap{position:sticky;top:-10px;z-index:2;margin:-10px -10px 0;padding:12px 12px 10px;border-radius:14px 14px 0 0;background:linear-gradient(180deg,var(--panel) 82%,transparent)}
     .picker-search-wrap input{min-height:42px}
     .picker-letters{display:flex;gap:5px;flex-wrap:wrap;padding:0 2px 10px}
     .picker-letter{min-width:30px;min-height:30px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}
@@ -737,8 +737,10 @@
     .price-variant{gap:3px;min-height:92px;padding:11px 12px}
     .price-variant.slot-ps5{background:linear-gradient(160deg,#ffffff 0%,#edf2fc 100%);border-color:#c8d3ee}
     .price-variant.slot-ps4{background:linear-gradient(160deg,#e6f0ff 0%,#bcd3ff 100%);border-color:#8fb0ee}
-    .price-variant.slot-mix{background:linear-gradient(115deg,#ffffff 0%,#ffffff 38%,#cfe0ff 70%,#b3ccff 100%);border-color:#a9c2ee}
+    .price-variant.slot-mix{background:linear-gradient(160deg,#ffffff 0%,#edf2fc 45%,#cfe0ff 100%);border-color:#a9c2ee}
     .price-variant-label{gap:4px}
+    .price-variant-label .slot-logos{height:14px;line-height:1}
+    .slot-logos .slot-sep{line-height:1}
     .price-variant-label .slot-role{font-size:12px;font-weight:500;opacity:.78}
     .price-variant strong{font-size:18px;font-weight:800;margin-top:2px;letter-spacing:-.015em}
     .price-variant[class*="slot-"]:not(.slot-other):hover{border-color:#4f81e0;box-shadow:0 0 0 3px rgba(79,129,224,.16),0 8px 18px rgba(37,99,235,.14)}
@@ -3206,7 +3208,10 @@
       renderProductOptions();
       renderPrices();
     }
-    productSearch.addEventListener("input", (event) => updateProductSearch(event.target.value));
+    productSearch.addEventListener("input", (event) => {
+      updateProductSearch(event.target.value);
+      productPickerMenu.scrollTop = 0;
+    });
     $("priceListSearch").addEventListener("input", (event) => updateProductSearch(event.target.value));
     balanceBtn.addEventListener("click", openTransactionsModal);
     closeTransactionsBtn.addEventListener("click", closeTransactionsModal);
@@ -3217,7 +3222,39 @@
       const isOpen = productPicker.classList.toggle("open");
       productPickerTrigger.setAttribute("aria-expanded", String(isOpen));
       if (isOpen && !window.PWTourActive) productSearch.focus({ preventScroll:true });
+      if (isOpen) fitProductPickerMenu(true);
     });
+    // The menu is absolutely positioned under the trigger and scrolls on its own (overscroll is contained),
+    // so a fixed 65vh height pushed its bottom below the screen where it could never be scrolled into view.
+    // Size it to the space that is really visible - on phones that is above the keyboard (visualViewport).
+    const productPickerMenu = $("productPickerMenu");
+    let pickerFitFrame = 0;
+    function fitProductPickerMenu(revealTrigger){
+      if (!productPicker.classList.contains("open")) return;
+      const vv = window.visualViewport;
+      const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const gap = 12;
+      let top = productPickerTrigger.getBoundingClientRect().bottom + 8;
+      // Too little room under the trigger: scroll the page so the trigger sits near the top first.
+      if (revealTrigger && viewBottom - top < 360) {
+        const triggerTop = productPickerTrigger.getBoundingClientRect().top;
+        window.scrollBy({ top: triggerTop - gap - (vv ? vv.offsetTop : 0), behavior: "auto" });
+        top = productPickerTrigger.getBoundingClientRect().bottom + 8;
+      }
+      const available = Math.floor(viewBottom - top - gap);
+      productPickerMenu.style.setProperty("--picker-max-h", `${Math.max(200, Math.min(560, available))}px`);
+    }
+    function scheduleProductPickerFit(){
+      if (pickerFitFrame || !productPicker.classList.contains("open")) return;
+      pickerFitFrame = window.requestAnimationFrame(() => { pickerFitFrame = 0; fitProductPickerMenu(false); });
+    }
+    window.addEventListener("resize", scheduleProductPickerFit);
+    window.addEventListener("scroll", scheduleProductPickerFit, { passive:true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => { if (productPicker.classList.contains("open")) window.requestAnimationFrame(() => fitProductPickerMenu(true)); });
+      window.visualViewport.addEventListener("scroll", scheduleProductPickerFit);
+    }
+    productSearch.addEventListener("focus", () => window.setTimeout(() => fitProductPickerMenu(true), 250));
     document.addEventListener("click", (event) => {
       // Filter buttons are replaced while rendering, so their original click target is detached here.
       if (event.target.closest(".picker-type-filter,.picker-letter")) return;
