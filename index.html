@@ -235,9 +235,16 @@
     .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand-dark));border-color:rgba(23,105,224,.62);color:#fff;box-shadow:0 8px 22px rgba(23,105,224,.18)}
     .btn.primary:hover{background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 12px 30px rgba(23,105,224,.26)}
     .btn.good{background:linear-gradient(135deg,var(--good),var(--accent));border-color:rgba(19,138,67,.62);color:#fff;box-shadow:0 8px 22px rgba(19,138,67,.16)}
+    .btn.danger{background:var(--bad);border-color:transparent;color:#fff;box-shadow:0 8px 22px rgba(195,41,41,.18)}
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     html.release-notes-off .whats-new-btn{display:none}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
+    .app-dialog-backdrop{z-index:90}
+    .app-dialog{width:min(360px,100%);text-align:center;padding:22px 20px 18px}
+    .app-dialog p{margin:0 0 4px;color:var(--text);font-size:15px;font-weight:600;line-height:1.45;white-space:pre-line}
+    .app-dialog .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+    .app-dialog.single .actions{grid-template-columns:1fr}
+    .app-dialog.single #appDialogCancel{display:none}
     .payment-modal{width:min(440px,100%)}
     .payment-modal > p{margin:6px 0 2px;color:var(--muted);font-size:13px;line-height:1.5}
     .payment-amount{position:relative}
@@ -499,8 +506,8 @@
       .release-modal{max-height:calc(100vh - 24px);padding:18px}
       .transactions-modal{max-height:calc(100vh - 24px);padding:18px}
       .transactions-table-wrap{max-height:55vh}
-      .success-backdrop{align-items:flex-start;padding:12px}
-      .success-modal{margin-top:10px;padding:22px 16px 18px}
+      .success-backdrop{align-items:center;padding:12px}
+      .success-modal{padding:22px 16px 18px}
     }
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
@@ -710,12 +717,14 @@
     .switch:checked::after{transform:translateX(20px)}
     .switch:focus-visible{outline:2px solid rgba(49,93,244,.6);outline-offset:2px}
     .switch:disabled{opacity:.5;cursor:default}
-    .pref-notify-options{display:grid;gap:8px;padding:4px 14px 12px}
+    .pref-notify-options{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:4px 14px 12px}
     .pref-choice{display:flex;align-items:center;gap:10px;margin:0;color:var(--text);font-size:13px;font-weight:500;cursor:pointer}
     .pref-choice input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--brand)}
     .pref-choice b{font-weight:650;overflow-wrap:anywhere}
     .pref-custom-email{display:flex;gap:8px;padding-left:28px}
-    .pref-custom-email input{flex:1;min-width:0}
+    .pref-custom-email input{flex:1 1 0;min-width:0;width:0}
+    .pref-custom-email .btn{flex:0 0 auto;width:auto;min-width:0;padding-left:16px;padding-right:16px}
+    .pref-notify-options[hidden],.pref-custom-email[hidden]{display:none}
     .pref-status{min-height:0;margin:0;padding:0 14px;font-size:12px;color:var(--muted)}
     .pref-status:not(:empty){padding-bottom:12px}
     .pref-status.bad{color:var(--bad)}
@@ -1137,6 +1146,16 @@
     </div>
   </div>
 
+  <div class="modal-backdrop app-dialog-backdrop" id="appDialog" role="alertdialog" aria-modal="true" aria-labelledby="appDialogText">
+    <div class="modal app-dialog">
+      <p id="appDialogText"></p>
+      <div class="actions">
+        <button class="btn" id="appDialogCancel" type="button">Otkaži</button>
+        <button class="btn primary" id="appDialogOk" type="button">U redu</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="paymentModal" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
     <div class="modal payment-modal">
       <h2 id="paymentTitle">Prijava uplate</h2>
@@ -1554,6 +1573,44 @@
       requestAnimationFrame(() => window.scrollTo(x, y));
       return result;
     }
+    // In-page replacement for confirm()/alert(): the Android app showed them as a raw system dialog
+    // with the site address as title, and on iPhone they can freeze a standalone web app.
+    function appDialog(message, { okLabel = "U redu", cancelLabel = "Otkaži", single = false, danger = false } = {}){
+      return new Promise((resolve) => {
+        const box = $("appDialog");
+        const ok = $("appDialogOk");
+        const cancel = $("appDialogCancel");
+        $("appDialogText").textContent = message;
+        box.querySelector(".app-dialog").classList.toggle("single", single);
+        ok.textContent = okLabel;
+        ok.className = "btn " + (danger ? "danger" : "primary");
+        cancel.textContent = cancelLabel;
+        const close = (value) => {
+          box.classList.remove("open");
+          ok.removeEventListener("click", onOk);
+          cancel.removeEventListener("click", onCancel);
+          box.removeEventListener("click", onBackdrop);
+          document.removeEventListener("keydown", onKey, true);
+          resolve(value);
+        };
+        const onOk = () => close(true);
+        const onCancel = () => close(false);
+        const onBackdrop = (event) => { if (event.target === box) close(false); };
+        const onKey = (event) => {
+          if (event.key === "Escape") { event.stopPropagation(); close(false); }
+          if (event.key === "Enter") { event.preventDefault(); close(true); }
+        };
+        ok.addEventListener("click", onOk);
+        cancel.addEventListener("click", onCancel);
+        box.addEventListener("click", onBackdrop);
+        document.addEventListener("keydown", onKey, true);
+        box.classList.add("open");
+        window.setTimeout(() => ok.focus({ preventScroll:true }), 30);
+      });
+    }
+    function askConfirm(message, okLabel, danger){ return appDialog(message, { okLabel:okLabel || "Potvrdi", danger:!!danger }); }
+    function showAlert(message){ return appDialog(message, { single:true }); }
+
     function markField(el, stateName){
       el.classList.remove("field-error", "field-success");
       if (stateName) el.classList.add(stateName === "ok" ? "field-success" : "field-error");
@@ -1745,10 +1802,28 @@
       // app, which re-checks the device instead of showing the web token login.
       if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
       else if (res.status === 401 && json.session_ended && window.PWApp && window.PWApp.standalone) window.PWApp.sessionEnded();
+      // A stale CSRF token (the Android app renews the session in the background after the phone was away,
+      // or the session was refreshed in another tab) is rejected before anything is done on the server,
+      // so fetch the current token once and repeat the request instead of failing the order.
+      if (res.status === 403 && !options.csrfRetried && /sesija je istekla/i.test(String(json.error || ""))) {
+        const fresh = await api("/api/me.php").catch(() => null);
+        if (fresh && fresh.csrf_token) return api(url, Object.assign({}, options, { csrfRetried:true }));
+      }
       if (!json.ok) throw new Error(userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`);
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }
+    // Android back button: close whatever is open on top (picker, dialog, drawer, tutorial) instead of
+    // leaving the app; while an order is being sent it is ignored. Returns true when it was handled.
+    window.pwHandleBack = () => {
+      if (state.orderInProgress) return true;
+      const open = document.querySelector(".modal-backdrop.open, .release-backdrop.open, .success-backdrop.open, .product-picker.open, .sn-drawer.open, .tour-layer.show");
+      if (!open && !window.PWTourActive) return false;
+      document.dispatchEvent(new KeyboardEvent("keydown", { key:"Escape", bubbles:true }));
+      return true;
+    };
+    // The Android app tells the page when it renewed the session, so the next request already carries the new token.
+    window.addEventListener("pw-session-refreshed", () => { if (state.me) api("/api/me.php").catch(() => {}); });
 
     async function loadMe(){
       const j = await api("/api/me.php");
@@ -2022,7 +2097,7 @@
         twoFactorManageToken.focus({ preventScroll:true });
         return;
       }
-      if (!confirm("Isključiti verifikaciju u 2 koraka?")) return;
+      if (!(await askConfirm("Isključiti verifikaciju u 2 koraka?", "Isključi", true))) return;
       try{
         const j = await api("/api/2fa.php?action=disable", { method:"POST", body:JSON.stringify({ current_token:twoFactorManageToken.value, code:twoFactorManageCode.value }) });
         renderTwoFactorStatus(j.two_factor || {});
@@ -2919,7 +2994,7 @@
           const message = nextPaid
             ? "Označiti ovu porudžbinu kao plaćenu?"
             : "Poništiti oznaku da je ova porudžbina plaćena?";
-          if (!confirm(message)) return;
+          if (!(await askConfirm(message, nextPaid ? "Označi plaćeno" : "Poništi"))) return;
           paymentBtn.disabled = true;
           try{
             await api("/api/order_paid.php", { method:"POST", body:JSON.stringify({ order_id:order.id, paid:nextPaid }) });
@@ -2931,7 +3006,7 @@
               preserveScroll(() => { loadOrders(true); });
             }
           }catch(e){
-            alert(e.message);
+            showAlert(e.message);
           }finally{
             paymentBtn.disabled = false;
           }
@@ -3452,7 +3527,7 @@
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && paymentModal.classList.contains("open")) closePaymentModal(); });
 
     async function markAllOrdersPaid(){
-      if (!confirm("Označiti sve prethodne porudžbine kao plaćene?")) return;
+      if (!(await askConfirm("Označiti sve prethodne porudžbine kao plaćene?", "Označi sve"))) return;
       markAllPaidBtn.disabled = true;
       markAllPaidBtn.textContent = "Čuvam...";
       let completed = false;
@@ -3461,7 +3536,7 @@
         await loadOrders();
         completed = true;
       }catch(e){
-        alert(e.message);
+        showAlert(e.message);
       }finally{
         if (!completed) markAllPaidBtn.disabled = false;
         markAllPaidBtn.textContent = "Označi sve kao plaćeno";

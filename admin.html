@@ -1177,6 +1177,10 @@
       }
       if (res.status === 401 && json.session_ended && window.PlayWorldNative && typeof window.PlayWorldNative.sessionExpired === "function") window.PlayWorldNative.sessionExpired();
       else if (res.status === 401 && json.session_ended && window.PWApp && window.PWApp.standalone) window.PWApp.sessionEnded();
+      if (res.status === 403 && !options.csrfRetried && /sesija je istekla/i.test(String(json.error || "")) && action !== "session") {
+        const fresh = await api("session").catch(() => null);
+        if (fresh && fresh.csrf_token) return api(action, Object.assign({}, options, { csrfRetried:true }));
+      }
       if (!json.ok) {
         const message = userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`;
         const error = new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
@@ -1186,6 +1190,9 @@
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
     }
+
+    // The Android app renewed the session in the background: pick up the current CSRF token.
+    window.addEventListener("pw-session-refreshed", () => { api("session").catch(() => {}); });
 
     function setLoggedIn(loggedIn){
       $("loginPanel").classList.toggle("hidden", loggedIn);

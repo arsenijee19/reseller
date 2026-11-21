@@ -215,7 +215,13 @@ class MainActivity : android.app.Activity() {
     @Deprecated("Deprecated in Android; retained for supported devices")
     override fun onBackPressed() {
         if (updateRequired) { moveTaskToBack(true); return }
-        if (webView.visibility == View.VISIBLE && webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        if (webView.visibility != View.VISIBLE) { super.onBackPressed(); return }
+        // Let the page close its open dialog / picker first (and ignore Back while an order is being sent);
+        // otherwise keep the app in the background instead of finishing it, so the portal state survives.
+        webView.evaluateJavascript("(window.pwHandleBack && window.pwHandleBack()) ? 'handled' : 'none'") { result ->
+            if (result?.contains("handled") == true) return@evaluateJavascript
+            if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
+        }
     }
 
     override fun onDestroy() { if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }; super.onDestroy() }
@@ -453,6 +459,9 @@ class MainActivity : android.app.Activity() {
             if (reloadPortalAfterSession || webView.url.isNullOrBlank() || webView.url == "about:blank") {
                 reloadPortalAfterSession = false
                 webView.loadUrl(if (isAdminRole()) "${PORTAL_URL}admin.html" else PORTAL_URL)
+            } else {
+                // The page stays open: let it pick up the (possibly renewed) CSRF token before its next request.
+                webView.evaluateJavascript("window.dispatchEvent(new Event('pw-session-refreshed'))", null)
             }
             sessionLoadedAt = System.currentTimeMillis()
             after()
@@ -460,6 +469,9 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun api(action: String, body: JSONObject, done: (JSONObject?, String?) -> Unit) {
+        // Send the WebView's current portal cookie: the server then keeps the same session (and CSRF token)
+        // instead of opening a new one, so a background re-check can't break an order the page is about to send.
+        val portalCookie = try { CookieManager.getInstance().getCookie(PORTAL_ORIGIN) } catch (_: Exception) { null }
         thread(name = "portal-device-auth") {
             var connection: HttpURLConnection? = null
             try {
@@ -470,6 +482,7 @@ class MainActivity : android.app.Activity() {
                     setRequestProperty("Origin", PORTAL_ORIGIN)
                     setRequestProperty("User-Agent", "PlayWorldAndroid/${android.os.Build.VERSION.RELEASE}")
                     setRequestProperty("X-Requested-With", "PlayWorldResellerApp")
+                    if (action == "session" && !portalCookie.isNullOrBlank()) setRequestProperty("Cookie", portalCookie)
                 }
                 connection = conn
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
