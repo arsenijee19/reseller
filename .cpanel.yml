@@ -11,6 +11,6 @@ deployment:
     - /bin/cp -f index.html admin.html manifest.webmanifest .htaccess $DEPLOYPATH/
     - /bin/cp -R -f assets/. $DEPLOYPATH/assets/
     - /bin/cp -R -f downloads/. $DEPLOYPATH/downloads/
-    - /bin/cp -f api/*.php api/.htaccess $DEPLOYPATH/api/
+    - /bin/cp -f api/*.php api/.htaccess api/.user.ini $DEPLOYPATH/api/
     - /bin/cp -R -f vendor/. $DEPLOYPATH/vendor/
     - /bin/cp -f sql/*.sql $DEPLOYPATH/sql/

@@ -666,6 +666,89 @@ SQL
   $done = true;
 }
 
+// ---- payment proofs ("Uplatio sam" with amount + receipt) ---------------------------------------------
+const PAYMENT_PROOF_MAX_BYTES = 10485760; // 10 MB
+const PAYMENT_PROOF_TYPES = [
+  'image/jpeg' => 'jpg',
+  'image/png' => 'png',
+  'image/webp' => 'webp',
+  'image/heic' => 'heic',
+  'image/heif' => 'heif',
+  'application/pdf' => 'pdf',
+];
+
+/** Adds the review/proof columns on installations where the SQL migration has not been run yet. */
+function ensure_payment_proof_columns(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+  if (schema_ensured('ensure_payment_proof_columns') && has_column($pdo, 'payment_notice_requests', 'proof_file')) { $done = true; return; }
+  ensure_order_observability_tables($pdo);
+  $changed = false;
+  foreach ([
+    'amount_rsd' => 'amount_rsd INT NULL',
+    'review_status' => "review_status VARCHAR(24) NOT NULL DEFAULT 'pending'",
+    'reviewed_at' => 'reviewed_at DATETIME NULL',
+    'reviewed_by_admin_id' => 'reviewed_by_admin_id INT UNSIGNED NULL',
+    'review_reason' => 'review_reason VARCHAR(255) NULL',
+    'wallet_transaction_id' => 'wallet_transaction_id BIGINT UNSIGNED NULL',
+    'proof_file' => 'proof_file VARCHAR(120) NULL',
+    'proof_mime' => 'proof_mime VARCHAR(60) NULL',
+    'proof_size' => 'proof_size INT UNSIGNED NULL',
+    'proof_name' => 'proof_name VARCHAR(255) NULL',
+  ] as $column => $definition) {
+    if (!has_column($pdo, 'payment_notice_requests', $column)) {
+      $pdo->exec("ALTER TABLE payment_notice_requests ADD COLUMN {$definition}");
+      $changed = true;
+    }
+  }
+  if ($changed) table_columns($pdo, 'payment_notice_requests', true);
+  schema_mark_ensured('ensure_payment_proof_columns');
+  $done = true;
+}
+
+/**
+ * Receipts are kept outside the public web root (next to it, in the hosting account's home folder),
+ * so they can only be read through the admin-only endpoint. Override with storage.payment_proofs_dir.
+ */
+function payment_proof_dir(): string {
+  $configured = trim((string)config_value('storage.payment_proofs_dir', getenv('PWRS_PAYMENT_PROOFS_DIR') ?: ''));
+  $dir = rtrim($configured !== '' ? $configured : dirname(__DIR__, 2) . '/payment_proofs', '/');
+  if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+    throw new RuntimeException('Folder za dokaze uplata nije moguće napraviti.');
+  }
+  // Defence in depth in case the folder is ever configured inside the web root.
+  $guard = $dir . '/.htaccess';
+  if (!is_file($guard)) @file_put_contents($guard, "Require all denied\n");
+  return $dir;
+}
+
+/** Returns [mime, extension] for an accepted receipt, judged by the file content (never by its name). */
+function detect_payment_proof_type(string $path): ?array {
+  $mime = '';
+  if (class_exists('finfo')) {
+    $info = new finfo(FILEINFO_MIME_TYPE);
+    $mime = strtolower((string)$info->file($path));
+  }
+  $head = (string)@file_get_contents($path, false, null, 0, 16);
+  if ($mime === '' || $mime === 'application/octet-stream') {
+    if (strncmp($head, '%PDF-', 5) === 0) $mime = 'application/pdf';
+    elseif (strncmp($head, "\xFF\xD8\xFF", 3) === 0) $mime = 'image/jpeg';
+    elseif (strncmp($head, "\x89PNG", 4) === 0) $mime = 'image/png';
+    elseif (substr($head, 0, 4) === 'RIFF' && substr($head, 8, 4) === 'WEBP') $mime = 'image/webp';
+    elseif (substr($head, 4, 4) === 'ftyp' && preg_match('/^(heic|heix|mif1|msf1|heif)$/', substr($head, 8, 4))) $mime = 'image/heic';
+  }
+  if (!isset(PAYMENT_PROOF_TYPES[$mime])) return null;
+  if ($mime === 'application/pdf' && strncmp($head, '%PDF-', 5) !== 0) return null;
+  if (in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true) && @getimagesize($path) === false) return null;
+  return [$mime, PAYMENT_PROOF_TYPES[$mime]];
+}
+
+function payment_proof_path(string $storedName): ?string {
+  if (!preg_match('#^\d{4}/\d{2}/[a-f0-9]{32}\.(jpg|png|webp|heic|heif|pdf)$#', $storedName)) return null;
+  $path = payment_proof_dir() . '/' . $storedName;
+  return is_file($path) ? $path : null;
+}
+
 function order_reversal_transaction_type(PDO $pdo): string {
   $stmt = $pdo->prepare("SELECT DATA_TYPE, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'wallet_transactions' AND COLUMN_NAME = 'type' LIMIT 1");
   $stmt->execute();
@@ -1138,6 +1221,34 @@ function notification_recipients(string $path, array $defaults = []): array {
 function notification_from_address(): string {
   $from = normalize_email((string)config_value('mail.from', 'no-reply@reseller.psigre.rs'));
   return valid_email($from) ? $from : 'no-reply@reseller.psigre.rs';
+}
+
+function app_public_url(): string {
+  $url = rtrim((string)config_value('app.public_url', 'https://reseller.psigre.rs'), '/');
+  return preg_match('#^https://[a-z0-9.\-]+$#i', $url) ? $url : 'https://reseller.psigre.rs';
+}
+
+function payment_notice_email_body(array $notice): string {
+  $amount = $notice['amount_rsd'] ?? null;
+  $message = "Reseller je kliknuo \"Uplatio sam\", označio uplatu i priložio dokaz.\n\n";
+  $message .= 'Prijava #' . (int)($notice['id'] ?? 0) . "\n";
+  $name = trim((string)($notice['reseller_name'] ?? ''));
+  if ($name !== '') $message .= 'Reseller: ' . $name . "\n";
+  $message .= 'Reseller ID: ' . (int)($notice['reseller_id'] ?? 0) . "\n";
+  $message .= 'Reseller Email: ' . (string)($notice['reseller_email'] ?? '') . "\n";
+  $message .= 'Prijavljeni iznos: ' . ($amount === null || $amount === '' ? 'nije unet' : number_format((int)$amount, 0, ',', '.') . ' RSD') . "\n";
+  $message .= 'Balance u trenutku prijave: ' . number_format((int)($notice['balance_rsd'] ?? 0), 0, ',', '.') . " RSD\n";
+  if (!empty($notice['proof_name'])) {
+    $size = (int)($notice['proof_size'] ?? 0);
+    $message .= 'Dokaz uplate: ' . (string)$notice['proof_name'] . ($size > 0 ? ' (' . number_format($size / 1024, 0, ',', '.') . ' KB)' : '') . "\n";
+  } else {
+    $message .= "Dokaz uplate: nije priložen\n";
+  }
+  $message .= 'Vreme prijave: ' . (string)($notice['clicked_at'] ?? '') . " UTC\n\n";
+  $message .= "Dokaz pogledajte i uplatu odobrite ili odbijte u admin panelu, kartica \"Uplate\":\n";
+  $message .= app_public_url() . "/admin.html\n\n";
+  $message .= "Odobravanjem se saldo resellera automatski uvećava za potvrđeni iznos.\n";
+  return $message;
 }
 
 function order_notification(array $order): array {

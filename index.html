@@ -237,6 +237,32 @@
     .btn.good{background:linear-gradient(135deg,var(--good),var(--accent));border-color:rgba(19,138,67,.62);color:#fff;box-shadow:0 8px 22px rgba(19,138,67,.16)}
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
+    .payment-modal{width:min(440px,100%)}
+    .payment-modal > p{margin:6px 0 2px;color:var(--muted);font-size:13px;line-height:1.5}
+    .payment-amount{position:relative}
+    .payment-amount input{padding-right:52px;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+    .payment-amount span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;font-weight:800;pointer-events:none}
+    .payment-drop{position:relative;display:flex;align-items:center;gap:12px;margin:0;padding:14px;border:1.5px dashed rgba(49,93,244,.35);border-radius:12px;background:rgba(49,93,244,.04);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:border-color .16s var(--ease),background .16s var(--ease)}
+    .payment-drop:hover,.payment-drop.dragging{border-color:var(--brand);background:rgba(49,93,244,.08)}
+    .payment-drop.has-file{border-style:solid;border-color:rgba(19,138,67,.45);background:rgba(19,138,67,.06)}
+    .payment-drop.invalid{border-color:var(--bad,#b42318);background:rgba(180,35,24,.06)}
+    .payment-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+    .payment-drop-icon{flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--brand)}
+    .payment-drop-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .payment-drop-copy{display:grid;gap:2px;min-width:0;flex:1}
+    .payment-drop-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .payment-drop-copy span{color:var(--muted);font-size:11.5px}
+    .payment-drop-preview{flex:0 0 auto;width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+    .payment-history{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:12px}
+    .payment-history > strong{display:block;margin-bottom:6px;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+    .payment-history-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0}
+    .payment-history-row + .payment-history-row{border-top:1px dashed var(--line)}
+    .payment-history-row b{font-variant-numeric:tabular-nums}
+    .payment-history-row small{display:block;color:var(--muted);font-size:11px}
+    .payment-status{flex:0 0 auto;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;background:var(--soft);color:var(--muted)}
+    .payment-status.confirmed{background:rgba(19,138,67,.12);color:#138a43}
+    .payment-status.rejected{background:rgba(180,35,24,.1);color:#b42318}
+    .payment-status.pending{background:rgba(234,88,12,.1);color:#c2410c}
     .msg{display:none;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft);font-size:13px;white-space:pre-wrap;animation:message-in .22s var(--ease)}
     .msg.ok{display:block;border-color:rgba(19,138,67,.25);background:rgba(19,138,67,.08)}
     .msg.warn{display:block;border-color:rgba(183,121,31,.28);background:rgba(183,121,31,.10)}
@@ -1050,6 +1076,33 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="paymentModal" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
+    <div class="modal payment-modal">
+      <h2 id="paymentTitle">Prijava uplate</h2>
+      <p>Unesite uplaćeni iznos i priložite potvrdu iz banke. Saldo se uvećava čim admin odobri uplatu.</p>
+      <form id="paymentForm" novalidate>
+        <label for="paymentAmount">Iznos (RSD)</label>
+        <div class="payment-amount"><input id="paymentAmount" name="amount_rsd" type="text" inputmode="numeric" autocomplete="off" placeholder="npr. 10.000" maxlength="13" /><span aria-hidden="true">RSD</span></div>
+        <label for="paymentProof">Dokaz uplate</label>
+        <label class="payment-drop" id="paymentDrop" for="paymentProof">
+          <input id="paymentProof" name="proof" type="file" accept="image/*,application/pdf,.pdf,.heic,.heif" />
+          <span class="payment-drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+          <span class="payment-drop-copy" id="paymentDropCopy"><strong>Izaberite sliku ili PDF</strong><span>Screenshot ili PDF potvrde iz banke · do 10 MB</span></span>
+          <img class="payment-drop-preview" id="paymentPreview" alt="" hidden />
+        </label>
+        <div class="msg" id="paymentMsg"></div>
+        <div class="actions">
+          <button class="btn" id="paymentCancelBtn" type="button">Otkaži</button>
+          <button class="btn good" id="paymentSubmitBtn" type="submit">Pošalji uplatu</button>
+        </div>
+      </form>
+      <div class="payment-history" id="paymentHistory" hidden>
+        <strong>Vaše poslednje prijave</strong>
+        <div id="paymentHistoryList"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modal locked">
       <h2 id="settingsTitle">Podešavanja naloga</h2>
@@ -1584,7 +1637,8 @@
 
     async function api(url, options = {}){
       const headers = Object.assign({}, options.headers || {});
-      if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      const isForm = typeof FormData === "function" && options.body instanceof FormData;
+      if (options.body && !isForm && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
       if (state.csrf) headers["X-CSRF-Token"] = state.csrf;
       // Only idempotent reads get a timeout; writes (orders, payments) must never be aborted client-side.
       const isRead = !options.method || String(options.method).toUpperCase() === "GET";
@@ -3049,20 +3103,188 @@
       }
     }
 
-    async function paidNotice(){
+    // "Uplatio sam": amount + mandatory receipt; the admin approves it and the balance is credited.
+    const paymentModal = $("paymentModal");
+    const paymentForm = $("paymentForm");
+    const paymentAmount = $("paymentAmount");
+    const paymentProof = $("paymentProof");
+    const paymentDrop = $("paymentDrop");
+    const paymentMsg = $("paymentMsg");
+    const paymentSubmitBtn = $("paymentSubmitBtn");
+    const PAYMENT_PROOF_MAX = 10 * 1024 * 1024;
+    const PAYMENT_STATUS = { pending:"Na proveri", confirmed:"Odobreno", rejected:"Odbijeno" };
+    let paymentFile = null;
+    let paymentPreviewUrl = "";
+
+    function paidNotice(){
       hide(paidMsg);
-      paidBtn.disabled = true;
-      paidBtn.querySelector(".paid-btn-label").textContent = "Šaljem...";
-      try{
-        const result = await api("/api/payment_notice.php", { method:"POST", body:JSON.stringify({}) });
-        show(paidMsg, result.mail_sent === false ? "warn" : "ok", result.message || "Obaveštenje je evidentirano. Proverićemo uplatu i ažurirati balance.");
-      }catch(e){
-        show(paidMsg, "bad", e.message);
-      }finally{
-        paidBtn.disabled = false;
-        paidBtn.querySelector(".paid-btn-label").textContent = "Uplatio sam";
+      hide(paymentMsg);
+      paymentForm.reset();
+      setPaymentFile(null);
+      markField(paymentAmount, "");
+      paymentModal.classList.add("open");
+      if (!(window.PWApp && window.PWApp.isIOS)) window.setTimeout(() => paymentAmount.focus({ preventScroll:true }), 60);
+      loadPaymentHistory();
+    }
+
+    function closePaymentModal(){
+      if (paymentSubmitBtn.disabled) return;
+      paymentModal.classList.remove("open");
+      setPaymentFile(null);
+    }
+
+    function formatAmountInput(value){
+      const digits = String(value || "").replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
+      return digits ? Number(digits).toLocaleString("sr-RS") : "";
+    }
+
+    function setPaymentFile(file){
+      paymentFile = file || null;
+      if (paymentPreviewUrl) URL.revokeObjectURL(paymentPreviewUrl);
+      paymentPreviewUrl = "";
+      const preview = $("paymentPreview");
+      preview.hidden = true;
+      preview.removeAttribute("src");
+      paymentDrop.classList.remove("invalid");
+      paymentDrop.classList.toggle("has-file", !!paymentFile);
+      const copy = $("paymentDropCopy");
+      copy.textContent = "";
+      if (!paymentFile) {
+        appendText(copy, "strong", "Izaberite sliku ili PDF");
+        appendText(copy, "span", "Screenshot ili PDF potvrde iz banke · do 10 MB");
+        return;
+      }
+      appendText(copy, "strong", paymentFile.name || "Dokaz uplate");
+      appendText(copy, "span", `${(paymentFile.size / 1024 / 1024).toFixed(paymentFile.size < 1048576 ? 2 : 1)} MB · klikni za promenu`);
+      if (/^image\/(jpeg|png|webp|gif)$/i.test(paymentFile.type)) {
+        paymentPreviewUrl = URL.createObjectURL(paymentFile);
+        preview.src = paymentPreviewUrl;
+        preview.hidden = false;
       }
     }
+
+    function isAcceptedProof(file){
+      if (!file) return false;
+      if (/^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/i.test(file.type)) return true;
+      return /\.(jpe?g|png|webp|heic|heif|pdf)$/i.test(file.name || "");
+    }
+
+    // Phone photos are often 4-12 MB: shrink large JPEG/PNG/WEBP screenshots before upload so they
+    // go through quickly and stay under hosting limits. Anything the browser cannot draw is sent as-is.
+    async function prepareProofForUpload(file){
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type) || file.size < 1.5 * 1024 * 1024) return file;
+      try{
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, 2200 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+        if (!blob || blob.size >= file.size) return file;
+        return new File([blob], (file.name || "dokaz").replace(/\.[^.]+$/, "") + ".jpg", { type:"image/jpeg" });
+      }catch(e){
+        return file;
+      }
+    }
+
+    async function submitPayment(event){
+      event.preventDefault();
+      hide(paymentMsg);
+      const amount = Number(paymentAmount.value.replace(/\D/g, ""));
+      if (!amount || amount <= 0) {
+        markField(paymentAmount, "bad");
+        show(paymentMsg, "bad", "Unesite iznos koji ste uplatili.");
+        paymentAmount.focus();
+        return;
+      }
+      if (!paymentFile) {
+        paymentDrop.classList.add("invalid");
+        show(paymentMsg, "bad", "Priložite dokaz uplate (sliku ili PDF).");
+        return;
+      }
+      if (!isAcceptedProof(paymentFile)) {
+        paymentDrop.classList.add("invalid");
+        show(paymentMsg, "bad", "Dokaz mora biti slika (JPG, PNG, WEBP, HEIC) ili PDF.");
+        return;
+      }
+      paymentSubmitBtn.disabled = true;
+      paymentSubmitBtn.textContent = "Šaljem...";
+      try{
+        const proof = await prepareProofForUpload(paymentFile);
+        if (proof.size > PAYMENT_PROOF_MAX) throw new Error("Dokaz je prevelik. Pošaljite sliku ili PDF do 10 MB.");
+        const form = new FormData();
+        form.append("amount_rsd", String(amount));
+        form.append("proof", proof, proof.name || "dokaz");
+        const result = await api("/api/payment_notice.php", { method:"POST", body:form });
+        paymentSubmitBtn.disabled = false;
+        closePaymentModal();
+        show(paidMsg, "ok", result.message || "Uplata je poslata na proveru. Saldo će biti uvećan čim je admin odobri.");
+      }catch(e){
+        show(paymentMsg, "bad", e.message);
+      }finally{
+        paymentSubmitBtn.disabled = false;
+        paymentSubmitBtn.textContent = "Pošalji uplatu";
+      }
+    }
+
+    async function loadPaymentHistory(){
+      const box = $("paymentHistory");
+      const list = $("paymentHistoryList");
+      try{
+        const result = await api("/api/payment_notice.php");
+        const notices = (result.notices || []).filter((n) => n.amount_rsd);
+        list.textContent = "";
+        notices.forEach((notice) => {
+          const row = document.createElement("div");
+          row.className = "payment-history-row";
+          const info = document.createElement("div");
+          appendText(info, "b", `${price(notice.amount_rsd)} RSD`);
+          appendText(info, "small", notice.review_status === "rejected" && notice.review_reason
+            ? `${dateTime(notice.created_at)} · ${notice.review_reason}`
+            : dateTime(notice.created_at));
+          const status = String(notice.review_status || "pending");
+          row.append(info);
+          appendText(row, "span", PAYMENT_STATUS[status] || status, `payment-status ${status}`);
+          list.appendChild(row);
+        });
+        box.hidden = !notices.length;
+      }catch(e){
+        box.hidden = true;
+      }
+    }
+
+    paymentAmount.addEventListener("input", () => {
+      const formatted = formatAmountInput(paymentAmount.value);
+      if (paymentAmount.value !== formatted) paymentAmount.value = formatted;
+      markField(paymentAmount, "");
+    });
+    paymentProof.addEventListener("change", () => {
+      const file = paymentProof.files && paymentProof.files[0];
+      if (file && !isAcceptedProof(file)) {
+        setPaymentFile(null);
+        paymentDrop.classList.add("invalid");
+        show(paymentMsg, "bad", "Dokaz mora biti slika (JPG, PNG, WEBP, HEIC) ili PDF.");
+        return;
+      }
+      hide(paymentMsg);
+      setPaymentFile(file);
+    });
+    ["dragenter", "dragover"].forEach((type) => paymentDrop.addEventListener(type, (event) => { event.preventDefault(); paymentDrop.classList.add("dragging"); }));
+    ["dragleave", "drop"].forEach((type) => paymentDrop.addEventListener(type, () => paymentDrop.classList.remove("dragging")));
+    paymentDrop.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+      if (file) { paymentProof.value = ""; setPaymentFile(file); hide(paymentMsg); }
+    });
+    paymentForm.addEventListener("submit", submitPayment);
+    $("paymentCancelBtn").addEventListener("click", closePaymentModal);
+    paymentModal.addEventListener("click", (event) => { if (event.target === paymentModal) closePaymentModal(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && paymentModal.classList.contains("open")) closePaymentModal(); });
 
     async function markAllOrdersPaid(){
       if (!confirm("Označiti sve prethodne porudžbine kao plaćene?")) return;

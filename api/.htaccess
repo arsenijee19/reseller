@@ -24,6 +24,6 @@ Options -Indexes
   </FilesMatch>
 </IfModule>
 
-<FilesMatch "^(config\.local\.php|error_log|.*\.log)$">
+<FilesMatch "^(config\.local\.php|error_log|.*\.log|\.user\.ini)$">
   Require all denied
 </FilesMatch>

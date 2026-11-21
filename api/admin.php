@@ -152,14 +152,28 @@ function fetch_payment_notices(PDO $pdo): array {
   } catch (Throwable $ignored) {
     return [];
   }
+  try {
+    ensure_payment_proof_columns($pdo);
+  } catch (Throwable $ignored) {}
+  // Reports waiting for approval come first.
+  $pendingFirst = has_column($pdo, 'payment_notice_requests', 'proof_file') && has_column($pdo, 'payment_notice_requests', 'review_status')
+    ? "(p.review_status = 'pending' AND p.proof_file IS NOT NULL) DESC, "
+    : '';
   $stmt = $pdo->query("
-    SELECT p.*, r.display_name AS reseller_name, r.email AS current_reseller_email
+    SELECT p.*, r.display_name AS reseller_name, r.email AS current_reseller_email, r.balance_rsd AS current_balance_rsd
     FROM payment_notice_requests p
     LEFT JOIN resellers r ON r.id = p.reseller_id
-    ORDER BY p.created_at DESC, p.id DESC
+    ORDER BY {$pendingFirst}p.created_at DESC, p.id DESC
     LIMIT 250
   ");
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  foreach ($rows as &$row) {
+    // The stored path never leaves the server; the panel loads the file through action=payment_proof.
+    $row['has_proof'] = !empty($row['proof_file']);
+    unset($row['proof_file']);
+  }
+  unset($row);
+  return $rows;
 }
 
 function fetch_transactions(PDO $pdo): array {
@@ -579,6 +593,34 @@ try {
 
   if ($action === 'dashboard') {
     json_response(dashboard_payload($pdo, $_GET));
+  }
+
+  if ($action === 'payment_proof') {
+    $noticeId = (int)($_GET['id'] ?? 0);
+    ensure_payment_proof_columns($pdo);
+    $stmt = $pdo->prepare('SELECT proof_file, proof_mime FROM payment_notice_requests WHERE id = ? LIMIT 1');
+    $stmt->execute([$noticeId]);
+    $proof = $stmt->fetch(PDO::FETCH_ASSOC);
+    $path = $proof && $proof['proof_file'] ? payment_proof_path((string)$proof['proof_file']) : null;
+    if ($path === null) {
+      http_response_code(404);
+      header('Content-Type: text/plain; charset=utf-8');
+      echo 'Dokaz nije pronađen.';
+      exit;
+    }
+    $mime = (string)$proof['proof_mime'];
+    if (!isset(PAYMENT_PROOF_TYPES[$mime])) $mime = 'application/octet-stream';
+    $download = !empty($_GET['download']) || !in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true);
+    $filename = 'uplata-' . $noticeId . '.' . (PAYMENT_PROOF_TYPES[$mime] ?? 'bin');
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . (string)filesize($path));
+    header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
+    header('Cache-Control: private, no-store, max-age=0');
+    header('X-Content-Type-Options: nosniff');
+    if ($mime !== 'application/pdf') header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+    readfile($path);
+    exit;
   }
 
   if ($action === 'device_management') {
@@ -1067,6 +1109,7 @@ try {
 
   if ($action === 'resend_payment_notice') {
     require_recent_admin_step_up();
+    $admin = require_admin();
     $noticeId = (int)($input['id'] ?? 0);
     if ($noticeId <= 0) json_response(['ok' => false, 'error' => 'Nedostaje uplata.'], 400);
 
@@ -1079,13 +1122,10 @@ try {
       'arsenijee19@gmail.com',
       'support@licenca.rs',
     ]);
-    $subject = 'Reseller je označio uplatu';
-    $message = "Reseller je kliknuo dugme \"Uplatio sam\" i označio da je izvršio uplatu.\n\n";
-    $message .= 'Reseller ID: ' . (int)$notice['reseller_id'] . "\n";
-    $message .= 'Reseller Email: ' . (string)$notice['reseller_email'] . "\n";
-    $message .= 'Balance u trenutku klika: ' . (int)$notice['balance_rsd'] . " RSD\n";
-    $message .= 'Vreme klika: ' . (string)$notice['clicked_at'] . " UTC\n\n";
-    $message .= "Potrebno je proveriti uplatu i po potrebi ažurirati balance u admin panelu.\n";
+    $hasProof = !empty($notice['proof_file']);
+    $subject = $hasProof ? 'Reseller je označio uplatu i priložio dokaz' : 'Reseller je označio uplatu';
+    $profile = reseller_profile($pdo, (int)$notice['reseller_id']) ?: [];
+    $message = payment_notice_email_body(array_merge($notice, ['reseller_name' => (string)($profile['display_name'] ?? '')]));
 
     $result = send_text_notification_email($recipients, $subject, $message);
     $update = $pdo->prepare('UPDATE payment_notice_requests SET status = ?, recipients = ?, attempts = attempts + 1, error_message = ?, updated_at = NOW() WHERE id = ?');
@@ -1103,6 +1143,68 @@ try {
     $payload = dashboard_payload($pdo, $input['filters'] ?? []);
     $payload['notification'] = ['sent' => $result['ok'], 'notice_id' => $noticeId];
     json_response($payload);
+  }
+
+  if ($action === 'approve_payment_notice') {
+    require_recent_admin_step_up();
+    $admin = require_admin();
+    ensure_payment_proof_columns($pdo);
+    $noticeId = (int)($input['id'] ?? 0);
+    $amount = filter_var($input['amount_rsd'] ?? null, FILTER_VALIDATE_INT);
+    if ($noticeId <= 0) json_response(['ok' => false, 'error' => 'Nedostaje uplata.'], 400);
+    if ($amount === false || $amount <= 0 || $amount > 100000000) json_response(['ok' => false, 'error' => 'Unesite iznos uplate veći od nule.'], 400);
+    $adminId = (int)$admin['id'];
+
+    $pdo->beginTransaction();
+    try {
+      $stmt = $pdo->prepare('SELECT id, reseller_id, review_status FROM payment_notice_requests WHERE id = ? LIMIT 1 FOR UPDATE');
+      $stmt->execute([$noticeId]);
+      $notice = $stmt->fetch(PDO::FETCH_ASSOC);
+      if (!$notice) throw new DomainException('Obaveštenje o uplati nije pronađeno.');
+      if ((string)$notice['review_status'] !== 'pending') throw new DomainException('Ova uplata je već obrađena.');
+
+      // The idempotency key makes a double click (or the same notice approved from Telegram) credit only once.
+      $wallet = apply_wallet_transaction($pdo, (int)$notice['reseller_id'], (int)$amount, 'PAYMENT_RECEIVED', 'Uplata potvrđena · prijava #' . $noticeId, [
+        'source' => 'panel',
+        'admin_id' => $adminId,
+        'idempotency_key' => 'payment-notice-' . $noticeId,
+      ]);
+      $update = $pdo->prepare("UPDATE payment_notice_requests SET amount_rsd = ?, review_status = 'confirmed', reviewed_at = NOW(), reviewed_by_admin_id = ?, review_reason = NULL, wallet_transaction_id = ? WHERE id = ? AND review_status = 'pending'");
+      $update->execute([(int)$amount, $adminId, (int)$wallet['transaction_id'], $noticeId]);
+      if ($update->rowCount() !== 1) throw new DomainException('Ova uplata je već obrađena.');
+      audit_event($pdo, 'admin', $adminId, 'payment_notice_approved', 'success', [
+        'notice_id' => $noticeId,
+        'reseller_id' => (int)$notice['reseller_id'],
+        'amount_rsd' => (int)$amount,
+        'transaction_id' => (int)$wallet['transaction_id'],
+      ]);
+      $pdo->commit();
+    } catch (DomainException $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      json_response(['ok' => false, 'error' => $e->getMessage()], 409);
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      throw $e;
+    }
+
+    $payload = dashboard_payload($pdo, $input['filters'] ?? []);
+    $payload['approved'] = ['notice_id' => $noticeId, 'amount_rsd' => (int)$amount, 'balance_after_rsd' => $wallet['balance_after_rsd']];
+    json_response($payload);
+  }
+
+  if ($action === 'reject_payment_notice') {
+    $admin = require_admin();
+    ensure_payment_proof_columns($pdo);
+    $noticeId = (int)($input['id'] ?? 0);
+    $reason = trim((string)($input['reason'] ?? ''));
+    $reason = function_exists('mb_substr') ? mb_substr($reason, 0, 255, 'UTF-8') : substr($reason, 0, 255);
+    if ($noticeId <= 0) json_response(['ok' => false, 'error' => 'Nedostaje uplata.'], 400);
+    if ($reason === '') json_response(['ok' => false, 'error' => 'Upišite kratak razlog odbijanja; reseller će ga videti.'], 400);
+    $stmt = $pdo->prepare("UPDATE payment_notice_requests SET review_status = 'rejected', reviewed_at = NOW(), reviewed_by_admin_id = ?, review_reason = ? WHERE id = ? AND review_status = 'pending'");
+    $stmt->execute([(int)$admin['id'], $reason, $noticeId]);
+    if ($stmt->rowCount() !== 1) json_response(['ok' => false, 'error' => 'Ova uplata je već obrađena ili nije pronađena.'], 409);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'payment_notice_rejected', 'success', ['notice_id' => $noticeId]);
+    json_response(dashboard_payload($pdo, $input['filters'] ?? []));
   }
 
   if ($action === 'resend_order_email') {

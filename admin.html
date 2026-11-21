@@ -316,6 +316,23 @@
     .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
     .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
     .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
+    .status-badge.pending{background:rgba(234,88,12,.12);color:#c2410c}
+    .status-badge.confirmed{background:rgba(19,138,67,.12);color:var(--good)}
+    .status-badge.rejected{background:rgba(189,43,43,.12);color:var(--danger)}
+    .tab-count.tab-count-alert{background:#ea580c;color:#fff}
+    .payment-row-pending td:first-child{box-shadow:inset 3px 0 #ea580c}
+    .payment-amount-cell{font-size:15px;font-weight:850;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .payment-sub{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+    .proof-thumb{display:inline-grid;place-items:center;width:56px;height:56px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--soft);overflow:hidden;cursor:pointer;color:var(--brand);font-size:11px;font-weight:900;letter-spacing:.04em}
+    .proof-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .proof-thumb:hover{border-color:var(--brand)}
+    .payment-review{width:min(620px,100%);max-height:calc(100vh - 32px);overflow:auto}
+    .payment-proof-view{display:grid;place-items:center;min-height:120px;margin:12px 0 4px;border:1px solid var(--line);border-radius:12px;background:var(--soft);overflow:hidden}
+    .payment-proof-view img{display:block;max-width:100%;max-height:52vh;object-fit:contain;cursor:zoom-in}
+    .payment-proof-view .proof-file{display:grid;gap:10px;justify-items:center;padding:22px;text-align:center}
+    .payment-review #paymentReviewAmount{font-size:20px;font-weight:850;font-variant-numeric:tabular-nums}
+    .payment-balance-line{margin:8px 0 0;color:var(--muted);font-size:13px}
+    .payment-balance-line b{color:var(--text)}
     .transaction-positive{color:var(--good);font-weight:800;white-space:nowrap}
     .transaction-negative{color:var(--danger);font-weight:800;white-space:nowrap}
     .login{max-width:460px;margin:15vh auto 0;border-radius:24px}
@@ -502,6 +519,7 @@
     .admin-modal-backdrop{z-index:75}
     #adminReauthMsg:empty{display:none!important}
     .admin-modal-backdrop.login-progress-backdrop{z-index:80}
+    #adminReauthModal{z-index:78} /* owner confirmation opens on top of the payment review */
     .native-toggle{display:flex;align-items:center;gap:12px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
     .native-toggle input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;accent-color:var(--brand)}
     .native-note{margin:0 0 14px;font-size:12px;color:var(--muted)}
@@ -784,8 +802,8 @@
         <div class="section view hidden" id="view-payment_notices">
           <div class="section-head">
             <div class="section-title">
-              <h2>Obaveštenja o uplatama</h2>
-              <p>Svaki klik na „Uplatio sam“ ostaje sačuvan, čak i kada email servis ne prihvati poruku.</p>
+              <h2>Uplate resellera</h2>
+              <p>Reseller prijavljuje iznos i prilaže dokaz. Kliknite „Pregledaj“, proverite dokaz i odobrite: saldo se odmah uvećava.</p>
             </div>
           </div>
           <div class="table-wrap"><table id="paymentNoticesTable"></table></div>
@@ -966,6 +984,28 @@
       <div class="msg bad" id="adminReauthMsg"></div>
     </div>
   </div>
+  <div class="admin-modal-backdrop" id="paymentReviewModal" role="dialog" aria-modal="true" aria-labelledby="paymentReviewTitle">
+    <div class="admin-modal payment-review">
+      <h2 id="paymentReviewTitle">Uplata</h2>
+      <p class="muted" id="paymentReviewMeta"></p>
+      <div class="payment-proof-view" id="paymentProofView"></div>
+      <div id="paymentApproveBox">
+        <label for="paymentReviewAmount">Iznos za dodavanje na saldo (RSD)</label>
+        <input id="paymentReviewAmount" type="text" inputmode="numeric" autocomplete="off" />
+        <p class="payment-balance-line" id="paymentBalanceLine"></p>
+      </div>
+      <div id="paymentRejectBox" class="hidden">
+        <label for="paymentRejectReason">Razlog odbijanja (reseller ga vidi)</label>
+        <textarea id="paymentRejectReason" rows="2" maxlength="255" placeholder="npr. Uplata nije legla na račun"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn" id="paymentReviewCloseBtn" type="button">Zatvori</button>
+        <button class="btn danger" id="paymentRejectBtn" type="button">Odbij</button>
+        <button class="btn good" id="paymentApproveBtn" type="button">Odobri i dodaj saldo</button>
+      </div>
+      <div class="msg bad" id="paymentReviewMsg"></div>
+    </div>
+  </div>
   <div id="adminToast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -1139,7 +1179,9 @@
       else if (res.status === 401 && json.session_ended && window.PWApp && window.PWApp.standalone) window.PWApp.sessionEnded();
       if (!json.ok) {
         const message = userErrorMessage(json.error) || `Zahtev nije uspeo (${res.status}). Refrešujte stranicu i pokušajte ponovo.`;
-        throw new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
+        const error = new Error(json.reference ? `${message} (referenca: ${json.reference})` : message);
+        error.status = res.status;
+        throw error;
       }
       if (json.csrf_token) state.csrf = json.csrf_token;
       return json;
@@ -1349,8 +1391,8 @@
         const btn = document.createElement("button");
         btn.className = "tab" + (state.tab === id ? " active" : "");
         btn.appendChild(document.createTextNode(label));
-        const count = id === "resellers" ? (state.data && state.data.resellers || []).length : id === "products" ? (state.data && state.data.products || []).length : 0;
-        if (count) text(btn, "span", count, "tab-count");
+        const count = id === "resellers" ? (state.data && state.data.resellers || []).length : id === "products" ? (state.data && state.data.products || []).length : id === "payment_notices" ? pendingPaymentCount() : 0;
+        if (count) text(btn, "span", count, "tab-count" + (id === "payment_notices" ? " tab-count-alert" : ""));
         btn.addEventListener("click", () => { state.tab = id; render(); });
         box.appendChild(btn);
       });
@@ -2010,52 +2052,271 @@
       });
     }
 
+    const PAYMENT_REVIEW_LABELS = { pending:"Čeka odobrenje", confirmed:"Odobreno", rejected:"Odbijeno" };
+    let reviewingPayment = null;
+
+    function pendingPaymentCount(){
+      return ((state.data && state.data.payment_notices) || []).filter((n) => n.has_proof && String(n.review_status || "pending") === "pending").length;
+    }
+    function paymentProofUrl(id, download){
+      return "/api/admin.php?action=payment_proof&id=" + encodeURIComponent(id) + (download ? "&download=1" : "");
+    }
+    function isViewableImage(mime){ return /^image\/(jpeg|png|webp)$/i.test(String(mime || "")); }
+
     function renderPaymentNotices(){
       const table = $("paymentNoticesTable");
       if (!table) return;
       table.textContent = "";
-      const columns = ["id","reseller_id","reseller_name","reseller_email","balance_rsd","clicked_at","status","attempts","recipients","error_message"];
       const head = table.createTHead().insertRow();
-      [...columns, "Akcija"].forEach((name) => text(head.insertCell(), "strong", name));
+      ["#", "Reseller", "Iznos", "Dokaz", "Vreme", "Status", "Mejl", "Akcija"].forEach((name) => text(head.insertCell(), "strong", name));
       const body = table.createTBody();
       (state.data.payment_notices || []).forEach((notice) => {
+        const status = String(notice.review_status || "pending");
+        const pending = status === "pending";
         const row = body.insertRow();
         row.dataset.recordId = `payment-notice-${notice.id}`;
-        columns.forEach((name) => text(row.insertCell(), "span", name === "balance_rsd" ? money(notice[name]) : notice[name]));
-        const action = document.createElement("div");
-        action.className = "table-actions";
-        if (String(notice.status || "") !== "sent") {
+        if (pending && notice.has_proof) row.className = "payment-row-pending";
+        text(row.insertCell(), "span", notice.id);
+
+        const who = row.insertCell();
+        text(who, "strong", notice.reseller_name || notice.current_reseller_email || notice.reseller_email || ("#" + notice.reseller_id));
+        text(who, "span", notice.current_reseller_email || notice.reseller_email || "", "payment-sub");
+
+        const amountCell = row.insertCell();
+        text(amountCell, "span", notice.amount_rsd ? `${money(notice.amount_rsd)} RSD` : "—", "payment-amount-cell");
+        text(amountCell, "span", `Saldo pri prijavi: ${money(notice.balance_rsd)} RSD`, "payment-sub");
+
+        const proofCell = row.insertCell();
+        if (notice.has_proof) {
+          const thumb = document.createElement("button");
+          thumb.type = "button";
+          thumb.className = "proof-thumb";
+          thumb.title = notice.proof_name || "Dokaz uplate";
+          if (isViewableImage(notice.proof_mime)) {
+            const img = document.createElement("img");
+            img.loading = "lazy";
+            img.alt = "Dokaz uplate #" + notice.id;
+            img.src = paymentProofUrl(notice.id);
+            thumb.appendChild(img);
+          } else {
+            thumb.textContent = /pdf/i.test(notice.proof_mime || "") ? "PDF" : "FAJL";
+          }
+          thumb.addEventListener("click", () => openPaymentReview(notice));
+          proofCell.appendChild(thumb);
+        } else {
+          text(proofCell, "span", "bez dokaza", "muted");
+        }
+
+        text(row.insertCell(), "span", notice.clicked_at ? notice.clicked_at + " UTC" : notice.created_at);
+
+        const statusCell = row.insertCell();
+        if (notice.has_proof || !pending) {
+          text(statusCell, "span", PAYMENT_REVIEW_LABELS[status] || status, `status-badge ${status}`);
+          if (status === "rejected" && notice.review_reason) text(statusCell, "span", notice.review_reason, "payment-sub");
+          if (notice.reviewed_at && !pending) text(statusCell, "span", notice.reviewed_at, "payment-sub");
+        } else {
+          text(statusCell, "span", "Stara prijava", "muted");
+        }
+
+        const mailCell = row.insertCell();
+        const mailBox = document.createElement("div");
+        mailBox.className = "table-actions";
+        if (String(notice.status || "") === "sent") {
+          text(mailBox, "span", "Poslat", "muted");
+        } else {
+          text(mailBox, "span", notice.status === "failed" ? "Nije poslat" : "U slanju", "muted");
           const resend = document.createElement("button");
-          resend.className = "btn primary";
+          resend.className = "btn";
           resend.type = "button";
           resend.textContent = "Pošalji ponovo";
           resend.addEventListener("click", async () => {
             try{
               resend.disabled = true;
               resend.textContent = "Šaljem...";
-              await ensureAdminStepUp();
-              state.data = await api("resend_payment_notice", { method:"POST", body:JSON.stringify({ id:notice.id, filters:currentFilters() }) });
+              const data = await paymentAction("resend_payment_notice", { id:notice.id });
+              state.data = data;
               renderWithUiState(() => render());
-              showToast("ok", state.data.notification?.sent ? "Obaveštenje je ponovo poslato." : "Email ponovo nije prihvaćen; zapis je sačuvan.");
+              showToast("ok", data.notification?.sent ? "Obaveštenje je ponovo poslato." : "Email ponovo nije prihvaćen; zapis je sačuvan.");
             }catch(e){
               showToast("bad", e.message);
               resend.disabled = false;
               resend.textContent = "Pošalji ponovo";
             }
           });
-          action.appendChild(resend);
-        } else {
-          text(action, "span", "Poslato", "muted");
+          mailBox.appendChild(resend);
         }
-        row.insertCell().appendChild(action);
+        mailCell.appendChild(mailBox);
+
+        const actionCell = row.insertCell();
+        if (pending && notice.has_proof) {
+          const review = document.createElement("button");
+          review.className = "btn primary";
+          review.type = "button";
+          review.textContent = "Pregledaj";
+          review.addEventListener("click", () => openPaymentReview(notice));
+          actionCell.appendChild(review);
+        } else {
+          text(actionCell, "span", "—", "muted");
+        }
       });
       if (!(state.data.payment_notices || []).length) {
         const row = body.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = columns.length + 1;
-        text(cell, "span", "Nema zabeleženih obaveštenja o uplati.", "muted");
+        cell.colSpan = 8;
+        text(cell, "span", "Nema prijavljenih uplata.", "muted");
       }
     }
+
+    // Money actions need a fresh owner confirmation; ask for it only when the server says it expired.
+    async function paymentAction(action, payload){
+      const call = () => api(action, { method:"POST", body:JSON.stringify(Object.assign({ filters:currentFilters() }, payload)) });
+      try{
+        return await call();
+      }catch(e){
+        if (e.status !== 428) throw e;
+        await ensureAdminStepUp();
+        return call();
+      }
+    }
+
+    function paymentReviewAmount(){
+      return Number(String($("paymentReviewAmount").value || "").replace(/\D/g, ""));
+    }
+    function updatePaymentBalanceLine(){
+      const line = $("paymentBalanceLine");
+      line.textContent = "";
+      if (!reviewingPayment) return;
+      const before = Number(reviewingPayment.current_balance_rsd ?? reviewingPayment.balance_rsd) || 0;
+      const amount = paymentReviewAmount();
+      line.append("Saldo resellera: ");
+      text(line, "b", `${money(before)} RSD`);
+      if (amount > 0) {
+        line.append("  →  ");
+        text(line, "b", `${money(before + amount)} RSD`);
+      }
+      if (reviewingPayment.amount_rsd && amount && amount !== Number(reviewingPayment.amount_rsd)) {
+        line.append(`  (reseller je prijavio ${money(reviewingPayment.amount_rsd)} RSD)`);
+      }
+    }
+
+    function openPaymentReview(notice){
+      reviewingPayment = notice;
+      const pending = String(notice.review_status || "pending") === "pending";
+      $("paymentReviewTitle").textContent = `Uplata #${notice.id} · ${notice.reseller_name || notice.current_reseller_email || notice.reseller_email || ""}`;
+      $("paymentReviewMeta").textContent = `Prijavljeno ${notice.clicked_at || notice.created_at} UTC · ${notice.proof_name || "dokaz"}`;
+      const view = $("paymentProofView");
+      view.textContent = "";
+      if (isViewableImage(notice.proof_mime)) {
+        const link = document.createElement("a");
+        link.href = paymentProofUrl(notice.id);
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.title = "Otvori u punoj veličini";
+        const img = document.createElement("img");
+        img.alt = "Dokaz uplate #" + notice.id;
+        img.src = paymentProofUrl(notice.id);
+        link.appendChild(img);
+        view.appendChild(link);
+      } else {
+        const box = document.createElement("div");
+        box.className = "proof-file";
+        const isPdf = /pdf/i.test(notice.proof_mime || "");
+        text(box, "strong", isPdf ? "PDF dokument" : "Slika (HEIC)");
+        const open = document.createElement("a");
+        open.className = "btn primary";
+        open.href = paymentProofUrl(notice.id, !isPdf);
+        open.target = "_blank";
+        open.rel = "noopener";
+        open.textContent = isPdf ? "Otvori PDF" : "Preuzmi sliku";
+        box.appendChild(open);
+        view.appendChild(box);
+      }
+      $("paymentReviewAmount").value = notice.amount_rsd ? money(notice.amount_rsd) : "";
+      $("paymentRejectReason").value = "";
+      $("paymentRejectBox").classList.add("hidden");
+      $("paymentApproveBox").classList.toggle("hidden", !pending);
+      $("paymentApproveBtn").classList.toggle("hidden", !pending);
+      $("paymentRejectBtn").classList.toggle("hidden", !pending);
+      $("paymentRejectBtn").textContent = "Odbij";
+      $("paymentReviewMsg").style.display = "none";
+      updatePaymentBalanceLine();
+      $("paymentReviewModal").classList.add("open");
+    }
+
+    function closePaymentReview(){
+      $("paymentReviewModal").classList.remove("open");
+      reviewingPayment = null;
+    }
+
+    function setPaymentReviewBusy(busy){
+      ["paymentApproveBtn", "paymentRejectBtn", "paymentReviewCloseBtn"].forEach((id) => { $(id).disabled = busy; });
+    }
+
+    async function approvePayment(){
+      if (!reviewingPayment) return;
+      const amount = paymentReviewAmount();
+      const msg = $("paymentReviewMsg");
+      msg.style.display = "none";
+      if (!amount) { msg.textContent = "Unesite iznos uplate."; msg.style.display = "block"; return; }
+      const notice = reviewingPayment;
+      setPaymentReviewBusy(true);
+      $("paymentApproveBtn").textContent = "Odobravam...";
+      try{
+        const data = await paymentAction("approve_payment_notice", { id:notice.id, amount_rsd:amount });
+        state.data = data;
+        closePaymentReview();
+        renderWithUiState(() => render());
+        const after = data.approved && data.approved.balance_after_rsd;
+        showToast("ok", `Uplata #${notice.id} je odobrena: +${money(amount)} RSD` + (after != null ? ` (novi saldo ${money(after)} RSD).` : "."));
+      }catch(e){
+        msg.textContent = e.message;
+        msg.style.display = "block";
+      }finally{
+        setPaymentReviewBusy(false);
+        $("paymentApproveBtn").textContent = "Odobri i dodaj saldo";
+      }
+    }
+
+    async function rejectPayment(){
+      if (!reviewingPayment) return;
+      const box = $("paymentRejectBox");
+      const msg = $("paymentReviewMsg");
+      msg.style.display = "none";
+      if (box.classList.contains("hidden")) {
+        box.classList.remove("hidden");
+        $("paymentApproveBox").classList.add("hidden");
+        $("paymentApproveBtn").classList.add("hidden");
+        $("paymentRejectBtn").textContent = "Potvrdi odbijanje";
+        focusIfSafe($("paymentRejectReason"));
+        return;
+      }
+      const reason = $("paymentRejectReason").value.trim();
+      if (!reason) { msg.textContent = "Upišite razlog odbijanja."; msg.style.display = "block"; return; }
+      const notice = reviewingPayment;
+      setPaymentReviewBusy(true);
+      try{
+        state.data = await paymentAction("reject_payment_notice", { id:notice.id, reason });
+        closePaymentReview();
+        renderWithUiState(() => render());
+        showToast("ok", `Uplata #${notice.id} je odbijena.`);
+      }catch(e){
+        msg.textContent = e.message;
+        msg.style.display = "block";
+      }finally{
+        setPaymentReviewBusy(false);
+      }
+    }
+
+    $("paymentReviewAmount").addEventListener("input", (event) => {
+      const digits = event.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
+      event.target.value = digits ? Number(digits).toLocaleString("sr-RS") : "";
+      updatePaymentBalanceLine();
+    });
+    $("paymentApproveBtn").addEventListener("click", approvePayment);
+    $("paymentRejectBtn").addEventListener("click", rejectPayment);
+    $("paymentReviewCloseBtn").addEventListener("click", closePaymentReview);
+    $("paymentReviewModal").addEventListener("click", (event) => { if (event.target === $("paymentReviewModal")) closePaymentReview(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && $("paymentReviewModal").classList.contains("open")) closePaymentReview(); });
 
     function renderTransactions(){
       const resellerSelect = $("transactionReseller");
