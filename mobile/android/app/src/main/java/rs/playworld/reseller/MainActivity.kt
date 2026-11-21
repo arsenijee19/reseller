@@ -25,6 +25,7 @@ import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.SslErrorHandler
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -58,6 +59,8 @@ import kotlin.concurrent.thread
 
 class MainActivity : android.app.Activity() {
     private lateinit var webView: WebView
+    // <input type="file"> in the portal (payment receipts) needs the app to open the system file picker.
+    private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
     private lateinit var progressBar: ProgressBar
     private lateinit var root: FrameLayout
     private lateinit var activationView: View
@@ -131,6 +134,25 @@ class MainActivity : android.app.Activity() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     progressBar.progress = newProgress
                     progressBar.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+                }
+                override fun onShowFileChooser(view: WebView?, filePathCallback: ValueCallback<Array<Uri>>?, fileChooserParams: WebChromeClient.FileChooserParams?): Boolean {
+                    pendingFileCallback?.onReceiveValue(null)
+                    pendingFileCallback = filePathCallback
+                    val mimeTypes = fileChooserParams?.acceptTypes.orEmpty()
+                        .flatMap { it.split(",") }.map { it.trim() }.filter { it.contains("/") }.distinct()
+                    val picker = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = if (mimeTypes.size == 1) mimeTypes[0] else "*/*"
+                        if (mimeTypes.size > 1) putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
+                    }
+                    return try {
+                        @Suppress("DEPRECATION")
+                        this@MainActivity.startActivityForResult(Intent.createChooser(picker, "Izaberite dokaz uplate"), REQ_FILE)
+                        true
+                    } catch (e: ActivityNotFoundException) {
+                        pendingFileCallback = null
+                        false
+                    }
                 }
             }
         }
@@ -663,6 +685,11 @@ class MainActivity : android.app.Activity() {
     @Deprecated("Deprecated in Android; used for devices before Android 11")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_FILE) {
+            pendingFileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+            pendingFileCallback = null
+            return
+        }
         if (requestCode == REQ_UNLOCK) {
             authInProgress = false
             if (resultCode == RESULT_OK) onUnlocked() else lockMessageView.text = "Otključavanje nije uspelo. Pokušajte ponovo."
@@ -778,6 +805,7 @@ class MainActivity : android.app.Activity() {
         private const val VERSION_CHECK_MS = 60L * 1000L
         private const val RESUME_CHECK_MS = 20L * 1000L
         private const val REQ_UNLOCK = 4711
+        private const val REQ_FILE = 4712
         private const val BLUE = 0xFF2563EB.toInt()
         private const val PURPLE = 0xFF4F46E5.toInt()
         private const val BG = 0xFFEEF2F9.toInt()
