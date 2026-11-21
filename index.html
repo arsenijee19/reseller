@@ -236,6 +236,7 @@
     .btn.primary:hover{background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 12px 30px rgba(23,105,224,.26)}
     .btn.good{background:linear-gradient(135deg,var(--good),var(--accent));border-color:rgba(19,138,67,.62);color:#fff;box-shadow:0 8px 22px rgba(19,138,67,.16)}
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
+    html.release-notes-off .whats-new-btn{display:none}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
     .payment-modal{width:min(440px,100%)}
     .payment-modal > p{margin:6px 0 2px;color:var(--muted);font-size:13px;line-height:1.5}
@@ -696,6 +697,34 @@
     }
     /* Dialogs taller than the screen (My Profile on phones) must scroll instead of being cut off */
     .modal{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .pref-group{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+    .pref-group-title{margin:0;padding:12px 14px 4px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    .pref-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0;padding:12px 14px;color:var(--text);cursor:pointer}
+    .pref-row + .pref-row{border-top:1px solid var(--line)}
+    .pref-copy{display:grid;gap:3px;min-width:0}
+    .pref-copy strong{font-size:14px;font-weight:650}
+    .pref-copy span{color:var(--muted);font-size:12px;font-weight:500;line-height:1.4}
+    .switch{appearance:none;-webkit-appearance:none;flex:0 0 51px;width:51px;height:31px;min-height:0;margin:0;padding:0;border:0;border-radius:999px;background:rgba(120,120,128,.24);position:relative;cursor:pointer;transition:background .2s var(--ease)}
+    .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);transition:transform .2s var(--ease)}
+    .switch:checked{background:#34c759}
+    .switch:checked::after{transform:translateX(20px)}
+    .switch:focus-visible{outline:2px solid rgba(49,93,244,.6);outline-offset:2px}
+    .switch:disabled{opacity:.5;cursor:default}
+    .pref-notify-options{display:grid;gap:8px;padding:4px 14px 12px}
+    .pref-choice{display:flex;align-items:center;gap:10px;margin:0;color:var(--text);font-size:13px;font-weight:500;cursor:pointer}
+    .pref-choice input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--brand)}
+    .pref-choice b{font-weight:650;overflow-wrap:anywhere}
+    .pref-custom-email{display:flex;gap:8px;padding-left:28px}
+    .pref-custom-email input{flex:1;min-width:0}
+    .pref-status{min-height:0;margin:0;padding:0 14px;font-size:12px;color:var(--muted)}
+    .pref-status:not(:empty){padding-bottom:12px}
+    .pref-status.bad{color:var(--bad)}
+    .pref-status.ok{color:var(--good)}
+    /* "Praćenje plaćanja" off: only the orders themselves */
+    body.paid-tracking-off #historyFilters,
+    body.paid-tracking-off .history-footer,
+    body.paid-tracking-off .history-paid-badge,
+    body.paid-tracking-off .history-payment-action{display:none!important}
     .native-toggle{display:flex;align-items:center;gap:12px;margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
     .native-toggle input{flex:0 0 22px;width:22px;height:22px;min-height:0;margin:0;padding:0;accent-color:var(--brand)}
     .native-note{margin:8px 0 0;font-size:12px;color:var(--muted)}
@@ -781,6 +810,38 @@
     :root[data-theme="dark"] .platform-badge.ps5{background:linear-gradient(100deg,#fff,#cbd9f8);color:#0f1b3d}
     :root[data-theme="dark"] .platform-badge.ps4{background:linear-gradient(100deg,#d6e6ff,#6d9bf5);color:#08215f}
     :root[data-theme="dark"] .picker-type-filter.has-chip{background:transparent}
+    /* PS4 / PS5 labels, calm and monochrome (Apple-like): neutral tag, platform wordmark + role in grey.
+       Overrides every earlier gradient rule for chips, badges and price cards. */
+    .slot-chip,.slot-chip.ps5,.slot-chip.ps4,.slot-chip.mix,.slot-chip.other{gap:6px;padding:3px 8px;border:0;border-radius:6px;background:rgba(118,118,128,.12);color:var(--text);box-shadow:none;font-size:12px;line-height:1.3}
+    .slot-chip.lg{padding:5px 10px;font-size:13px}
+    .slot-chip em{font-weight:500;color:var(--muted)}
+    .slot-chip b{font-weight:600}
+    .slot-logo{width:40px;height:9.4px}
+    .slot-chip.lg .slot-logo{width:46px;height:10.8px}
+    .history-order-meta .slot-chip{padding:2px 7px;font-size:11.5px}
+    .history-order-meta .slot-logo{width:36px;height:8.5px}
+    .slot-logos{gap:3px}
+    .slot-logos .slot-sep{opacity:.35;font-weight:400}
+    .platform-badge,.platform-badge.ps5,.platform-badge.ps4,
+    :root[data-theme="dark"] .platform-badge,:root[data-theme="dark"] .platform-badge.ps5,:root[data-theme="dark"] .platform-badge.ps4{padding:3px 7px;border:0;border-radius:6px;background:rgba(118,118,128,.12);color:var(--text)}
+    .picker-type-filter.has-chip{padding:2px;border:1.5px solid transparent;border-radius:9px}
+    .picker-type-filter.has-chip.active,.picker-type-filter.has-chip:hover{border-color:var(--brand)}
+    .picker-type-filter.has-chip.active .slot-chip{background:rgba(49,93,244,.12)}
+    .price-variant,.price-variant.slot-ps5,.price-variant.slot-ps4,.price-variant.slot-mix,.price-variant.slot-other{min-height:84px;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);box-shadow:none;transition:border-color .16s var(--ease),background .16s var(--ease),box-shadow .16s var(--ease),transform .12s var(--ease)}
+    .price-variant[class*="slot-"]:not(.slot-other):hover,.price-variant:hover{border-color:rgba(118,118,128,.35);background:var(--soft);box-shadow:none}
+    .price-variant[class*="slot-"][aria-expanded="true"],.price-variant[aria-expanded="true"]{border-color:var(--brand);background:var(--panel);box-shadow:0 0 0 3px rgba(49,93,244,.14)}
+    .price-variant-label{display:grid;justify-items:start;gap:4px;color:var(--muted)}
+    .price-variants{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))}
+    .product-option-main .slot-chip{color:var(--text)}
+    .price-variant-label .slot-logos{height:12px;line-height:1;overflow:visible;color:var(--text);opacity:.8}
+    .price-variant-label .slot-sep{font-size:11px;line-height:1}
+    .price-variant-label .slot-logo{width:40px;height:9.4px}
+    .price-variant-label .slot-role{font-size:12px;font-weight:500;opacity:1}
+    .price-variant strong{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-top:0}
+    .price-variant.slot-ps5 .price-original,.price-variant.slot-ps4 .price-original,.price-variant.slot-mix .price-original{color:var(--muted)}
+    .price-variant.slot-ps5 .discount-badge,.price-variant.slot-ps4 .discount-badge,.price-variant.slot-mix .discount-badge{background:rgba(52,199,89,.14);color:#1f8a3c;box-shadow:none}
+    @media(max-width:860px){.price-variants{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){.price-variant,.price-variant.slot-ps5,.price-variant.slot-ps4,.price-variant.slot-mix{min-height:76px;padding:11px 12px}}
     /* Login polish: no flashes while the session is checked, calmer Apple-like typography */
     body:not(.session-checking) .layout{animation:login-fade-in .24s var(--ease-fast) both}
     @keyframes login-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1111,6 +1172,26 @@
         <div class="full"><label for="settingsName">Ime</label><input id="settingsName" type="text" autocomplete="name" placeholder="Vaše ime ili naziv" /></div>
         <div><label for="settingsEmail">Lični email za poruke</label><input id="settingsEmail" type="email" autocomplete="email" /></div>
         <div><label for="settingsPhone">Telefon</label><input id="settingsPhone" type="tel" autocomplete="tel" placeholder="+381..." /></div>
+        <div class="full pref-group" id="preferencesGroup">
+          <p class="pref-group-title">Prikaz i obaveštenja</p>
+          <label class="pref-row" for="prefPaidTracking">
+            <span class="pref-copy"><strong>Praćenje plaćanja</strong><span>Oznake Plaćeno / Neplaćeno, filteri i dugmad za označavanje u prethodnim porudžbinama. Isključeno: prikazuju se samo porudžbine.</span></span>
+            <input class="switch" id="prefPaidTracking" type="checkbox" role="switch" />
+          </label>
+          <label class="pref-row" for="prefOrderNotify">
+            <span class="pref-copy"><strong>Obavesti me o svakoj porudžbini</strong><span>Mejl za svaku kupovinu na ovom nalogu. Korisno ako pratite porudžbine svog tima.</span></span>
+            <input class="switch" id="prefOrderNotify" type="checkbox" role="switch" />
+          </label>
+          <div class="pref-notify-options" id="prefNotifyOptions" hidden>
+            <label class="pref-choice"><input type="radio" name="prefNotifyTarget" value="account" id="prefNotifyAccount" /><span>Na email naloga <b id="prefAccountEmail"></b></span></label>
+            <label class="pref-choice"><input type="radio" name="prefNotifyTarget" value="custom" id="prefNotifyCustom" /><span>Na drugi email</span></label>
+            <div class="pref-custom-email" id="prefCustomEmailBox" hidden>
+              <input id="prefNotifyEmail" type="email" autocomplete="email" placeholder="npr. sef.tima@email.com" />
+              <button class="btn" id="prefNotifyEmailSave" type="button">Sačuvaj</button>
+            </div>
+          </div>
+          <p class="pref-status" id="prefStatus" aria-live="polite"></p>
+        </div>
         <div class="full security-note native-settings" id="nativeSettings" hidden>
           <p><strong>Aplikacija na ovom telefonu</strong></p>
           <label class="native-toggle" for="nativeScreenshots"><input id="nativeScreenshots" type="checkbox" /><span>Dozvoli snimke ekrana</span></label>
@@ -1698,7 +1779,87 @@
       [settingsName, profileName].forEach((el) => { if (el) el.value = name; });
       [settingsEmail, profileEmail].forEach((el) => { if (el) el.value = email; });
       [settingsPhone, profilePhone].forEach((el) => { if (el) el.value = phone; });
+      if (profile && profile.preferences) applyPreferences(profile.preferences, email);
     }
+
+    // ---- Podešavanja: praćenje plaćanja + obaveštenje o svakoj porudžbini ----
+    function applyPreferences(prefs, accountEmail){
+      state.preferences = Object.assign({ paid_tracking:true, order_notify_enabled:false, order_notify_email:"" }, prefs || {});
+      const tracking = state.preferences.paid_tracking !== false;
+      const wasTracking = !document.body.classList.contains("paid-tracking-off");
+      document.body.classList.toggle("paid-tracking-off", !tracking);
+      if (!tracking && state.ordersFilter !== "all") state.ordersFilter = "all";
+      if (wasTracking !== tracking && state.orders.length) loadOrders(true);
+      $("prefPaidTracking").checked = tracking;
+      $("prefOrderNotify").checked = !!state.preferences.order_notify_enabled;
+      $("prefNotifyOptions").hidden = !state.preferences.order_notify_enabled;
+      $("prefAccountEmail").textContent = accountEmail || (state.me && state.me.email) || "";
+      const custom = String(state.preferences.order_notify_email || "");
+      $("prefNotifyCustom").checked = !!custom;
+      $("prefNotifyAccount").checked = !custom;
+      $("prefCustomEmailBox").hidden = !custom;
+      if (document.activeElement !== $("prefNotifyEmail")) $("prefNotifyEmail").value = custom;
+    }
+
+    function setPrefStatus(type, message){
+      const el = $("prefStatus");
+      el.className = "pref-status" + (type ? " " + type : "");
+      el.textContent = message || "";
+    }
+
+    async function savePreferences(changes, okMessage){
+      const inputs = ["prefPaidTracking", "prefOrderNotify", "prefNotifyEmailSave"].map($);
+      inputs.forEach((el) => { el.disabled = true; });
+      setPrefStatus("", "Čuvam...");
+      try{
+        const result = await api("/api/preferences.php", { method:"POST", body:JSON.stringify(changes) });
+        if (state.me) state.me.preferences = result.preferences;
+        applyPreferences(result.preferences);
+        setPrefStatus("ok", okMessage || "Sačuvano.");
+        return true;
+      }catch(e){
+        applyPreferences(state.preferences);
+        setPrefStatus("bad", e.message);
+        return false;
+      }finally{
+        inputs.forEach((el) => { el.disabled = false; });
+      }
+    }
+
+    $("prefPaidTracking").addEventListener("change", (event) => {
+      const on = event.target.checked;
+      savePreferences({ paid_tracking:on }, on ? "Praćenje plaćanja je uključeno." : "Praćenje plaćanja je isključeno. Prikazuju se sve porudžbine.");
+    });
+    $("prefOrderNotify").addEventListener("change", (event) => {
+      const on = event.target.checked;
+      const custom = $("prefNotifyCustom").checked ? $("prefNotifyEmail").value.trim() : "";
+      if (on && $("prefNotifyCustom").checked && !validEmail(custom)) {
+        // Turning on with "drugi email" chosen but empty: fall back to the account email.
+        $("prefNotifyAccount").checked = true;
+      }
+      const target = on && $("prefNotifyCustom").checked ? custom : "";
+      savePreferences(on ? { order_notify_enabled:true, order_notify_email:target } : { order_notify_enabled:false }, on
+        ? `Obaveštenja stižu na ${target || $("prefAccountEmail").textContent}.`
+        : "Obaveštenja o porudžbinama su isključena.");
+    });
+    document.querySelectorAll('input[name="prefNotifyTarget"]').forEach((radio) => radio.addEventListener("change", () => {
+      const custom = $("prefNotifyCustom").checked;
+      $("prefCustomEmailBox").hidden = !custom;
+      setPrefStatus("", "");
+      if (custom) {
+        $("prefNotifyEmail").focus();
+      } else {
+        savePreferences({ order_notify_email:"" }, `Obaveštenja stižu na ${$("prefAccountEmail").textContent}.`);
+      }
+    }));
+    $("prefNotifyEmailSave").addEventListener("click", () => {
+      const email = $("prefNotifyEmail").value.trim();
+      if (!validEmail(email)) { setPrefStatus("bad", "Unesite validnu email adresu."); return; }
+      savePreferences({ order_notify_email:email }, `Obaveštenja stižu na ${email}.`);
+    });
+    $("prefNotifyEmail").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); $("prefNotifyEmailSave").click(); }
+    });
 
     function setMainActionsEnabled(enabled){
       productSelect.disabled = !enabled;
@@ -1734,6 +1895,7 @@
       confirmToken.value = "";
       tokenChangeFields.style.display = "none";
       toggleTokenChangeBtn.textContent = "Želim da promenim token";
+      setPrefStatus("", "");
       settingsModal.classList.add("open");
       settingsName.focus({ preventScroll:true });
       loadTwoFactorStatus();
@@ -1924,8 +2086,11 @@
       }catch(e){}
     }
 
+    // "Šta je novo?" is switched off for now: flip to true to bring back the button and the first-login popup.
+    const RELEASE_NOTES_ENABLED = false;
+    if (!RELEASE_NOTES_ENABLED) document.documentElement.classList.add("release-notes-off");
     function maybeOpenReleaseNotes(){
-      if (!shouldShowReleaseNotes()) return;
+      if (!RELEASE_NOTES_ENABLED || !shouldShowReleaseNotes()) return;
       window.setTimeout(() => {
         if (profileModal.classList.contains("open") || settingsModal.classList.contains("open")) return;
         openReleaseNotes();

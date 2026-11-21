@@ -232,6 +232,22 @@ try {
     } catch (Throwable $ignoredEvent) {}
   }
 
+  // Optional copy for the reseller (e.g. a team lead following their team's purchases).
+  try {
+    $preferences = reseller_preferences($pdo, $reseller_id);
+    if ($preferences['order_notify_enabled']) {
+      $copyTo = $preferences['order_notify_email'] !== '' ? $preferences['order_notify_email'] : $customer_email;
+      if (valid_email($copyTo)) {
+        $copy = reseller_order_copy_email((string)$p['product_name'], (string)$p['account_type'], $price, $newBal, $reseller_name, $orderDbId);
+        $copyResult = send_text_notification_email([$copyTo], $copy['subject'], $copy['message']);
+        record_order_delivery_event($pdo, $orderDbId, 'reseller_copy', $copyResult['ok'] ? 'sent' : 'failed', [
+          'recipients' => [$copyTo],
+          'error' => $copyResult['error'],
+        ]);
+      }
+    }
+  } catch (Throwable $ignored) {}
+
   // ===============================
   // POZIV N8N
   // ===============================

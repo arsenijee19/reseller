@@ -865,6 +865,65 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   return $row ?: null;
 }
 
+// ---- reseller preferences (Podešavanja) -----------------------------------------------------------------
+function ensure_reseller_preference_columns(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+  if (schema_ensured('ensure_reseller_preference_columns') && has_column($pdo, 'resellers', 'order_notify_email')) { $done = true; return; }
+  $changed = false;
+  foreach ([
+    'pref_paid_tracking' => 'pref_paid_tracking TINYINT(1) NOT NULL DEFAULT 1',
+    'order_notify_enabled' => 'order_notify_enabled TINYINT(1) NOT NULL DEFAULT 0',
+    'order_notify_email' => 'order_notify_email VARCHAR(255) NULL',
+  ] as $column => $definition) {
+    if (!has_column($pdo, 'resellers', $column)) {
+      $pdo->exec("ALTER TABLE resellers ADD COLUMN {$definition}");
+      $changed = true;
+    }
+  }
+  if ($changed) table_columns($pdo, 'resellers', true);
+  schema_mark_ensured('ensure_reseller_preference_columns');
+  $done = true;
+}
+
+/** Preferences with safe defaults, also when the columns could not be created. */
+function reseller_preferences(PDO $pdo, int $resellerId): array {
+  $defaults = ['paid_tracking' => true, 'order_notify_enabled' => false, 'order_notify_email' => ''];
+  try {
+    ensure_reseller_preference_columns($pdo);
+    $stmt = $pdo->prepare('SELECT pref_paid_tracking, order_notify_enabled, order_notify_email FROM resellers WHERE id = ? LIMIT 1');
+    $stmt->execute([$resellerId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    return $defaults;
+  }
+  if (!$row) return $defaults;
+  return [
+    'paid_tracking' => (int)$row['pref_paid_tracking'] === 1,
+    'order_notify_enabled' => (int)$row['order_notify_enabled'] === 1,
+    'order_notify_email' => (string)($row['order_notify_email'] ?? ''),
+  ];
+}
+
+function reseller_order_copy_email(string $productName, string $accountType, int $price, int $balanceAfter, string $resellerName, int $orderId): array {
+  $message = "Nova porudžbina na Vašem PlayWorld reseller nalogu.\n\n";
+  $message .= 'Porudžbina #' . $orderId . "\n";
+  $message .= 'Proizvod: ' . $productName . "\n";
+  if ($accountType !== '') $message .= 'Tip naloga: ' . $accountType . "\n";
+  $message .= 'Cena: ' . number_format($price, 0, ',', '.') . " RSD\n";
+  $message .= 'Saldo posle porudžbine: ' . number_format($balanceAfter, 0, ',', '.') . " RSD\n";
+  if ($resellerName !== '') $message .= 'Nalog: ' . $resellerName . "\n";
+  try {
+    $when = (new DateTimeImmutable('now', new DateTimeZone((string)config_value('app.timezone', 'Europe/Belgrade'))))->format('d.m.Y. H:i');
+  } catch (Throwable $e) {
+    $when = gmdate('d.m.Y. H:i') . ' UTC';
+  }
+  $message .= 'Vreme: ' . $when . "\n\n";
+  $message .= "Ovo obaveštenje ste uključili u Podešavanjima naloga (\"Obavesti me o svakoj porudžbini\").\n";
+  $message .= "Isključite ga tamo kada Vam više nije potrebno: " . app_public_url() . "\n";
+  return ['subject' => 'Nova porudžbina: ' . $productName, 'message' => $message];
+}
+
 function normalized_discount_percent($value): float {
   $discount = (float)$value;
   if (!is_finite($discount)) return 0.0;
