@@ -865,6 +865,75 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   return $row ?: null;
 }
 
+// ---- private customer records ("Podaci kupca", "Nova evidencija") ----------------------------------------
+// Buyer/account data a reseller keeps for himself, per portal order or as a free-standing record. Only the
+// owning reseller can read it (no admin view, no emails) and it is stored encrypted at rest.
+const CUSTOMER_RECORD_FIELDS = [
+  'title' => 160,
+  'account_email' => 190,
+  'buyer_name' => 120,
+  'buyer_phone' => 40,
+  'buyer_contact' => 190,
+  'note' => 2000,
+];
+
+function ensure_customer_records_table(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+  if (schema_ensured('ensure_customer_records_table') && table_exists($pdo, 'reseller_customer_records')) { $done = true; return; }
+  $pdo->exec(<<<'SQL'
+    CREATE TABLE IF NOT EXISTS reseller_customer_records (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      reseller_id INT UNSIGNED NOT NULL,
+      order_id BIGINT UNSIGNED NULL,
+      payload MEDIUMTEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_customer_record_order (reseller_id, order_id),
+      KEY idx_customer_record_reseller (reseller_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL
+  );
+  schema_mark_ensured('ensure_customer_records_table');
+  $done = true;
+}
+
+function customer_record_seal(array $fields): string {
+  $json = json_encode($fields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  if (encryption_available()) return 'e1:' . encrypt_secret($json);
+  return 'p1:' . base64_encode($json);
+}
+
+function customer_record_open(string $payload): ?array {
+  if (strncmp($payload, 'e1:', 3) === 0) {
+    $json = decrypt_secret(substr($payload, 3));
+    if ($json === '') return null; // key changed or data damaged: never show garbage
+  } elseif (strncmp($payload, 'p1:', 3) === 0) {
+    $json = (string)base64_decode(substr($payload, 3), true);
+  } else {
+    return null;
+  }
+  $data = json_decode($json, true);
+  return is_array($data) ? $data : null;
+}
+
+/** Trims and validates the editable fields; throws InvalidArgumentException with a user-facing message. */
+function customer_record_clean(array $input): array {
+  $clean = [];
+  foreach (CUSTOMER_RECORD_FIELDS as $field => $max) {
+    $value = trim(str_replace("\0", '', (string)($input[$field] ?? '')));
+    if ($field !== 'note') $value = preg_replace('/\s+/u', ' ', $value) ?? '';
+    $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+    if ($length > $max) throw new InvalidArgumentException('Polje je predugačko (najviše ' . $max . ' karaktera).');
+    $clean[$field] = $value;
+  }
+  if ($clean['account_email'] !== '' && !valid_email($clean['account_email'])) {
+    throw new InvalidArgumentException('Email naloga nije ispravan.');
+  }
+  return $clean;
+}
+
 // ---- fast token login ---------------------------------------------------------------------------------
 // Login used to run password_verify (bcrypt, ~50-100 ms) against every active reseller until one matched,
 // so it slowed down with each new account and a wrong token always paid the full price. token_lookup is a

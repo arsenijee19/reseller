@@ -239,7 +239,34 @@
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     html.release-notes-off .whats-new-btn{display:none}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
-    .app-dialog-backdrop{z-index:90}
+    .history-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+    .success-buyer{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--soft);text-align:left}
+    .success-buyer p{margin:0 0 10px;color:var(--muted);font-size:12.5px;line-height:1.45}
+    .success-buyer p strong{color:var(--text)}
+    .success-buyer .btn{width:100%}
+    .record-modal{width:min(460px,100%);max-height:calc(100dvh - 32px);overflow:auto}
+    .record-sub{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .record-sub:empty{display:none}
+    .record-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+    .record-modal textarea{min-height:64px;resize:vertical}
+    .record-private{display:flex;align-items:center;gap:7px;margin:12px 0 0;color:var(--muted);font-size:12px}
+    .record-private svg{flex:0 0 15px;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+    .record-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
+    .record-actions-main{display:flex;gap:10px;margin-left:auto}
+    .record-delete{color:var(--bad);border-color:transparent;background:transparent;box-shadow:none;padding-left:4px;padding-right:4px}
+    .record-delete[hidden]{display:none}
+    @media(max-width:420px){.record-grid{grid-template-columns:1fr}}
+    .buyer-summary{display:grid;gap:3px;width:100%;margin-top:9px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--text);text-align:left;font:inherit;cursor:pointer;transition:border-color .14s var(--ease),background .14s var(--ease)}
+    .buyer-summary:hover{border-color:rgba(49,93,244,.35);background:rgba(49,93,244,.05)}
+    .buyer-summary-main{display:flex;align-items:center;gap:7px;min-width:0;font-size:12.5px;font-weight:650}
+    .buyer-summary-main svg{flex:0 0 14px;width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round}
+    .buyer-summary-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .buyer-summary-line{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .buyer-summary-line b{color:var(--text);font-weight:600}
+    .history-actions-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+    .record-item .record-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:6px;background:rgba(118,118,128,.12);color:var(--muted);font-size:11px;font-weight:600}
+    .record-item .history-order-meta{display:flex;align-items:center;gap:8px}
+    .modal-backdrop.app-dialog-backdrop{z-index:90}
     .app-dialog{width:min(360px,100%);text-align:center;padding:22px 20px 18px}
     .app-dialog p{margin:0 0 4px;color:var(--text);font-size:15px;font-weight:600;line-height:1.45;white-space:pre-line}
     .app-dialog .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
@@ -298,8 +325,8 @@
     .history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .history-head .btn{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:12px}
     .history-title{margin:0}
-    .history-head > .btn{width:40px;height:40px;min-height:40px;padding:9px;border-radius:12px;font-size:0}
-    .history-head > .btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .history-head > .btn,.history-head-actions > .btn{width:40px;height:40px;min-height:40px;padding:9px;border-radius:12px;font-size:0}
+    .history-head > .btn svg,.history-head-actions > .btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .history-footer{display:grid;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
     .history-footer .btn{justify-self:start;min-height:38px;font-size:12px}
     :root[data-theme="dark"] .status-indicator{color:var(--muted)}
@@ -1049,11 +1076,14 @@
                 <div class="section-copy"><h2 id="historyTitle">Prethodne porudžbine</h2><p id="historyDescription">Pregled svih porudžbina na ovom reseller nalogu.</p></div>
               </div>
             </div>
-            <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži notes" aria-label="Pretraži notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
+            <div class="history-head-actions">
+            <button class="btn history-add-btn" id="newRecordBtn" type="button" title="Nova evidencija" aria-label="Nova evidencija"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button class="btn notes-search-toggle" id="notesSearchToggle" type="button" aria-expanded="false" title="Pretraži porudžbine i kupce" aria-label="Pretraži porudžbine i kupce"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></button>
+            </div>
           </div>
           <div class="notes-tools">
             <div class="notes-search-wrap" id="notesSearchWrap">
-              <input id="notesSearchInput" type="search" autocomplete="off" placeholder="Npr. Jovan, telefon ili napomena..." aria-label="Pretraži notes" />
+              <input id="notesSearchInput" type="search" autocomplete="off" placeholder="Kupac, telefon, email naloga, napomena..." aria-label="Pretraži porudžbine i kupce" />
               <button class="notes-search-clear" id="notesSearchClear" type="button" aria-label="Obriši pretragu">Obriši</button>
             </div>
             <span class="meta notes-search-count" id="notesSearchCount"></span>
@@ -1153,6 +1183,38 @@
         <button class="btn" id="appDialogCancel" type="button">Otkaži</button>
         <button class="btn primary" id="appDialogOk" type="button">U redu</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="recordModal" role="dialog" aria-modal="true" aria-labelledby="recordTitle">
+    <div class="modal record-modal">
+      <h2 id="recordTitle">Podaci kupca</h2>
+      <p class="record-sub" id="recordSub"></p>
+      <form id="recordForm" novalidate>
+        <div id="recordProductField">
+          <label for="recordProduct">Igra / proizvod</label>
+          <input id="recordProduct" type="text" maxlength="160" autocomplete="off" placeholder="npr. FC 26 PS5 Primary" />
+        </div>
+        <label for="recordAccountEmail">Email naloga</label>
+        <input id="recordAccountEmail" type="email" maxlength="190" autocomplete="off" inputmode="email" placeholder="nalog@email.com" />
+        <div class="record-grid">
+          <div><label for="recordBuyerName">Ime kupca</label><input id="recordBuyerName" type="text" maxlength="120" autocomplete="off" placeholder="Ime i prezime" /></div>
+          <div><label for="recordBuyerPhone">Telefon kupca</label><input id="recordBuyerPhone" type="tel" maxlength="40" autocomplete="off" inputmode="tel" placeholder="+381 6x ..." /></div>
+        </div>
+        <label for="recordBuyerContact">Drugi kontakt kupca</label>
+        <input id="recordBuyerContact" type="text" maxlength="190" autocomplete="off" placeholder="Email, Instagram, Viber..." />
+        <label for="recordNote">Napomena</label>
+        <textarea id="recordNote" maxlength="2000" rows="2" placeholder="npr. plaća u petak, preporuka od Marka..."></textarea>
+        <p class="record-private"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Vidljivo samo Vama. Podaci se čuvaju šifrovano.</p>
+        <div class="msg" id="recordMsg"></div>
+        <div class="record-actions">
+          <button class="btn record-delete" id="recordDeleteBtn" type="button">Obriši</button>
+          <span class="record-actions-main">
+            <button class="btn" id="recordCancelBtn" type="button">Otkaži</button>
+            <button class="btn primary" id="recordSaveBtn" type="submit">Sačuvaj</button>
+          </span>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1370,6 +1432,10 @@
       <h2 id="successTitle">Hvala Vam na porudžbini!</h2>
       <p>Kredencijali Vam stižu u najkraćem mogućem roku.</p>
       <p class="success-small">Naš tim je primio Vašu porudžbinu i uskoro kreće sa obradom.</p>
+      <div class="success-buyer" id="successBuyer" hidden>
+        <p><strong>Kome ste prodali nalog?</strong> Upišite kupca i email naloga da ih kasnije lako nađete. Vidljivo samo Vama.</p>
+        <button class="btn" id="successBuyerBtn" type="button">Upiši podatke kupca</button>
+      </div>
       <div class="actions">
         <button class="btn primary" id="closeSuccessBtn" type="button">Razumem</button>
       </div>
@@ -2846,7 +2912,7 @@
     function setNotesSearchOpen(open){
       notesSearchWrap.classList.toggle("open", open);
       notesSearchToggle.setAttribute("aria-expanded", String(open));
-      notesSearchToggle.title = open ? "Zatvori pretragu" : "Pretraži notes";
+      notesSearchToggle.title = open ? "Zatvori pretragu" : "Pretraži porudžbine i kupce";
       notesSearchToggle.setAttribute("aria-label", notesSearchToggle.title);
       if (open) notesSearchInput.focus({ preventScroll:true });
     }
@@ -2860,12 +2926,17 @@
     function ordersMatchingNotes(){
       const query = normalizeSearch(state.notesSearch);
       if (!query) return state.orders;
-      return state.orders.filter((order) => normalizeSearch(order.reseller_notes || "").includes(query));
+      return state.orders.filter((order) => normalizeSearch(`${order.reseller_notes || ""} ${recordSearchText(recordForOrder(order.id))}`).includes(query));
+    }
+    function customRecordsMatching(){
+      const query = normalizeSearch(state.notesSearch);
+      const records = customRecords();
+      return query ? records.filter((record) => normalizeSearch(recordSearchText(record)).includes(query)) : records;
     }
 
     function renderHistoryFilters(noteMatchedOrders){
       const counts = {
-        all: noteMatchedOrders.length,
+        all: noteMatchedOrders.length + customRecordsMatching().length,
         unpaid: noteMatchedOrders.filter((order) => Number(order.reseller_paid) !== 1).length,
         paid: noteMatchedOrders.filter((order) => Number(order.reseller_paid) === 1).length
       };
@@ -2881,31 +2952,212 @@
       });
     }
 
+    // ---- private customer records: buyer data per order + free-standing "Nova evidencija" ----
+    const recordModal = $("recordModal");
+    const recordForm = $("recordForm");
+    const recordMsg = $("recordMsg");
+    const RECORD_FIELDS = { title:"recordProduct", account_email:"recordAccountEmail", buyer_name:"recordBuyerName", buyer_phone:"recordBuyerPhone", buyer_contact:"recordBuyerContact", note:"recordNote" };
+    let recordContext = null; // { record, orderId, custom, label }
+    state.records = state.records || [];
+
+    async function loadRecords(){
+      try{
+        const result = await api("/api/customer_records.php");
+        state.records = result.records || [];
+      }catch(e){
+        // Records are optional for the history view; keep what we had.
+      }
+      return state.records;
+    }
+    function recordForOrder(orderId){
+      return state.records.find((record) => String(record.order_id) === String(orderId)) || null;
+    }
+    function customRecords(){
+      return state.records.filter((record) => record.order_id === null || record.order_id === undefined);
+    }
+    function recordSearchText(record){
+      return record ? Object.keys(RECORD_FIELDS).map((key) => record[key] || "").join(" ") : "";
+    }
+    function orderLabel(order){
+      const parts = [order.product_name || order.product_id, order.account_type].filter(Boolean);
+      return parts.join(" · ") + (order.created_at ? " · " + compactOrderDateTime(order.created_at) : "");
+    }
+
+    function openRecordModal(context){
+      recordContext = context;
+      const record = context.record || {};
+      const custom = !!context.custom;
+      $("recordTitle").textContent = custom ? (record.id ? "Moja evidencija" : "Nova evidencija") : "Podaci kupca";
+      $("recordSub").textContent = custom ? "Nalog kupljen van portala ili bilo koja Vaša evidencija." : (context.label || "");
+      $("recordProductField").hidden = !custom;
+      Object.entries(RECORD_FIELDS).forEach(([key, id]) => { $(id).value = record[key] || ""; markField($(id), ""); });
+      $("recordDeleteBtn").hidden = !record.id;
+      hide(recordMsg);
+      recordModal.classList.add("open");
+      if (!(window.PWApp && window.PWApp.isIOS)) {
+        window.setTimeout(() => $(custom && !record.id ? "recordProduct" : "recordAccountEmail").focus({ preventScroll:true }), 60);
+      }
+    }
+    function closeRecordModal(){
+      if ($("recordSaveBtn").disabled) return;
+      recordModal.classList.remove("open");
+      recordContext = null;
+    }
+    function applyRecordChange(saved, deletedId){
+      if (deletedId) state.records = state.records.filter((record) => String(record.id) !== String(deletedId));
+      if (saved) {
+        const index = state.records.findIndex((record) => String(record.id) === String(saved.id));
+        if (index >= 0) state.records[index] = saved; else state.records.unshift(saved);
+      }
+      preserveScroll(() => { loadOrders(true); });
+    }
+
+    async function saveRecord(event){
+      event.preventDefault();
+      if (!recordContext) return;
+      hide(recordMsg);
+      const payload = { action:"save" };
+      Object.entries(RECORD_FIELDS).forEach(([key, id]) => { payload[key] = $(id).value.trim(); });
+      if (!recordContext.custom) payload.title = "";
+      if (payload.account_email && !validEmail(payload.account_email)) {
+        markField($("recordAccountEmail"), "bad");
+        show(recordMsg, "bad", "Email naloga nije ispravan.");
+        return;
+      }
+      if (recordContext.custom && !payload.title && !payload.account_email) {
+        markField($("recordProduct"), "bad");
+        show(recordMsg, "bad", "Upišite igru ili email naloga.");
+        return;
+      }
+      const empty = Object.keys(RECORD_FIELDS).every((key) => !payload[key]);
+      if (empty && !(recordContext.record && recordContext.record.id)) { closeRecordModal(); return; }
+      if (recordContext.record && recordContext.record.id) payload.id = recordContext.record.id;
+      else if (recordContext.orderId) payload.order_id = recordContext.orderId;
+      const btn = $("recordSaveBtn");
+      btn.disabled = true;
+      btn.textContent = "Čuvam...";
+      try{
+        const result = await api("/api/customer_records.php", { method:"POST", body:JSON.stringify(payload) });
+        btn.disabled = false;
+        closeRecordModal();
+        applyRecordChange(result.record, result.deleted_id);
+      }catch(e){
+        show(recordMsg, "bad", e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Sačuvaj";
+      }
+    }
+
+    async function deleteRecord(){
+      const record = recordContext && recordContext.record;
+      if (!record || !record.id) return;
+      const question = recordContext.custom ? "Obrisati ovu evidenciju?" : "Obrisati podatke kupca za ovu porudžbinu?";
+      if (!(await askConfirm(question, "Obriši", true))) return;
+      try{
+        await api("/api/customer_records.php", { method:"POST", body:JSON.stringify({ action:"delete", id:record.id }) });
+        $("recordSaveBtn").disabled = false;
+        closeRecordModal();
+        applyRecordChange(null, record.id);
+      }catch(e){
+        show(recordMsg, "bad", e.message);
+      }
+    }
+
+    function buyerSummary(record, onOpen){
+      const box = document.createElement("button");
+      box.type = "button";
+      box.className = "buyer-summary";
+      box.title = "Izmeni podatke kupca";
+      const main = document.createElement("span");
+      main.className = "buyer-summary-main";
+      const ns = "http://www.w3.org/2000/svg";
+      const icon = document.createElementNS(ns, "svg");
+      icon.setAttribute("viewBox", "0 0 24 24");
+      icon.setAttribute("aria-hidden", "true");
+      const head = document.createElementNS(ns, "circle");
+      head.setAttribute("cx", "12"); head.setAttribute("cy", "8"); head.setAttribute("r", "4");
+      const body = document.createElementNS(ns, "path");
+      body.setAttribute("d", "M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6");
+      icon.append(head, body);
+      main.appendChild(icon);
+      appendText(main, "span", [record.buyer_name, record.buyer_phone].filter(Boolean).join(" · ") || "Kupac nije upisan");
+      box.appendChild(main);
+      if (record.account_email) {
+        const line = document.createElement("span");
+        line.className = "buyer-summary-line";
+        line.append("Nalog: ");
+        appendText(line, "b", record.account_email);
+        box.appendChild(line);
+      }
+      const extra = [record.buyer_contact, record.note].filter(Boolean).join(" · ");
+      if (extra) appendText(box, "span", extra, "buyer-summary-line");
+      box.addEventListener("click", onOpen);
+      return box;
+    }
+
+    function renderRecordCard(record){
+      const div = document.createElement("div");
+      div.className = "history-item record-item";
+      const head = document.createElement("div");
+      head.className = "history-item-head";
+      const main = document.createElement("div");
+      main.className = "history-item-main";
+      appendText(main, "strong", record.title || record.account_email || "Evidencija");
+      const meta = document.createElement("div");
+      meta.className = "history-order-meta";
+      appendText(meta, "span", "Moja evidencija", "record-badge");
+      appendText(meta, "span", compactOrderDateTime(record.created_at));
+      main.appendChild(meta);
+      head.appendChild(main);
+      div.appendChild(head);
+      const open = () => openRecordModal({ record, custom:true });
+      div.appendChild(buyerSummary(record, open));
+      return div;
+    }
+
+    function openRecordForOrder(order){
+      openRecordModal({ record:recordForOrder(order.id), orderId:order.id, label:orderLabel(order) });
+    }
+
+    recordForm.addEventListener("submit", saveRecord);
+    $("recordCancelBtn").addEventListener("click", closeRecordModal);
+    $("recordDeleteBtn").addEventListener("click", deleteRecord);
+    recordModal.addEventListener("click", (event) => { if (event.target === recordModal) closeRecordModal(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && recordModal.classList.contains("open") && !$("appDialog").classList.contains("open")) closeRecordModal(); });
+    $("newRecordBtn").addEventListener("click", () => openRecordModal({ record:null, custom:true }));
+    $("successBuyerBtn").addEventListener("click", () => {
+      const order = state.lastOrder;
+      closeSuccessModal();
+      if (order) openRecordModal({ record:recordForOrder(order.id), orderId:order.id, label:orderLabel(order) });
+    });
+
     async function loadOrders(renderOnly = false){
       if (!renderOnly) {
-        const j = await api("/api/orders.php?all=1");
+        const [j] = await Promise.all([api("/api/orders.php?all=1"), loadRecords()]);
         state.orders = j.orders || [];
       }
       const noteMatchedOrders = ordersMatchingNotes();
       const visibleOrders = renderHistoryFilters(noteMatchedOrders);
       historyList.textContent = "";
-      if (!state.orders.length){
+      const visibleRecords = state.ordersFilter === "all" ? customRecordsMatching() : [];
+      if (!state.orders.length && !customRecords().length){
         historyList.textContent = "Još nema prethodnih porudžbina.";
         markAllPaidBtn.disabled = true;
         notesSearchCount.textContent = "";
         return;
       }
-      markAllPaidBtn.disabled = false;
+      markAllPaidBtn.disabled = !state.orders.length;
       notesSearchCount.textContent = state.notesSearch
-        ? `${visibleOrders.length} od ${state.orders.length} porudžbina`
+        ? `${visibleOrders.length + visibleRecords.length} od ${state.orders.length + customRecords().length} stavki`
         : "";
-      if (!visibleOrders.length) {
+      if (!visibleOrders.length && !visibleRecords.length) {
         historyList.textContent = state.notesSearch
           ? "Nema porudžbina koje odgovaraju pretrazi notes-a i izabranom filteru."
           : "Nema porudžbina u ovoj kategoriji.";
         return;
       }
-      visibleOrders.forEach((order) => {
+      const renderOrderCard = (order) => {
         const div = document.createElement("div");
         div.className = "history-item";
         const rawName = String(order.product_name || order.product_id);
@@ -2976,6 +3228,8 @@
           }
         };
         renderNotePreview(order.reseller_notes);
+        const buyerRecord = recordForOrder(order.id);
+        if (buyerRecord) div.appendChild(buyerSummary(buyerRecord, () => openRecordForOrder(order)));
         div.appendChild(notePreview);
 
         const actions = document.createElement("div");
@@ -2985,7 +3239,16 @@
         noteToggle.type = "button";
         noteToggle.textContent = String(order.reseller_notes || "").trim() ? "Uredi belešku" : "Dodaj belešku";
         noteToggle.setAttribute("aria-expanded", "false");
-        actions.append(paymentBtn, noteToggle);
+        const buyerBtn = document.createElement("button");
+        buyerBtn.className = "btn mini-btn history-buyer-toggle";
+        buyerBtn.type = "button";
+        buyerBtn.textContent = buyerRecord ? "Kupac" : "+ Kupac";
+        buyerBtn.title = buyerRecord ? "Izmeni podatke kupca" : "Upiši podatke kupca";
+        buyerBtn.addEventListener("click", () => openRecordForOrder(order));
+        const actionsRight = document.createElement("span");
+        actionsRight.className = "history-actions-right";
+        actionsRight.append(buyerBtn, noteToggle);
+        actions.append(paymentBtn, actionsRight);
         div.appendChild(actions);
 
         paymentBtn.addEventListener("click", async () => {
@@ -3057,6 +3320,15 @@
         });
         div.appendChild(noteBox);
         historyList.appendChild(div);
+      };
+      // Orders and own records together, newest first.
+      const stamp = (value) => { const t = new Date(String(value || "").replace(" ", "T")).getTime(); return Number.isNaN(t) ? 0 : t; };
+      const entries = visibleOrders.map((order) => ({ t:stamp(order.created_at), order }))
+        .concat(visibleRecords.map((record) => ({ t:stamp(record.created_at), record })))
+        .sort((a, b) => b.t - a.t);
+      entries.forEach((entry) => {
+        if (entry.order) renderOrderCard(entry.order);
+        else historyList.appendChild(renderRecordCard(entry.record));
       });
     }
 
@@ -3318,7 +3590,11 @@
       }, 2500);
       hide(orderMsg);
       try{
-        await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id }) });
+        const placed = await api("/api/order.php", { method:"POST", body:JSON.stringify({ product_id:details.product_id }) });
+        state.lastOrder = placed && placed.order_id
+          ? { id:placed.order_id, product_name:details.product_name || details.name || "", account_type:details.account_type || "", created_at:new Date().toISOString() }
+          : null;
+        $("successBuyer").hidden = !state.lastOrder;
         await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, 120 - (performance.now() - startedAt))));
         window.clearTimeout(slowOrderTimer);
         setOrderProcessing(false);

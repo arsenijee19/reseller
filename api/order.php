@@ -173,6 +173,7 @@ try {
   }
   $successResponse = json_encode([
     "ok"=>true,
+    "order_id"=>$orderDbId,
     "request_id"=>$request_id,
     "charged_rsd"=>$price,
     "balance_rsd"=>$newBal,
