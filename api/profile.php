@@ -113,8 +113,13 @@ try {
     $fields[] = 'profile_completed_at = COALESCE(profile_completed_at, NOW())';
   }
   if ($tokenChangeRequested) {
+    $newHash = password_hash($newToken, PASSWORD_DEFAULT);
     $fields[] = 'token_hash = ?';
-    $params[] = password_hash($newToken, PASSWORD_DEFAULT);
+    $params[] = $newHash;
+    foreach (reseller_token_lookup_values($pdo, $newToken, $newHash) as $column => $value) {
+      $fields[] = "{$column} = ?";
+      $params[] = $value;
+    }
     if (has_column($pdo, 'resellers', 'credential_changed_at')) {
       $fields[] = 'credential_changed_at = NOW()';
     }

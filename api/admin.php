@@ -1344,8 +1344,13 @@ try {
       ) {
         throw new RuntimeException('Nova šifra/token je previše laka za pogoditi.');
       }
+      $newHash = password_hash($newToken, PASSWORD_DEFAULT);
       $fields[] = 'token_hash = ?';
-      $params[] = password_hash($newToken, PASSWORD_DEFAULT);
+      $params[] = $newHash;
+      foreach (reseller_token_lookup_values($pdo, $newToken, $newHash) as $column => $value) {
+        $fields[] = "{$column} = ?";
+        $params[] = $value;
+      }
       if (has_column($pdo, 'resellers', 'credential_changed_at')) {
         $fields[] = 'credential_changed_at = NOW()';
       }
@@ -1429,8 +1434,13 @@ try {
     if ($discount > 0 && !in_array('discount_percent', $columns, true)) {
       throw new RuntimeException('Popust nije dostupan dok se ne pokrene SQL migracija za discount_percent.');
     }
+    $tokenHash = password_hash($token, PASSWORD_DEFAULT);
     $fields = ['email', 'token_hash', 'status', 'balance_rsd'];
-    $params = [$email, password_hash($token, PASSWORD_DEFAULT), $status, $balance];
+    $params = [$email, $tokenHash, $status, $balance];
+    foreach (reseller_token_lookup_values($pdo, $token, $tokenHash) as $column => $value) {
+      $fields[] = $column;
+      $params[] = $value;
+    }
     if (in_array('discount_percent', $columns, true)) {
       $fields[] = 'discount_percent';
       $params[] = $discount;

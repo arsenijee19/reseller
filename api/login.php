@@ -32,16 +32,38 @@ try {
     'Previše pokušaja prijave. Sačekajte nekoliko minuta i pokušajte ponovo.'
   );
 
-  // Tražimo aktivne resellere (token se proverava preko password_verify)
-  $stmt = $pdo->prepare("SELECT id, email, token_hash, status FROM resellers WHERE status='active'");
-  $stmt->execute();
-  $resellers = $stmt->fetchAll();
-
   $found = null;
-  foreach ($resellers as $r) {
-    $hash = (string)($r["token_hash"] ?? "");
-    if ($hash !== "" && password_verify($token, $hash)) {
-      $found = $r; break;
+  $lookupReady = ensure_reseller_token_lookup_columns($pdo);
+  if ($lookupReady) {
+    // Fast path: one indexed row, one password_verify.
+    $stmt = $pdo->prepare("SELECT id, email, token_hash, status, token_lookup_fp FROM resellers WHERE status='active' AND token_lookup = ? LIMIT 5");
+    $stmt->execute([reseller_token_lookup($token)]);
+    foreach ($stmt->fetchAll() as $r) {
+      $hash = (string)($r["token_hash"] ?? "");
+      if ($hash !== "" && hash_equals(reseller_token_lookup_fp($hash), (string)$r["token_lookup_fp"]) && password_verify($token, $hash)) {
+        $found = $r; break;
+      }
+    }
+  }
+
+  if (!$found) {
+    // Slow path only for accounts without a valid lookup yet (first login after this update, or a token
+    // changed outside the portal). Every successful match fills the lookup, so this list shrinks to zero.
+    $sql = "SELECT id, email, token_hash, status FROM resellers WHERE status='active'";
+    if ($lookupReady) $sql .= " AND (token_lookup IS NULL OR token_lookup_fp IS NULL OR token_lookup_fp <> LEFT(SHA2(token_hash, 256), 16))";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    foreach ($stmt->fetchAll() as $r) {
+      $hash = (string)($r["token_hash"] ?? "");
+      if ($hash !== "" && password_verify($token, $hash)) {
+        $found = $r; break;
+      }
+    }
+    if ($found && $lookupReady) {
+      try {
+        $pdo->prepare("UPDATE resellers SET token_lookup = ?, token_lookup_fp = ? WHERE id = ?")
+          ->execute([reseller_token_lookup($token), reseller_token_lookup_fp((string)$found["token_hash"]), (int)$found["id"]]);
+      } catch (Throwable $ignored) {}
     }
   }
 

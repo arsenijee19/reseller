@@ -865,6 +865,43 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   return $row ?: null;
 }
 
+// ---- fast token login ---------------------------------------------------------------------------------
+// Login used to run password_verify (bcrypt, ~50-100 ms) against every active reseller until one matched,
+// so it slowed down with each new account and a wrong token always paid the full price. token_lookup is a
+// keyed SHA-256 of the token, indexed, so the matching row is found with one query and verified once.
+// token_lookup_fp ties the lookup to the current token_hash: if the hash is changed anywhere else (e.g. by
+// hand in phpMyAdmin) the stale lookup is ignored and the row is handled by the slow path again.
+function ensure_reseller_token_lookup_columns(PDO $pdo): bool {
+  static $ready = null;
+  if ($ready !== null) return $ready;
+  try {
+    if (!schema_ensured('ensure_reseller_token_lookup_columns') || !has_column($pdo, 'resellers', 'token_lookup')) {
+      if (!has_column($pdo, 'resellers', 'token_lookup')) {
+        $pdo->exec('ALTER TABLE resellers ADD COLUMN token_lookup CHAR(64) NULL, ADD COLUMN token_lookup_fp CHAR(16) NULL, ADD KEY idx_resellers_token_lookup (token_lookup)');
+        table_columns($pdo, 'resellers', true);
+      }
+      schema_mark_ensured('ensure_reseller_token_lookup_columns');
+    }
+    return $ready = has_column($pdo, 'resellers', 'token_lookup') && has_column($pdo, 'resellers', 'token_lookup_fp');
+  } catch (Throwable $e) {
+    return $ready = false;
+  }
+}
+
+function reseller_token_lookup(string $token): string {
+  return hash_hmac('sha256', 'pw-token-lookup|' . $token, security_encryption_key());
+}
+
+function reseller_token_lookup_fp(string $tokenHash): string {
+  return substr(hash('sha256', $tokenHash), 0, 16);
+}
+
+/** Column => value pairs to store next to a newly set token_hash (empty when the columns are unavailable). */
+function reseller_token_lookup_values(PDO $pdo, string $token, string $tokenHash): array {
+  if (!ensure_reseller_token_lookup_columns($pdo)) return [];
+  return ['token_lookup' => reseller_token_lookup($token), 'token_lookup_fp' => reseller_token_lookup_fp($tokenHash)];
+}
+
 // ---- reseller preferences (Podešavanja) -----------------------------------------------------------------
 function ensure_reseller_preference_columns(PDO $pdo): void {
   static $done = false;
