@@ -245,7 +245,10 @@
     .credit-banner.locked{border-color:rgba(195,41,41,.3);background:rgba(195,41,41,.06)}
     .credit-banner.locked strong{color:var(--bad)}
     .credit-banner.warn{border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.06)}
-    .credit-banner .btn{justify-self:start;margin-top:6px;min-height:34px;padding:6px 14px;font-size:13px}
+    .credit-banner .btn{justify-self:start;margin-top:6px;min-height:36px;padding:6px 14px 6px 11px;font-size:13px}
+    .credit-pay-btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--text);box-shadow:0 1px 2px rgba(15,23,42,.06)}
+    .credit-pay-btn:hover{border-color:rgba(19,138,67,.45);background:var(--panel)}
+    .credit-pay-btn svg{width:16px;height:16px;fill:none;stroke:var(--good);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
     .credit-banner[hidden]{display:none}
     #orderBtn.is-blocked{opacity:.55}
     .game-art{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;overflow:hidden;border-radius:10px;background:linear-gradient(145deg,rgba(118,118,128,.10),rgba(118,118,128,.20));color:var(--muted);font-weight:800;line-height:1;box-shadow:inset 0 0 0 1px rgba(118,118,128,.16)}
@@ -1059,7 +1062,7 @@
               <div class="credit-banner" id="creditBanner" role="status" hidden>
                 <strong id="creditBannerTitle"></strong>
                 <span id="creditBannerText"></span>
-                <button class="btn good" id="creditBannerPay" type="button" hidden>Uplatio sam</button>
+                <button class="btn credit-pay-btn" id="creditBannerPay" type="button" hidden><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>Uplatio sam</button>
               </div>
               <div class="order-controls">
                 <div>
