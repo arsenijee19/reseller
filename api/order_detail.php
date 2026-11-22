@@ -31,7 +31,7 @@ try {
     $optional[] = in_array($column, $columns, true) ? "o.{$column}" : "NULL AS {$column}";
   }
   $stmt = $pdo->prepare('SELECT o.id, o.product_id, o.price_rsd, o.created_at, ' . implode(', ', $optional) . ',
-      pp.product_name, pp.account_type, ' . (ensure_product_image_column($pdo) ? 'pp.image_file' : 'NULL AS image_file') . '
+      pp.product_name, pp.account_type, ' . (ensure_product_image_column($pdo) ? 'pp.image_file' : 'NULL AS image_file') . ', ' . (ensure_product_period_column($pdo) ? 'pp.subscription_months' : 'NULL AS subscription_months') . '
     FROM orders o
     LEFT JOIN product_prices pp ON pp.product_id = o.product_id
     WHERE o.id = ? AND o.reseller_id = ?
@@ -65,6 +65,7 @@ try {
       'product_name' => (string)($order['product_name'] ?? ''),
       'account_type' => (string)($order['account_type'] ?? ''),
       'image' => product_image_url($order['image_file'] ?? null),
+      'subscription_months' => $order['subscription_months'] === null ? null : (int)$order['subscription_months'],
       'price_rsd' => (int)$order['price_rsd'],
       'created_at' => (string)$order['created_at'],
       'reseller_notes' => (string)($order['reseller_notes'] ?? ''),

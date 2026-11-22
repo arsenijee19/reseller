@@ -335,6 +335,7 @@
     .txn-summary .in{color:var(--good)}
     .txn-summary .out{color:var(--danger)}
     @media(max-width:1100px){.txn-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.txn-filter-search{grid-column:1/-1}}
+    .product-period{min-height:36px;width:auto;min-width:118px;padding:6px 30px 6px 10px;font-size:13px}
     .debt-panel{margin-top:18px}
     .debt-settings{display:grid;gap:6px;margin-bottom:14px}
     .debt-settings .actions{justify-content:flex-start;margin-top:6px}
@@ -1855,7 +1856,7 @@
     }
 
     function productColumns(){
-      return (state.data.schema.products || []).filter((c) => !(c.EXTRA || "").includes("auto_increment") && c.COLUMN_NAME !== "image_file");
+      return (state.data.schema.products || []).filter((c) => !(c.EXTRA || "").includes("auto_increment") && !["image_file", "subscription_months"].includes(c.COLUMN_NAME));
     }
 
     function renderNewProduct(){
@@ -1960,14 +1961,32 @@
         const wrap = document.createElement("div"); wrap.className = "table-wrap";
         const table = document.createElement("table"); table.className = "product-table";
         const header = table.createTHead().insertRow();
-        ["Tip naloga", "ID proizvoda", "Cena", "Status", ""].forEach((label) => text(header.insertCell(), "strong", label));
+        ["Tip naloga", "ID proizvoda", "Period", "Cena", "Status", ""].forEach((label) => text(header.insertCell(), "strong", label));
         const body = table.createTBody();
-        group.products.forEach((product) => {
+        [...group.products].sort((a, b) => (Number(a.subscription_months) || 0) - (Number(b.subscription_months) || 0) || String(a.account_type || "").localeCompare(String(b.account_type || ""))).forEach((product) => {
           let row;
           try {
           row = body.insertRow(); row.dataset.recordId = `product-${product.product_id}`;
           text(row.insertCell(), "span", product.account_type || "Cena", "product-slot");
           text(row.insertCell(), "code", product.product_id || "[product_id]", "product-id mono");
+          const periodCell = row.insertCell();
+          const period = document.createElement("select");
+          period.className = "product-period";
+          period.setAttribute("aria-label", `Period pretplate za ${product.account_type || product.product_id}`);
+          [["", "—"], ["1", "1 mesec"], ["3", "3 meseca"], ["6", "6 meseci"], ["12", "12 meseci"], ["24", "24 meseca"]].forEach(([value, label]) => option(period, value, label));
+          period.value = product.subscription_months ? String(product.subscription_months) : "";
+          period.addEventListener("change", async () => {
+            period.disabled = true;
+            try{
+              const result = await api("set_product_period", { method:"POST", body:JSON.stringify({ product_id:product.product_id, months:Number(period.value || 0) }) });
+              product.subscription_months = result.months;
+              showToast("ok", `Period za ${product.account_type || product.product_id}: ${period.value ? period.options[period.selectedIndex].text : "bez perioda"}.`);
+            }catch(e){
+              period.value = product.subscription_months ? String(product.subscription_months) : "";
+              showToast("bad", e.message);
+            }finally{ period.disabled = false; }
+          });
+          periodCell.appendChild(period);
 
           const priceCell = row.insertCell(); priceCell.className = "product-price-cell";
           const priceWrap = document.createElement("div"); priceWrap.className = "product-price-field";

@@ -32,6 +32,7 @@ try {
       {$canceledSelect}
       {$statusSelect}
       " . (ensure_product_image_column($pdo) ? 'pp.image_file,' : 'NULL AS image_file,') . "
+      " . (ensure_product_period_column($pdo) ? 'pp.subscription_months,' : 'NULL AS subscription_months,') . "
       pp.product_name,
       pp.account_type
     FROM orders o

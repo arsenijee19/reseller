@@ -21,6 +21,7 @@ try {
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
   $imageSelect = ensure_product_image_column($pdo) ? 'image_file' : 'NULL AS image_file';
+  $imageSelect .= ensure_product_period_column($pdo) ? ', subscription_months' : ', NULL AS subscription_months';
   $stmt = $pdo->query("
     SELECT product_id, product_name, account_type, price, currency, {$imageSelect}
     FROM product_prices
@@ -34,6 +35,7 @@ try {
     $row['price'] = discounted_price($basePrice, $discountPercent);
     $row['discount_percent'] = $discountPercent;
     $row['image'] = product_image_url($row['image_file'] ?? null);
+    $row['subscription_months'] = $row['subscription_months'] === null ? null : (int)$row['subscription_months'];
     unset($row['image_file']);
     return $row;
   }, $stmt->fetchAll(PDO::FETCH_ASSOC));

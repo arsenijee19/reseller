@@ -886,6 +886,21 @@ function ensure_product_image_column(PDO $pdo): bool {
   }
 }
 
+/** Subscription period in months (PS Plus 1/3/12), set by the admin per product; NULL = not a subscription. */
+function ensure_product_period_column(PDO $pdo): bool {
+  static $ready = null;
+  if ($ready !== null) return $ready;
+  try {
+    if (!has_column($pdo, 'product_prices', 'subscription_months')) {
+      $pdo->exec('ALTER TABLE product_prices ADD COLUMN subscription_months TINYINT UNSIGNED NULL');
+      table_columns($pdo, 'product_prices', true);
+    }
+    return $ready = has_column($pdo, 'product_prices', 'subscription_months');
+  } catch (Throwable $e) {
+    return $ready = false;
+  }
+}
+
 /** Public folder inside the site (next to index.html), so images are plain static files. */
 function product_images_dir(): string {
   $dir = dirname(__DIR__) . '/uploads/games';

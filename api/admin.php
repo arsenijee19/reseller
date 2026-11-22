@@ -58,6 +58,7 @@ function fetch_resellers(PDO $pdo): array {
 }
 
 function fetch_products(PDO $pdo): array {
+  ensure_product_period_column($pdo);
   $stmt = $pdo->query('SELECT * FROM product_prices ORDER BY product_name ASC, account_type ASC, product_id ASC');
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -1773,6 +1774,19 @@ try {
     $payload = dashboard_payload($pdo, $input['filters'] ?? []);
     $payload['reminder_result'] = $result;
     json_response($payload);
+  }
+
+  if ($action === 'set_product_period') {
+    $admin = require_admin();
+    $productId = h_string($input['product_id'] ?? '');
+    $months = (int)($input['months'] ?? 0);
+    if ($productId === '') json_response(['ok' => false, 'error' => 'Nedostaje proizvod.'], 400);
+    if (!in_array($months, [0, 1, 3, 6, 12, 24], true)) json_response(['ok' => false, 'error' => 'Izaberite period: 1, 3, 6, 12 ili 24 meseca.'], 400);
+    if (!ensure_product_period_column($pdo)) json_response(['ok' => false, 'error' => 'Kolona za period nije dostupna u bazi.'], 503);
+    $stmt = $pdo->prepare('UPDATE product_prices SET subscription_months = ? WHERE product_id = ?');
+    $stmt->execute([$months > 0 ? $months : null, $productId]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'product_period_updated', 'success', ['product_id' => $productId, 'months' => $months]);
+    json_response(['ok' => true, 'product_id' => $productId, 'months' => $months > 0 ? $months : null]);
   }
 
   if ($action === 'unlock_reseller_orders') {
