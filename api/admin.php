@@ -199,6 +199,72 @@ function fetch_payment_notices(PDO $pdo): array {
   return $rows;
 }
 
+const TRANSACTION_KINDS = [
+  'payments' => ['PAYMENT_RECEIVED', 'BANK_TRANSFER', 'CASH_PAYMENT', 'CARD_PAYMENT', 'OTHER_PAYMENT'],
+  'orders' => ['ORDER', 'MANUAL_ORDER'],
+  'refunds' => ['ORDER_REVERSAL', 'ORDER_REFUND', 'REVERSAL'],
+  'adjustments' => ['ADMIN_TOPUP', 'ADMIN_ADJUSTMENT', 'BONUS'],
+];
+
+/** Filtered transaction list for the Transakcije tab (reseller, kind/type, date range, text) + totals. */
+function fetch_transactions_filtered(PDO $pdo, array $f): array {
+  $resellerName = has_column($pdo, 'resellers', 'display_name') ? 'r.display_name AS reseller_name' : "'' AS reseller_name";
+  $relatedOrder = has_column($pdo, 'wallet_transactions', 'related_order_id') ? 'wt.related_order_id' : 'NULL AS related_order_id';
+  $hasCreated = has_column($pdo, 'wallet_transactions', 'created_at');
+  $createdAt = $hasCreated ? 'wt.created_at' : 'NULL AS created_at';
+  $extra = [];
+  foreach (['source', 'balance_before_rsd', 'balance_after_rsd', 'reversal_of_transaction_id'] as $column) {
+    $extra[] = has_column($pdo, 'wallet_transactions', $column) ? "wt.{$column}" : "NULL AS {$column}";
+  }
+  $where = [];
+  $params = [];
+  $resellerId = (int)($f['reseller_id'] ?? 0);
+  if ($resellerId > 0) { $where[] = 'wt.reseller_id = ?'; $params[] = $resellerId; }
+  $kind = (string)($f['kind'] ?? '');
+  if (isset(TRANSACTION_KINDS[$kind])) {
+    $where[] = 'wt.type IN (' . implode(',', array_fill(0, count(TRANSACTION_KINDS[$kind]), '?')) . ')';
+    array_push($params, ...TRANSACTION_KINDS[$kind]);
+  } elseif (preg_match('/^[A-Z_]{2,40}$/', $kind)) {
+    $where[] = 'wt.type = ?'; $params[] = $kind;
+  }
+  $direction = (string)($f['direction'] ?? '');
+  if ($direction === 'in') $where[] = 'wt.amount_rsd > 0';
+  if ($direction === 'out') $where[] = 'wt.amount_rsd < 0';
+  if ($hasCreated) {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($f['from'] ?? ''))) { $where[] = 'wt.created_at >= ?'; $params[] = $f['from'] . ' 00:00:00'; }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($f['to'] ?? ''))) { $where[] = 'wt.created_at <= ?'; $params[] = $f['to'] . ' 23:59:59'; }
+  }
+  $q = trim((string)($f['q'] ?? ''));
+  if ($q !== '') {
+    $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+    $where[] = '(wt.description LIKE ? OR r.email LIKE ? OR CAST(wt.id AS CHAR) = ?' . (has_column($pdo, 'resellers', 'display_name') ? ' OR r.display_name LIKE ?' : '') . ')';
+    array_push($params, $like, $like, $q);
+    if (has_column($pdo, 'resellers', 'display_name')) $params[] = $like;
+  }
+  $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+  $limit = 1000;
+  $stmt = $pdo->prepare("SELECT wt.id, wt.reseller_id, {$resellerName}, r.email AS reseller_email,
+      wt.type, wt.amount_rsd, wt.description, {$relatedOrder}, {$createdAt}, " . implode(', ', $extra) . "
+    FROM wallet_transactions wt
+    LEFT JOIN resellers r ON r.id = wt.reseller_id
+    {$whereSql}
+    ORDER BY wt.id DESC
+    LIMIT {$limit}");
+  $stmt->execute($params);
+  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $totals = $pdo->prepare("SELECT COUNT(*) AS count,
+      COALESCE(SUM(CASE WHEN wt.amount_rsd > 0 THEN wt.amount_rsd END), 0) AS total_in,
+      COALESCE(SUM(CASE WHEN wt.amount_rsd < 0 THEN wt.amount_rsd END), 0) AS total_out
+    FROM wallet_transactions wt LEFT JOIN resellers r ON r.id = wt.reseller_id {$whereSql}");
+  $totals->execute($params);
+  $sum = $totals->fetch(PDO::FETCH_ASSOC) ?: [];
+  return [
+    'transactions' => $rows,
+    'totals' => ['count' => (int)($sum['count'] ?? 0), 'in' => (int)($sum['total_in'] ?? 0), 'out' => (int)($sum['total_out'] ?? 0)],
+    'truncated' => (int)($sum['count'] ?? 0) > $limit,
+  ];
+}
+
 function fetch_transactions(PDO $pdo): array {
   $resellerName = has_column($pdo, 'resellers', 'display_name') ? 'r.display_name AS reseller_name' : "'' AS reseller_name";
   $relatedOrder = has_column($pdo, 'wallet_transactions', 'related_order_id') ? 'wt.related_order_id' : 'NULL AS related_order_id';
@@ -617,6 +683,10 @@ try {
 
   if ($action === 'dashboard') {
     json_response(dashboard_payload($pdo, $_GET));
+  }
+
+  if ($action === 'transactions') {
+    json_response(['ok' => true] + fetch_transactions_filtered($pdo, $_GET));
   }
 
   if ($action === 'payment_proof') {

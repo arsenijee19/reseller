@@ -327,6 +327,14 @@
     .game-image-preview img{width:160px;height:160px;object-fit:cover;border-radius:12px;display:block}
     .game-image-note{margin:6px 0 0;font-size:12px}
     #gameImageRemoveBtn{margin-right:auto}
+    .txn-filters{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(160px,1.1fr) repeat(2,minmax(130px,.8fr)) minmax(160px,1.2fr) auto;gap:10px;align-items:end;margin-bottom:10px}
+    .txn-filters label{margin:0 0 5px}
+    .txn-filter-reset .btn{min-height:42px;white-space:nowrap}
+    .txn-summary{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--soft);font-size:13px;color:var(--muted)}
+    .txn-summary b{color:var(--text);font-variant-numeric:tabular-nums}
+    .txn-summary .in{color:var(--good)}
+    .txn-summary .out{color:var(--danger)}
+    @media(max-width:1100px){.txn-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.txn-filter-search{grid-column:1/-1}}
     .debt-panel{margin-top:18px}
     .debt-settings{display:grid;gap:6px;margin-bottom:14px}
     .debt-settings .actions{justify-content:flex-start;margin-top:6px}
@@ -888,6 +896,21 @@
             </div>
             <p class="muted" style="margin-top:10px">Izaberite tip i unesite iznos: pozitivan iznos dodaje sredstva, negativan ih oduzima. Ovo je finansijska evidencija i ne kreira zasebnu porudžbinu. Primer: bankovna uplata od <span class="mono">3000 RSD</span>.</p>
           </div>
+          <div class="txn-filters" id="txnFilters">
+            <div><label for="txnFilterReseller">Prodavac</label><select id="txnFilterReseller"><option value="">Svi prodavci</option></select></div>
+            <div><label for="txnFilterKind">Vrsta</label><select id="txnFilterKind">
+              <option value="">Sve transakcije</option>
+              <option value="payments">Uplate</option>
+              <option value="orders">Porudžbine</option>
+              <option value="refunds">Poništenja i povraćaji</option>
+              <option value="adjustments">Dopune, ispravke, bonusi</option>
+            </select></div>
+            <div><label for="txnFilterFrom">Od</label><input id="txnFilterFrom" type="date" /></div>
+            <div><label for="txnFilterTo">Do</label><input id="txnFilterTo" type="date" /></div>
+            <div class="txn-filter-search"><label for="txnFilterQ">Pretraga</label><input id="txnFilterQ" type="search" placeholder="Opis, email, ID..." autocomplete="off" /></div>
+            <div class="txn-filter-reset"><button class="btn" id="txnFilterReset" type="button">Poništi filtere</button></div>
+          </div>
+          <div class="txn-summary" id="txnSummary"></div>
           <div class="table-wrap"><table id="transactionsTable"></table></div>
         </div>
 
@@ -2421,13 +2444,25 @@
         option(resellerSelect, reseller.id, `${label} (#${reseller.id})`);
       });
 
+      const filterSelect = $("txnFilterReseller");
+      const keep = filterSelect.value;
+      filterSelect.textContent = "";
+      option(filterSelect, "", "Svi prodavci");
+      [...(state.data.resellers || [])].sort((a, b) => String(a.display_name || a.email).localeCompare(String(b.display_name || b.email), "sr")).forEach((reseller) => {
+        option(filterSelect, reseller.id, reseller.display_name ? `${reseller.display_name} – ${reseller.email}` : reseller.email);
+      });
+      filterSelect.value = keep;
+      if (txnFiltersActive() && !state.txnResult) { loadFilteredTransactions(); }
+      const list = state.txnResult ? state.txnResult.transactions : (state.data.transactions || []);
+      renderTxnSummary(list);
+
       const table = $("transactionsTable");
       table.textContent = "";
       const columns = ["id", "reseller_name", "reseller_email", "type", "amount_rsd", "description", "related_order_id", "created_at"];
       const head = table.createTHead().insertRow();
       [...columns, "Akcija"].forEach((name) => text(head.insertCell(), "strong", name));
       const body = table.createTBody();
-      (state.data.transactions || []).forEach((transaction) => {
+      list.forEach((transaction) => {
         const row = body.insertRow();
         columns.forEach((name) => {
           const value = name === "amount_rsd" ? money(transaction[name]) : (name === "type" ? transactionTypeLabel(transaction[name]) : (transaction[name] || "-"));
@@ -2463,11 +2498,11 @@
         }
         row.insertCell().appendChild(actionBox);
       });
-      if (!(state.data.transactions || []).length) {
+      if (!list.length) {
         const row = body.insertRow();
         const cell = row.insertCell();
         cell.colSpan = columns.length + 1;
-        text(cell, "span", "Nema zabeleženih transakcija.", "muted");
+        text(cell, "span", txnFiltersActive() ? "Nema transakcija za izabrane filtere." : "Nema zabeleženih transakcija.", "muted");
       }
     }
 
@@ -2662,6 +2697,7 @@
         }
         state.data = result;
         closeOrderCancel();
+        state.txnResult = null;
         renderWithUiState(() => render());
         const back = result.cancellation && result.cancellation.refund_rsd;
         showToast("ok", back ? `Porudžbina #${o.id} je poništena. ${money(back)} RSD vraćeno reselleru.` : `Porudžbina #${o.id} je poništena bez povraćaja.`);
@@ -2699,6 +2735,7 @@
       btn.disabled = true;
       try{
         state.data = await api("update_transaction_description", { method:"POST", body:JSON.stringify({ id:t.id, description, filters:currentFilters() }) });
+        state.txnResult = null;
         closeTxnEdit();
         renderWithUiState(() => render());
         showToast("ok", `Opis transakcije #${t.id} je sačuvan.`);
@@ -2717,6 +2754,59 @@
       if (event.key !== "Escape") return;
       if ($("orderCancelModal").classList.contains("open")) closeOrderCancel();
       if ($("txnEditModal").classList.contains("open")) closeTxnEdit();
+    });
+
+    // ---- Transakcije filters (applied immediately, filtered on the server) ----
+    function txnFilterValues(){
+      return {
+        reseller_id:$("txnFilterReseller").value,
+        kind:$("txnFilterKind").value,
+        from:$("txnFilterFrom").value,
+        to:$("txnFilterTo").value,
+        q:$("txnFilterQ").value.trim()
+      };
+    }
+    function txnFiltersActive(){ return Object.values(txnFilterValues()).some(Boolean); }
+    let txnRequest = 0;
+    async function loadFilteredTransactions(){
+      if (!txnFiltersActive()) { state.txnResult = null; renderTransactions(); return; }
+      const ticket = ++txnRequest;
+      const params = new URLSearchParams();
+      Object.entries(txnFilterValues()).forEach(([key, value]) => { if (value) params.set(key, value); });
+      $("txnSummary").textContent = "Učitavanje...";
+      try{
+        const result = await api("transactions", { query:"&" + params.toString() });
+        if (ticket !== txnRequest) return;
+        state.txnResult = result;
+        renderTransactions();
+      }catch(e){
+        if (ticket === txnRequest) showToast("bad", e.message);
+      }
+    }
+    function renderTxnSummary(list){
+      const box = $("txnSummary");
+      box.textContent = "";
+      const totals = state.txnResult ? state.txnResult.totals : {
+        count:list.length,
+        in:list.reduce((sum, t) => sum + Math.max(0, Number(t.amount_rsd) || 0), 0),
+        out:list.reduce((sum, t) => sum + Math.min(0, Number(t.amount_rsd) || 0), 0)
+      };
+      const item = (label, value, cls) => { const span = document.createElement("span"); span.append(label + " "); text(span, "b", value, cls || ""); box.appendChild(span); };
+      item(state.txnResult ? "Pronađeno:" : "Prikazano (poslednjih):", String(totals.count));
+      item("Ulaz:", `+${money(totals.in)} RSD`, "in");
+      item("Izlaz:", `${money(totals.out)} RSD`, "out");
+      item("Neto:", `${money(totals.in + totals.out)} RSD`);
+      if (state.txnResult && state.txnResult.truncated) text(box, "span", "Prikazano je prvih 1000; suzite filtere.", "muted");
+      const reseller = (state.data.resellers || []).find((r) => String(r.id) === $("txnFilterReseller").value);
+      if (reseller) item("Trenutni saldo prodavca:", `${money(reseller.balance_rsd)} RSD`, Number(reseller.balance_rsd) < 0 ? "out" : "in");
+    }
+    ["txnFilterReseller", "txnFilterKind", "txnFilterFrom", "txnFilterTo"].forEach((id) => $(id).addEventListener("change", loadFilteredTransactions));
+    let txnSearchTimer = 0;
+    $("txnFilterQ").addEventListener("input", () => { window.clearTimeout(txnSearchTimer); txnSearchTimer = window.setTimeout(loadFilteredTransactions, 300); });
+    $("txnFilterReset").addEventListener("click", () => {
+      ["txnFilterReseller", "txnFilterKind", "txnFilterFrom", "txnFilterTo", "txnFilterQ"].forEach((id) => { $(id).value = ""; });
+      state.txnResult = null;
+      renderTransactions();
     });
 
     function transactionTypeLabel(type){
@@ -3327,6 +3417,7 @@
           })
         });
         state.data = result;
+        state.txnResult = null;
         $("transactionAmount").value = "";
         $("transactionType").value = "";
         $("transactionDescription").value = "";
