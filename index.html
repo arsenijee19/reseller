@@ -251,6 +251,9 @@
     .credit-pay-btn svg{width:16px;height:16px;fill:none;stroke:var(--good);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
     .credit-banner[hidden]{display:none}
     #orderBtn.is-blocked{opacity:.55}
+    .product-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .slot-chip.duration{background:rgba(49,93,244,.10);color:var(--brand)}
+    .slot-chip.duration b{font-weight:700}
     .game-art{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;overflow:hidden;border-radius:10px;background:linear-gradient(145deg,rgba(118,118,128,.10),rgba(118,118,128,.20));color:var(--muted);font-weight:800;line-height:1;box-shadow:inset 0 0 0 1px rgba(118,118,128,.16)}
     .game-art img{width:100%;height:100%;object-fit:cover;display:block}
     .game-art.sm{width:40px;height:40px;border-radius:9px;font-size:15px}
@@ -2554,6 +2557,25 @@
       const has4 = platforms.includes("PS4"), has5 = platforms.includes("PS5");
       return has4 && has5 ? "mix" : has5 ? "ps5" : has4 ? "ps4" : "other";
     }
+    // Subscription period (PS Plus 1 / 3 / 12 months) as its own small tag next to the PS4/PS5 tag.
+    function durationChip(productLike){
+      const months = subscriptionDuration(productLike || {});
+      if (!months) return null;
+      const chip = document.createElement("span");
+      chip.className = "slot-chip duration";
+      chip.title = "Period pretplate";
+      appendText(chip, "b", subscriptionDurationLabel(months));
+      return chip;
+    }
+    function appendTypeChips(parent, typeText, productLike){
+      parent.appendChild(slotChip(typeText));
+      const period = durationChip(productLike);
+      if (period) parent.appendChild(period);
+    }
+    function pricedProduct(productId){
+      return state.prices.get(String(productId)) || {};
+    }
+
     function slotRoleText(typeText){
       const t = String(typeText || "");
       if (/secondary/i.test(t)) return "Secondary";
@@ -2647,7 +2669,7 @@
       appendText(productPickerValue, "strong", productLabel(product));
       const valueLine = document.createElement("span");
       valueLine.className = "product-picker-sub";
-      valueLine.appendChild(slotChip(productType(product)));
+      appendTypeChips(valueLine, productType(product), pricedProduct(product.id));
       if (priced.price) appendText(valueLine, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-picker-price");
       productPickerValue.appendChild(valueLine);
       closeProductPicker();
@@ -2749,7 +2771,10 @@
             const main = document.createElement("span");
             main.className = "product-option-main";
             appendText(main, "strong", productLabel(product));
-            main.appendChild(slotChip(productType(product)));
+            const chips = document.createElement("span");
+            chips.className = "product-chips";
+            appendTypeChips(chips, productType(product), pricedProduct(product.id));
+            main.appendChild(chips);
             option.append(gameArt(productImage(product.id), productLabel(product), "sm"), main);
             if (priced.price !== undefined) appendText(option, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-option-price");
             option.addEventListener("click", () => chooseProduct(product.id));
@@ -2775,7 +2800,7 @@
           const priced = state.prices.get(String(selected.id)) || {};
           const valueLine = document.createElement("span");
       valueLine.className = "product-picker-sub";
-      valueLine.appendChild(slotChip(productType(selected)));
+      appendTypeChips(valueLine, productType(selected), pricedProduct(selected.id));
       if (priced.price) appendText(valueLine, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-picker-price");
       productPickerValue.appendChild(valueLine);
         }
@@ -2819,6 +2844,15 @@
           price: displayPrice,
           discount_percent: discountPercent
         }));
+      });
+      // Same game together, then by subscription period (1 → 3 → 12 months), then PS5/PS4 Primary → Secondary.
+      state.products.sort((a, b) => {
+        const pa = pricedProduct(a.id), pb = pricedProduct(b.id);
+        const byName = String(pa.product_name || a.name || "").localeCompare(String(pb.product_name || b.name || ""), "sr", { sensitivity:"base" });
+        if (byName) return byName;
+        const byPeriod = subscriptionDuration(pa) - subscriptionDuration(pb);
+        if (byPeriod) return byPeriod;
+        return priceSlot(pa).order - priceSlot(pb).order;
       });
       renderProductOptions();
       renderPrices();
@@ -2935,9 +2969,13 @@
     }
 
     function subscriptionDuration(product){
-      const source = `${product.product_name || ""} ${product.account_type || ""}`;
-      const match = source.match(/(?:^|[^\d])(1|3|12)[\s-]*(?:months?\b|mesec(?:a|i)?\b|mo\b|m\b)/i);
-      return match ? Number(match[1]) : 0;
+      // The period can be written in the name, the account type or the product ID: "1 month", "3 Months",
+      // "12 meseci", "12m", "psplus_essential_12m", "1 godina" / "godišnja" (= 12).
+      const source = `${product.product_name || ""} ${product.account_type || ""} ${product.product_id || ""}`;
+      const match = source.match(/(?:^|[^\d])(1|3|12)[\s_-]*(?:months?|mesec(?:a|i)?|mes|mj|mo|m)(?![a-zščćžđ])/i);
+      if (match) return Number(match[1]);
+      if (/(?:^|[^\d])1[\s_-]*(?:god(?:ina|ine)?|year|yr)(?![a-z])|godi[sš]nj|yearly|annual/i.test(source)) return 12;
+      return 0;
     }
 
     function subscriptionDurationLabel(months){
@@ -2997,6 +3035,7 @@
       [
         ["Proizvod", details.product_name],
         ["Tip naloga", details.account_type],
+        ...(subscriptionDuration(details) ? [["Period pretplate", subscriptionDurationLabel(subscriptionDuration(details))]] : []),
         ...(Number(details.discount_percent) > 0 ? [["Osnovna cena", `${price(details.base_price)} ${details.currency}`], ["Popust", `-${details.discount_percent}%`]] : []),
         ["Cena za Vas", `${price(details.price)} ${details.currency}`],
         ["Isporuka", details.customer_email || "Email resellera"]
@@ -3169,6 +3208,8 @@
       const tags = document.createElement("div");
       tags.className = "od-tags";
       if (order.account_type) tags.appendChild(slotChip(order.account_type));
+      const orderPeriod = durationChip(order);
+      if (orderPeriod) tags.appendChild(orderPeriod);
       if (order.canceled) appendText(tags, "span", "Poništena", "od-tag canceled");
       else appendText(tags, "span", order.reseller_paid ? "Plaćeno" : "Neplaćeno", "od-tag " + (order.reseller_paid ? "paid" : "unpaid"));
       headCopy.appendChild(tags);
@@ -3515,6 +3556,8 @@
         const metaLine = document.createElement("div");
         metaLine.className = "history-order-meta";
         if (accountType) metaLine.appendChild(slotChip(accountType));
+        const historyPeriod = durationChip(order);
+        if (historyPeriod) metaLine.appendChild(historyPeriod);
         appendText(metaLine, "span", compactOrderDateTime(order.created_at));
         main.appendChild(metaLine);
         const priceStatus = document.createElement("div");
