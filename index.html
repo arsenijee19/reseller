@@ -239,6 +239,15 @@
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     html.release-notes-off .whats-new-btn{display:none}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
+    .credit-banner{display:grid;gap:4px;margin:12px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--soft);font-size:13px;line-height:1.45}
+    .credit-banner strong{font-size:13.5px}
+    .credit-banner span{color:var(--muted)}
+    .credit-banner.locked{border-color:rgba(195,41,41,.3);background:rgba(195,41,41,.06)}
+    .credit-banner.locked strong{color:var(--bad)}
+    .credit-banner.warn{border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.06)}
+    .credit-banner .btn{justify-self:start;margin-top:6px;min-height:34px;padding:6px 14px;font-size:13px}
+    .credit-banner[hidden]{display:none}
+    #orderBtn.is-blocked{opacity:.55}
     .order-link-hint{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(49,93,244,.25);border-radius:10px;background:rgba(49,93,244,.07);color:var(--text);font-size:13px;line-height:1.45}
     .order-detail-backdrop{z-index:40;align-items:flex-start;overflow:auto}
     .order-detail{width:min(620px,100%);margin:clamp(0px,4vh,40px) auto;padding:18px 20px 22px}
@@ -1031,6 +1040,11 @@
                 <span class="tour-play" aria-hidden="true">▶</span>
                 <span><b>Tutorial</b><small>Kako se poručuje, pretraga, beleške i balans · oko 1 minut</small></span>
               </button>
+              <div class="credit-banner" id="creditBanner" role="status" hidden>
+                <strong id="creditBannerTitle"></strong>
+                <span id="creditBannerText"></span>
+                <button class="btn good" id="creditBannerPay" type="button" hidden>Uplatio sam</button>
+              </div>
               <div class="order-controls">
                 <div>
                   <label for="product">Proizvod</label>
@@ -1622,6 +1636,31 @@
       }
     }
     function setBalanceValue(value){ balanceText.textContent = price(value); }
+    // Allowed minus: banner in "Nova porudžbina" + block ordering while locked.
+    function renderCreditState(credit, balance){
+      const banner = $("creditBanner");
+      const c = credit || {};
+      const bal = Number(balance) || 0;
+      banner.className = "credit-banner";
+      $("creditBannerPay").hidden = true;
+      state.creditLocked = !!c.locked;
+      if (c.locked) {
+        banner.classList.add("locked");
+        $("creditBannerTitle").textContent = "Porudžbine su privremeno blokirane";
+        $("creditBannerText").textContent = `Dostigli ste dozvoljeni minus${c.limit_rsd !== null && c.limit_rsd !== undefined ? ` od ${price(c.limit_rsd)} RSD` : ""}. Trenutno stanje: ${price(bal)} RSD. Izmirite dug i porudžbine se otključavaju automatski čim saldo bude 0 ili više.`;
+        $("creditBannerPay").hidden = false;
+        banner.hidden = false;
+      } else if (c.limit_rsd !== null && c.limit_rsd !== undefined && bal < 0) {
+        const left = Number(c.available_rsd) || 0;
+        if (left <= Number(c.limit_rsd) * 0.25) banner.classList.add("warn");
+        $("creditBannerTitle").textContent = `Dozvoljeni minus: ${price(c.limit_rsd)} RSD`;
+        $("creditBannerText").textContent = `Trenutno stanje: ${price(bal)} RSD · možete poručiti još do ${price(left)} RSD. Kada se limit dostigne, porudžbine se blokiraju dok saldo ne bude 0 ili više.`;
+        banner.hidden = false;
+      } else {
+        banner.hidden = true;
+      }
+      orderBtn.classList.toggle("is-blocked", state.creditLocked);
+    }
     function animateBalance(targetValue){
       const target = Number(targetValue);
       if (!Number.isFinite(target)) return;
@@ -1939,6 +1978,7 @@
       const j = await api("/api/me.php");
       state.me = j;
       setBalanceValue(j.balance_rsd);
+      renderCreditState(j.credit, j.balance_rsd);
       renderDiscountBadge(j.discount_percent);
       fillProfileForms(j);
       return j;
@@ -3797,6 +3837,7 @@
         const me = await api("/api/me.php");
         state.me = me;
         setBalanceValue(me.balance_rsd);
+        renderCreditState(me.credit, me.balance_rsd);
         renderDiscountBadge(me.discount_percent);
         await enterAuthenticatedPanel(me);
       }catch(e){
@@ -3810,6 +3851,11 @@
     async function order(){
       if (state.orderInProgress) return;
       hide(orderMsg);
+      if (state.creditLocked) {
+        show(orderMsg, "bad", $("creditBannerText").textContent);
+        $("creditBanner").scrollIntoView({ block:"nearest", behavior:"smooth" });
+        return;
+      }
       try{
         const details = selectedProductDetails();
         if (!details || !details.product_id) throw new Error("Izaberi proizvod.");
@@ -3855,6 +3901,7 @@
         window.clearTimeout(slowOrderTimer);
         setOrderProcessing(false);
         show(orderMsg, "bad", e.message);
+        loadMe().catch(() => {}); // e.g. the allowed minus was just reached: show the banner
       }finally{
         window.clearTimeout(slowOrderTimer);
         setOrderProcessing(false);
@@ -4137,6 +4184,7 @@
     });
     orderBtn.addEventListener("click", order);
     paidBtn.addEventListener("click", paidNotice);
+    $("creditBannerPay").addEventListener("click", paidNotice);
     missingGameBtn.addEventListener("click", () => openMissingGame().catch((e) => show(missingGameMsg, "bad", e.message)));
     sendCodeBtn.addEventListener("click", sendVerificationCode);
     accountSettingsBtn.addEventListener("click", openSettingsModal);

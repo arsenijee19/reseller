@@ -796,6 +796,10 @@ function apply_wallet_transaction(PDO $pdo, int $resellerId, int $amountRsd, str
   $before = (int)$balance;
   $after = $before + $amountRsd;
   $pdo->prepare('UPDATE resellers SET balance_rsd = ? WHERE id = ?')->execute([$after, $resellerId]);
+  // Paid back to zero or more: an order block from the allowed-minus limit lifts by itself.
+  if ($after >= 0 && $before < 0 && has_column($pdo, 'resellers', 'credit_locked_at')) {
+    $pdo->prepare('UPDATE resellers SET credit_locked_at = NULL WHERE id = ?')->execute([$resellerId]);
+  }
 
   $columns = ['reseller_id', 'type', 'amount_rsd', 'description'];
   $values = [$resellerId, $type, $amountRsd, substr($description, 0, 255)];
@@ -863,6 +867,150 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   $stmt->execute([$resellerId]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   return $row ?: null;
+}
+
+// ---- allowed minus (credit limit) per reseller ------------------------------------------------------------
+// credit_limit_rsd: how far below zero the balance may go (NULL = no limit, 0 = prepaid only).
+// credit_locked_at: set when the limit is reached (an order would go past it, or lands exactly on it);
+// from then on ordering is blocked until the balance is back at 0 or above (cleared automatically by the
+// wallet), or the admin unlocks / changes the limit.
+function ensure_reseller_credit_columns(PDO $pdo): bool {
+  static $ready = null;
+  if ($ready !== null) return $ready;
+  try {
+    if (!schema_ensured('ensure_reseller_credit_columns') || !has_column($pdo, 'resellers', 'credit_locked_at')) {
+      $changed = false;
+      foreach (['credit_limit_rsd' => 'credit_limit_rsd INT UNSIGNED NULL', 'credit_locked_at' => 'credit_locked_at DATETIME NULL'] as $column => $definition) {
+        if (!has_column($pdo, 'resellers', $column)) { $pdo->exec("ALTER TABLE resellers ADD COLUMN {$definition}"); $changed = true; }
+      }
+      if ($changed) table_columns($pdo, 'resellers', true);
+      schema_mark_ensured('ensure_reseller_credit_columns');
+    }
+    return $ready = has_column($pdo, 'resellers', 'credit_limit_rsd') && has_column($pdo, 'resellers', 'credit_locked_at');
+  } catch (Throwable $e) {
+    return $ready = false;
+  }
+}
+
+/** ['limit_rsd' => ?int, 'locked' => bool, 'available_rsd' => ?int] for the reseller portal. */
+function reseller_credit_state(PDO $pdo, int $resellerId): array {
+  $state = ['limit_rsd' => null, 'locked' => false, 'available_rsd' => null];
+  if (!ensure_reseller_credit_columns($pdo)) return $state;
+  $stmt = $pdo->prepare('SELECT balance_rsd, credit_limit_rsd, credit_locked_at FROM resellers WHERE id = ? LIMIT 1');
+  $stmt->execute([$resellerId]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row) return $state;
+  $balance = (int)$row['balance_rsd'];
+  $locked = $row['credit_locked_at'] !== null && $balance < 0;
+  if ($row['credit_locked_at'] !== null && !$locked) {
+    $pdo->prepare('UPDATE resellers SET credit_locked_at = NULL WHERE id = ?')->execute([$resellerId]);
+  }
+  if ($row['credit_limit_rsd'] === null) return ['limit_rsd' => null, 'locked' => $locked, 'available_rsd' => null];
+  $limit = (int)$row['credit_limit_rsd'];
+  return ['limit_rsd' => $limit, 'locked' => $locked, 'available_rsd' => $locked ? 0 : max(0, $balance + $limit)];
+}
+
+function credit_rsd(int $amount): string {
+  return number_format($amount, 0, ',', '.') . ' RSD';
+}
+
+// ---- weekly balance reminder (Sundays 14:00, Europe/Belgrade) ---------------------------------------------
+function balance_reminder_settings(): array {
+  $config = config_value('billing', []);
+  $config = is_array($config) ? $config : [];
+  return [
+    'enabled' => !array_key_exists('reminder_enabled', $config) || !empty($config['reminder_enabled']),
+    'payment_instructions' => trim((string)($config['payment_instructions'] ?? '')),
+  ];
+}
+
+function ensure_balance_reminder_table(PDO $pdo): void {
+  static $done = false;
+  if ($done) return;
+  if (schema_ensured('ensure_balance_reminder_table') && table_exists($pdo, 'balance_reminder_log')) { $done = true; return; }
+  $pdo->exec(<<<'SQL'
+    CREATE TABLE IF NOT EXISTS balance_reminder_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      run_key VARCHAR(40) NOT NULL,
+      reseller_id INT UNSIGNED NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      balance_rsd INT NOT NULL,
+      status VARCHAR(20) NOT NULL,
+      error_message VARCHAR(255) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_balance_reminder_run (run_key, reseller_id),
+      KEY idx_balance_reminder_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL
+  );
+  schema_mark_ensured('ensure_balance_reminder_table');
+  $done = true;
+}
+
+/** Active resellers below zero (internal @playworld.rs accounts excluded). */
+function resellers_in_minus(PDO $pdo): array {
+  ensure_reseller_credit_columns($pdo);
+  $columns = column_names($pdo, 'resellers');
+  $select = ['id', 'email', 'balance_rsd'];
+  foreach (['display_name', 'credit_limit_rsd', 'credit_locked_at'] as $column) {
+    $select[] = in_array($column, $columns, true) ? $column : "NULL AS {$column}";
+  }
+  $rows = $pdo->query('SELECT ' . implode(', ', $select) . " FROM resellers WHERE status = 'active' AND balance_rsd < 0 ORDER BY balance_rsd ASC")->fetchAll(PDO::FETCH_ASSOC);
+  return array_values(array_filter($rows, static fn($row) => valid_email((string)$row['email']) && !is_internal_reseller_email((string)$row['email'])));
+}
+
+function balance_reminder_email(array $reseller, string $paymentInstructions): array {
+  $balance = (int)$reseller['balance_rsd'];
+  $debt = abs($balance);
+  $name = trim((string)($reseller['display_name'] ?? ''));
+  $limit = $reseller['credit_limit_rsd'] === null || $reseller['credit_limit_rsd'] === '' ? null : (int)$reseller['credit_limit_rsd'];
+  $locked = !empty($reseller['credit_locked_at']);
+
+  $m = ($name !== '' ? "Poštovani/a {$name}," : 'Poštovani,') . "\n\n";
+  $m .= "ovo je nedeljni pregled stanja Vašeg reseller naloga na PlayWorld portalu.\n\n";
+  $m .= "Trenutno stanje:   -" . credit_rsd($debt) . "\n";
+  if ($limit !== null) {
+    $m .= "Dozvoljeni minus:  " . credit_rsd($limit) . "\n";
+    if ($locked) {
+      $m .= "\nPorudžbine su trenutno BLOKIRANE jer je dostignut dozvoljeni minus.\n";
+      $m .= "Otključavaju se automatski čim saldo bude 0 RSD ili više.\n";
+    } else {
+      $m .= "Do blokade porudžbina ostalo je još: " . credit_rsd(max(0, $limit - $debt)) . "\n";
+    }
+  }
+  $m .= "\nMolimo Vas da na vreme izmirite svoje obaveze.\n\n";
+  $m .= "Kako da izmirite dug:\n";
+  $m .= "1. Uplatite " . credit_rsd($debt) . ($paymentInstructions !== '' ? " prema instrukcijama ispod." : ".") . "\n";
+  $m .= "2. Na portalu kliknite „Uplatio sam”, upišite iznos i priložite potvrdu uplate.\n";
+  $m .= "3. Čim proverimo uplatu, saldo se automatski ažurira.\n";
+  if ($paymentInstructions !== '') {
+    $m .= "\nInstrukcije za uplatu:\n" . $paymentInstructions . "\n";
+  }
+  $m .= "\nPortal: " . app_public_url() . "\n\n";
+  $m .= "Ako ste uplatu već izvršili u poslednjih nekoliko dana, slobodno zanemarite ovu poruku – uplata je verovatno u obradi.\n\n";
+  $m .= "Hvala Vam na saradnji!\nPlayWorld tim\n";
+  return ['subject' => 'Stanje Vašeg PlayWorld naloga: -' . credit_rsd($debt), 'message' => $m];
+}
+
+/** Sends the reminder to everybody in minus once per $runKey; returns counts. */
+function run_balance_reminders(PDO $pdo, string $runKey): array {
+  ensure_balance_reminder_table($pdo);
+  $settings = balance_reminder_settings();
+  $result = ['run_key' => $runKey, 'candidates' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0];
+  $log = $pdo->prepare('INSERT IGNORE INTO balance_reminder_log (run_key, reseller_id, email, balance_rsd, status) VALUES (?, ?, ?, ?, ?)');
+  $update = $pdo->prepare('UPDATE balance_reminder_log SET status = ?, error_message = ? WHERE run_key = ? AND reseller_id = ?');
+  foreach (resellers_in_minus($pdo) as $reseller) {
+    $result['candidates']++;
+    // Claim first: a second cron run in the same week (or a parallel one) skips this reseller.
+    $log->execute([$runKey, (int)$reseller['id'], (string)$reseller['email'], (int)$reseller['balance_rsd'], 'sending']);
+    if ($log->rowCount() !== 1) { $result['skipped']++; continue; }
+    $mail = balance_reminder_email($reseller, $settings['payment_instructions']);
+    $sent = send_text_notification_email([(string)$reseller['email']], $mail['subject'], $mail['message']);
+    $update->execute([$sent['ok'] ? 'sent' : 'failed', $sent['ok'] ? null : substr(safe_public_error((string)$sent['error']), 0, 255), $runKey, (int)$reseller['id']]);
+    $result[$sent['ok'] ? 'sent' : 'failed']++;
+  }
+  return $result;
 }
 
 // ---- long-lived order links (emails -> single order page) -------------------------------------------------

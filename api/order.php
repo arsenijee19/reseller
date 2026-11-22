@@ -100,6 +100,9 @@ if (!valid_email($customer_email)) {
   throw new RuntimeException("Email resellera nije validan. Otvorite Nalog i proverite email adresu.");
 }
 
+$creditReady = ensure_reseller_credit_columns($pdo); // may ALTER, so before the transaction
+$creditLockNeeded = false;
+
 try {
   $pdo->beginTransaction();
 
@@ -130,6 +133,27 @@ try {
     throw new RuntimeException("Nalog nije pronađen.", 404);
   }
 
+  // Allowed minus: the row is already locked FOR UPDATE above.
+  $lockAfterOrder = false;
+  if ($creditReady) {
+    $creditStmt = $pdo->prepare("SELECT credit_limit_rsd, credit_locked_at FROM resellers WHERE id=?");
+    $creditStmt->execute([$reseller_id]);
+    $credit = $creditStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $balanceNow = (int)$currentBalance;
+    $limit = isset($credit['credit_limit_rsd']) && $credit['credit_limit_rsd'] !== null ? (int)$credit['credit_limit_rsd'] : null;
+    if (!empty($credit['credit_locked_at']) && $balanceNow < 0) {
+      throw new RuntimeException("Porudžbine su privremeno blokirane jer je dostignut Vaš dozvoljeni minus" . ($limit !== null ? " od " . credit_rsd($limit) : "") . ". Trenutno stanje: " . credit_rsd($balanceNow) . ". Izmirite dug preko dugmeta „Uplatio sam” – porudžbine se otključavaju automatski čim saldo bude 0 ili više.", 409);
+    }
+    if ($limit !== null) {
+      $balanceAfter = $balanceNow - $price;
+      if ($balanceAfter < -$limit) {
+        $creditLockNeeded = $balanceNow < 0;
+        throw new RuntimeException("Ova porudžbina (" . credit_rsd($price) . ") bi prešla Vaš dozvoljeni minus od " . credit_rsd($limit) . ". Trenutno stanje: " . credit_rsd($balanceNow) . "." . ($balanceNow < 0 ? " Porudžbine su blokirane dok saldo ne bude 0 ili više – izmirite dug preko dugmeta „Uplatio sam”." : " Dopunite saldo da biste nastavili."), 409);
+      }
+      $lockAfterOrder = $balanceAfter <= -$limit && $balanceAfter < 0;
+    }
+  }
+
   // 2) request_id
   $request_id = bin2hex(random_bytes(16));
 
@@ -151,6 +175,10 @@ try {
     'source' => 'panel',
   ]);
   $newBal = (int)$wallet['balance_after_rsd'];
+  if ($lockAfterOrder) {
+    // This order used up the whole allowed minus: block the next ones until the debt is paid.
+    $pdo->prepare('UPDATE resellers SET credit_locked_at = NOW() WHERE id = ?')->execute([$reseller_id]);
+  }
 
   // Still in plus after this order: the order is already covered by the reseller's balance, so it is paid.
   if ($newBal >= 0 && has_column($pdo, 'orders', 'reseller_paid')) {
@@ -332,6 +360,11 @@ try {
     exit;
   }
   if ($pdo->inTransaction()) $pdo->rollBack();
+  if ($creditLockNeeded) {
+    try {
+      $pdo->prepare('UPDATE resellers SET credit_locked_at = NOW() WHERE id = ? AND credit_locked_at IS NULL')->execute([$reseller_id]);
+    } catch (Throwable $ignored) {}
+  }
   $status = (int)$e->getCode();
   if ($status < 400 || $status > 499) $status = 500;
   http_response_code($status);

@@ -316,6 +316,14 @@
     .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
     .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
     .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
+    .debt-panel{margin-top:18px}
+    .debt-settings{display:grid;gap:6px;margin-bottom:14px}
+    .debt-settings .actions{justify-content:flex-start;margin-top:6px}
+    .field-hint{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+    .credit-lock-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+    .credit-lock-row[hidden]{display:none}
+    .reseller-credit{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-weight:600}
+    .reseller-credit.locked{color:var(--danger)}
     .check-row{display:flex;align-items:center;gap:10px;margin:14px 0 4px;font-weight:600;cursor:pointer}
     .check-row input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--brand)}
     .txn-edit-note{margin:8px 0 0;font-size:12px}
@@ -813,6 +821,26 @@
             </div>
           </div>
           <div class="table-wrap"><table id="paymentNoticesTable"></table></div>
+          <div class="form-panel debt-panel" id="debtPanel">
+            <div class="section-head">
+              <div class="section-title">
+                <h2>Dugovanja i nedeljni podsetnik</h2>
+                <p>Svake nedelje u 14:00 resellerima u minusu stiže mejl sa stanjem i molbom da izmire obaveze.</p>
+              </div>
+            </div>
+            <div class="debt-settings">
+              <label class="check-row" for="reminderEnabled"><input id="reminderEnabled" type="checkbox" /><span>Šalji nedeljni podsetnik (nedelja 14:00)</span></label>
+              <p class="muted" id="reminderNext"></p>
+              <label for="reminderInstructions">Instrukcije za uplatu (ulaze u mejl)</label>
+              <textarea id="reminderInstructions" rows="3" maxlength="1000" placeholder="Primalac: ...&#10;Račun: ...&#10;Svrha: dopuna reseller salda"></textarea>
+              <div class="actions">
+                <button class="btn" id="reminderSaveBtn" type="button">Sačuvaj podešavanja</button>
+                <button class="btn primary" id="reminderSendBtn" type="button">Pošalji podsetnik sada</button>
+              </div>
+              <p class="muted" id="reminderRuns"></p>
+            </div>
+            <div class="table-wrap"><table id="debtTable"></table></div>
+          </div>
         </div>
 
         <div class="section view hidden" id="view-transactions">
@@ -937,6 +965,15 @@
               <div class="full"><label for="drawerEmail">Email</label><input id="drawerEmail" type="email" /></div>
               <div><label for="drawerPhone">Telefon</label><input id="drawerPhone" type="tel" /></div>
               <div><label for="drawerDiscount">Popust (%)</label><input id="drawerDiscount" type="number" min="0" max="100" step="0.01" /></div>
+              <div class="full credit-field">
+                <label for="drawerCreditLimit">Dozvoljeni minus (RSD)</label>
+                <input id="drawerCreditLimit" type="text" inputmode="numeric" placeholder="Prazno = bez limita" autocomplete="off" />
+                <p class="field-hint">Koliko saldo sme da ide ispod nule. Kad se limit dostigne, porudžbine se blokiraju dok saldo ne bude 0 ili više. 0 = samo unapred plaćeno.</p>
+                <div class="credit-lock-row" id="drawerCreditLock" hidden>
+                  <span class="state-badge warn">Porudžbine blokirane</span>
+                  <button class="btn" id="drawerUnlockBtn" type="button">Odblokiraj sada</button>
+                </div>
+              </div>
               <div class="full"><label for="drawerAdminNotes">Admin beleška</label><textarea id="drawerAdminNotes" maxlength="5000" placeholder="Vidi samo admin..."></textarea></div>
             </div>
             <div class="drawer-section-title">Pristup</div>
@@ -1505,7 +1542,11 @@
         text(row.insertCell(), "span", active ? "Aktivan" : "Neaktivan", `state-badge ${active ? "info" : ""}`);
         text(row.insertCell(), "span", `${Number(r.discount_percent || 0)}%`, "muted");
         const balance = Number(r.balance_rsd || 0);
-        text(row.insertCell(), "strong", `${money(balance)} RSD`, `reseller-balance ${balance < 0 ? "negative" : "positive"}`);
+        const balanceCell = row.insertCell();
+        text(balanceCell, "strong", `${money(balance)} RSD`, `reseller-balance ${balance < 0 ? "negative" : "positive"}`);
+        const creditLocked = r.credit_locked_at && balance < 0;
+        if (creditLocked) text(balanceCell, "span", "Porudžbine blokirane", "reseller-credit locked");
+        else if (r.credit_limit_rsd !== null && r.credit_limit_rsd !== undefined) text(balanceCell, "span", `Limit −${money(r.credit_limit_rsd)}`, "reseller-credit");
         const actionBox = document.createElement("div");
         actionBox.className = "reseller-actions";
         const topup = document.createElement("button"); topup.className = "btn good"; topup.type = "button"; topup.textContent = "Dopuni";
@@ -1538,6 +1579,8 @@
       $("drawerEmail").value = reseller.email || "";
       $("drawerPhone").value = reseller.phone || "";
       $("drawerDiscount").value = reseller.discount_percent || 0;
+      $("drawerCreditLimit").value = reseller.credit_limit_rsd === null || reseller.credit_limit_rsd === undefined ? "" : money(reseller.credit_limit_rsd);
+      $("drawerCreditLock").hidden = !(reseller.credit_locked_at && Number(reseller.balance_rsd) < 0);
       $("drawerAdminNotes").value = reseller.admin_notes || "";
       $("drawerNewToken").value = "";
       $("drawerActive").checked = String(reseller.status || "active").toLowerCase() === "active";
@@ -1712,7 +1755,8 @@
         state.data = await api("update_reseller", { method:"POST", body:JSON.stringify({
           id, display_name:$("drawerName").value.trim(), email:$("drawerEmail").value.trim(), phone:$("drawerPhone").value.trim(),
           status:$("drawerActive").checked ? "active" : "inactive",
-          discount_percent:$("drawerDiscount").value, admin_notes:$("drawerAdminNotes").value, new_token:$("drawerNewToken").value
+          discount_percent:$("drawerDiscount").value, admin_notes:$("drawerAdminNotes").value, new_token:$("drawerNewToken").value,
+          credit_limit_rsd:$("drawerCreditLimit").value.replace(/\D/g, "")
         }) });
         closeResellerDrawer();
         renderWithUiState(() => render());
@@ -2394,6 +2438,74 @@
       }
     }
 
+    // ---- debts: weekly reminder settings + who is in minus ----
+    function renderDebts(){
+      const info = state.data.balance_reminder || {};
+      const settings = info.settings || {};
+      if (document.activeElement !== $("reminderInstructions")) $("reminderInstructions").value = settings.payment_instructions || "";
+      $("reminderEnabled").checked = settings.enabled !== false;
+      $("reminderNext").textContent = settings.enabled === false ? "Nedeljni podsetnik je isključen." : `Sledeće slanje: nedelja ${info.next_run || ""} (Europe/Belgrade).`;
+      const runs = info.runs || [];
+      $("reminderRuns").textContent = runs.length
+        ? "Poslednja slanja: " + runs.map((r) => `${r.started_at} – poslato ${r.sent}${Number(r.failed) ? `, neuspešno ${r.failed}` : ""}`).join(" · ")
+        : "Podsetnik još nije slat.";
+      const table = $("debtTable");
+      table.textContent = "";
+      const head = table.createTHead().insertRow();
+      ["Reseller", "Stanje", "Dozvoljeni minus", "Porudžbine"].forEach((name) => text(head.insertCell(), "strong", name));
+      const body = table.createTBody();
+      (info.in_minus || []).forEach((r) => {
+        const row = body.insertRow();
+        const who = row.insertCell();
+        text(who, "strong", r.name || r.email);
+        text(who, "span", r.email, "reseller-credit");
+        text(row.insertCell(), "strong", `${money(r.balance_rsd)} RSD`, "reseller-balance negative");
+        text(row.insertCell(), "span", r.credit_limit_rsd === null ? "Bez limita" : `${money(r.credit_limit_rsd)} RSD`);
+        text(row.insertCell(), "span", r.locked ? "Blokirane" : "Dozvoljene", `state-badge ${r.locked ? "warn" : "good"}`);
+      });
+      if (!(info.in_minus || []).length) {
+        const cell = body.insertRow().insertCell();
+        cell.colSpan = 4;
+        text(cell, "span", "Trenutno niko nije u minusu.", "muted");
+      }
+      $("reminderSendBtn").disabled = !(info.in_minus || []).length;
+    }
+    async function adminMoneyAction(action, payload){
+      const call = () => api(action, { method:"POST", body:JSON.stringify(Object.assign({ filters:currentFilters() }, payload)) });
+      try{ return await call(); }catch(e){ if (e.status !== 428) throw e; await ensureAdminStepUp(); return call(); }
+    }
+    $("reminderSaveBtn").addEventListener("click", async () => {
+      const btn = $("reminderSaveBtn");
+      btn.disabled = true;
+      try{
+        state.data = await adminMoneyAction("save_reminder_settings", { enabled:$("reminderEnabled").checked, payment_instructions:$("reminderInstructions").value });
+        renderWithUiState(() => render());
+        showToast("ok", "Podešavanja podsetnika su sačuvana.");
+      }catch(e){ showToast("bad", e.message); }finally{ btn.disabled = false; }
+    });
+    $("reminderSendBtn").addEventListener("click", async () => {
+      const count = ((state.data.balance_reminder || {}).in_minus || []).length;
+      if (!window.confirm(`Poslati podsetnik o dugovanju odmah svim resellerima u minusu (${count})?`)) return;
+      const btn = $("reminderSendBtn");
+      btn.disabled = true;
+      try{
+        const data = await adminMoneyAction("send_balance_reminder_now", {});
+        state.data = data;
+        renderWithUiState(() => render());
+        const r = data.reminder_result || {};
+        showToast(r.failed ? "bad" : "ok", `Podsetnik poslat: ${r.sent || 0}${r.failed ? `, neuspešno: ${r.failed}` : ""}.`);
+      }catch(e){ showToast("bad", e.message); }finally{ btn.disabled = false; }
+    });
+    $("drawerUnlockBtn").addEventListener("click", async () => {
+      const id = state.editingResellerId;
+      try{
+        state.data = await adminMoneyAction("unlock_reseller_orders", { id });
+        $("drawerCreditLock").hidden = true;
+        renderWithUiState(() => render());
+        showToast("ok", "Porudžbine su odblokirane.");
+      }catch(e){ showToast("bad", e.message); }
+    });
+
     // ---- cancel an order (from Porudžbine or Transakcije) ----
     let cancelingOrder = null;
     function updateOrderCancelBalance(){
@@ -2727,7 +2839,7 @@
       if (state.tab === "resellers") renderResellers();
       if (state.tab === "products") renderProducts();
       if (state.tab === "orders") renderOrders();
-      if (state.tab === "payment_notices") renderPaymentNotices();
+      if (state.tab === "payment_notices") { renderPaymentNotices(); renderDebts(); }
       if (state.tab === "transactions") renderTransactions();
       if (state.tab === "inventory") renderInventory();
       if (state.tab === "database") renderSchema();

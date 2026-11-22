@@ -45,7 +45,9 @@ function fetch_resellers(PDO $pdo): array {
   ensure_security_tables($pdo);
   $columns = column_names($pdo, 'resellers');
   $select = ['id', 'email', 'status', 'balance_rsd'];
-  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent', 'admin_notes'] as $column) {
+  ensure_reseller_credit_columns($pdo);
+  $columns = column_names($pdo, 'resellers');
+  foreach (['display_name', 'phone', 'profile_completed_at', 'credential_changed_at', 'security_2fa_reminded_at', 'discount_percent', 'admin_notes', 'credit_limit_rsd', 'credit_locked_at'] as $column) {
     if (in_array($column, $columns, true)) $select[] = $column;
   }
   $select[] = "(SELECT enabled_at FROM reseller_two_factor tf WHERE tf.reseller_id = resellers.id LIMIT 1) AS two_factor_enabled_at";
@@ -141,6 +143,27 @@ function fetch_orders(PDO $pdo, array $filters): array {
   $stmt = $pdo->prepare($sql);
   $stmt->execute($params);
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function balance_reminder_payload(PDO $pdo): array {
+  try {
+    ensure_balance_reminder_table($pdo);
+    $inMinus = array_map(static fn($r) => [
+      'id' => (int)$r['id'],
+      'name' => (string)($r['display_name'] ?? ''),
+      'email' => (string)$r['email'],
+      'balance_rsd' => (int)$r['balance_rsd'],
+      'credit_limit_rsd' => $r['credit_limit_rsd'] === null ? null : (int)$r['credit_limit_rsd'],
+      'locked' => !empty($r['credit_locked_at']),
+    ], resellers_in_minus($pdo));
+    $runs = $pdo->query("SELECT run_key, MIN(created_at) AS started_at, SUM(status = 'sent') AS sent, SUM(status = 'failed') AS failed, COUNT(*) AS total FROM balance_reminder_log GROUP BY run_key ORDER BY started_at DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    $inMinus = [];
+    $runs = [];
+  }
+  $next = new DateTimeImmutable('now', new DateTimeZone('Europe/Belgrade'));
+  $next = $next->format('N') === '7' && (int)$next->format('G') < 14 ? $next->setTime(14, 0) : $next->modify('next sunday')->setTime(14, 0);
+  return ['settings' => balance_reminder_settings(), 'in_minus' => $inMinus, 'runs' => $runs, 'next_run' => $next->format('d.m.Y. H:i')];
 }
 
 function fetch_payment_notices(PDO $pdo): array {
@@ -393,6 +416,7 @@ function dashboard_payload(PDO $pdo, array $filters = []): array {
     'transactions' => fetch_transactions($pdo),
     'payment_notices' => fetch_payment_notices($pdo),
     'inventory_config' => inventory_config_payload($pdo),
+    'balance_reminder' => balance_reminder_payload($pdo),
     'inventory_requests' => fetch_inventory_requests($pdo, $filters),
     'missing_game_reports' => fetch_missing_game_reports($pdo),
     'security_audit_events' => fetch_security_audit_events($pdo),
@@ -1305,6 +1329,16 @@ try {
     }
 
     ensure_security_tables($pdo);
+    // Allowed minus: "" / null = no limit, otherwise a whole RSD amount >= 0.
+    $creditLimitPresent = array_key_exists('credit_limit_rsd', $input) && ensure_reseller_credit_columns($pdo);
+    $creditLimit = null;
+    if ($creditLimitPresent) {
+      $rawLimit = trim(str_replace(['.', ' '], '', (string)($input['credit_limit_rsd'] ?? '')));
+      if ($rawLimit !== '') {
+        $creditLimit = filter_var($rawLimit, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 100000000]]);
+        if ($creditLimit === false) json_response(['ok' => false, 'error' => 'Dozvoljeni minus mora biti ceo broj (RSD) ili prazno za bez limita.'], 400);
+      }
+    }
     $pdo->beginTransaction();
     $old = $pdo->prepare('SELECT balance_rsd FROM resellers WHERE id = ? LIMIT 1 FOR UPDATE');
     $old->execute([$id]);
@@ -1315,6 +1349,16 @@ try {
 
     $fields = ['email = ?', 'status = ?'];
     $params = [$email, $status];
+    if ($creditLimitPresent) {
+      $previousLimit = $pdo->prepare('SELECT credit_limit_rsd FROM resellers WHERE id = ?');
+      $previousLimit->execute([$id]);
+      $oldLimit = $previousLimit->fetchColumn();
+      $oldLimit = $oldLimit === null || $oldLimit === false ? null : (int)$oldLimit;
+      $fields[] = 'credit_limit_rsd = ?';
+      $params[] = $creditLimit;
+      // A new limit is a fresh decision: lift an existing block so the new rule applies right away.
+      if ($oldLimit !== $creditLimit) $fields[] = 'credit_locked_at = NULL';
+    }
     $fields[] = 'discount_percent = ?';
     $params[] = $discount;
     if (has_column($pdo, 'resellers', 'display_name')) {
@@ -1635,6 +1679,38 @@ try {
       'order_id' => $id,
       'fields' => array_keys($clean),
     ]);
+    json_response(dashboard_payload($pdo, $input['filters'] ?? []));
+  }
+
+  if ($action === 'save_reminder_settings') {
+    require_recent_admin_step_up();
+    $instructions = trim(str_replace("\r\n", "\n", (string)($input['payment_instructions'] ?? '')));
+    if (strlen($instructions) > 1000) json_response(['ok' => false, 'error' => 'Instrukcije za uplatu mogu imati najviše 1000 karaktera.'], 400);
+    $config = app_config();
+    if (!is_array($config['billing'] ?? null)) $config['billing'] = [];
+    $config['billing']['reminder_enabled'] = !empty($input['enabled']);
+    $config['billing']['payment_instructions'] = $instructions;
+    write_app_config($config);
+    audit_event($pdo, 'admin', (int)($_SESSION['admin_id'] ?? 0), 'balance_reminder_settings_updated', 'success', ['enabled' => !empty($input['enabled'])]);
+    json_response(dashboard_payload($pdo, $input['filters'] ?? []));
+  }
+
+  if ($action === 'send_balance_reminder_now') {
+    require_recent_admin_step_up();
+    $admin = require_admin();
+    $result = run_balance_reminders($pdo, 'manual-' . gmdate('YmdHis'));
+    audit_event($pdo, 'admin', (int)$admin['id'], 'balance_reminder_sent_manually', $result['failed'] > 0 ? 'partial' : 'success', $result);
+    $payload = dashboard_payload($pdo, $input['filters'] ?? []);
+    $payload['reminder_result'] = $result;
+    json_response($payload);
+  }
+
+  if ($action === 'unlock_reseller_orders') {
+    $admin = require_admin();
+    $id = (int)($input['id'] ?? 0);
+    if (!ensure_reseller_credit_columns($pdo)) json_response(['ok' => false, 'error' => 'Dozvoljeni minus nije dostupan u bazi.'], 503);
+    $pdo->prepare('UPDATE resellers SET credit_locked_at = NULL WHERE id = ?')->execute([$id]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'reseller_orders_unlocked', 'success', ['reseller_id' => $id]);
     json_response(dashboard_payload($pdo, $input['filters'] ?? []));
   }
 

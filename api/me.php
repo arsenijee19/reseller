@@ -32,6 +32,7 @@ try {
     "balance_rsd" => (int)$row["balance_rsd"],
     "discount_percent" => normalized_discount_percent($row["discount_percent"] ?? 0),
     "preferences" => reseller_preferences($pdo, $rid),
+    "credit" => reseller_credit_state($pdo, $rid),
     "csrf_token" => csrf_token()
   ]);
 } catch (Throwable $e) {
