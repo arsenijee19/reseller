@@ -239,11 +239,44 @@
     .mini-btn{min-height:30px;padding:6px 10px;border-radius:999px;font-size:12px}
     html.release-notes-off .whats-new-btn{display:none}
     .whats-new-btn{min-height:42px;border-radius:999px;padding:8px 13px;font-size:12px}
+    .order-link-hint{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(49,93,244,.25);border-radius:10px;background:rgba(49,93,244,.07);color:var(--text);font-size:13px;line-height:1.45}
+    .order-detail-backdrop{z-index:40;align-items:flex-start;overflow:auto}
+    .order-detail{width:min(620px,100%);margin:clamp(0px,4vh,40px) auto;padding:18px 20px 22px}
+    .order-detail-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .order-detail-back{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:6px 12px 6px 8px;font-size:13px}
+    .order-detail-back svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .order-detail-copy{min-height:36px;padding:6px 12px;font-size:13px}
+    .od-head h2{margin:0;font-size:22px;letter-spacing:-.01em}
+    .od-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .od-tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(118,118,128,.12);color:var(--muted)}
+    .od-tag.paid{background:rgba(19,138,67,.12);color:#138a43}
+    .od-tag.unpaid{background:rgba(234,88,12,.12);color:#c2410c}
+    .od-tag.canceled{background:rgba(195,41,41,.12);color:var(--bad)}
+    .od-section{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+    .od-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px 4px}
+    .od-section-head h3{margin:0;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    .od-section-head .btn{flex:0 0 auto;width:auto;min-height:30px;padding:5px 12px;font-size:12px}
+    .od-notes-actions .btn{flex:0 0 auto;width:auto}
+    .od-rows{display:grid;padding:2px 14px 8px}
+    .od-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+    .od-row:first-child{border-top:0}
+    .od-row span{color:var(--muted);flex:0 0 auto}
+    .od-row b{font-weight:600;text-align:right;overflow-wrap:anywhere;user-select:text}
+    .od-empty{padding:4px 14px 14px;color:var(--muted);font-size:13px}
+    .od-notes{padding:0 14px 14px}
+    .od-notes textarea{min-height:84px}
+    .od-notes-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:8px}
+    .od-notes-actions .meta{margin-right:auto}
+    @media(max-width:640px){.order-detail-backdrop{padding:0}.order-detail{min-height:100dvh;margin:0;border-radius:0;border:0;padding:14px 16px 28px}}
+    .history-item-title{padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+    .history-item-title:hover strong{color:var(--brand)}
+    .history-paid-badge.is-canceled{background:rgba(195,41,41,.12);color:var(--bad)}
     .history-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
     .success-buyer{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--soft);text-align:left}
     .success-buyer p{margin:0 0 10px;color:var(--muted);font-size:12.5px;line-height:1.45}
     .success-buyer p strong{color:var(--text)}
     .success-buyer .btn{width:100%}
+    #recordModal{z-index:45}
     .record-modal{width:min(460px,100%);max-height:calc(100dvh - 32px);overflow:auto}
     .record-sub{margin:4px 0 0;color:var(--muted);font-size:13px}
     .record-sub:empty{display:none}
@@ -936,6 +969,7 @@
         <section class="panel section login-section" id="loginBox">
           <div class="login-header-row"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8m-3 3 3 3m-6 0 2 2"/></svg></span><h2>Dobrodošli nazad</h2></div>
           <p>Prijavi se tokenom koji si dobio od PlayWorld tima.</p>
+          <p class="order-link-hint" id="orderLinkHint" hidden></p>
           <form id="resellerLoginForm" method="post" autocomplete="on">
             <input type="text" name="username" autocomplete="username" value="reseller" hidden />
             <label for="token">Token</label>
@@ -1183,6 +1217,16 @@
         <button class="btn" id="appDialogCancel" type="button">Otkaži</button>
         <button class="btn primary" id="appDialogOk" type="button">U redu</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop order-detail-backdrop" id="orderDetailModal" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle">
+    <div class="modal order-detail">
+      <div class="order-detail-top">
+        <button class="btn order-detail-back" id="orderDetailBack" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Nazad na panel</button>
+        <button class="btn order-detail-copy" id="orderDetailCopy" type="button" title="Kopiraj link porudžbine">Kopiraj link</button>
+      </div>
+      <div id="orderDetailBody"><p class="muted">Učitavanje porudžbine...</p></div>
     </div>
   </div>
 
@@ -2295,6 +2339,7 @@
         setStatus("online");
         animateBalance(profile.balance_rsd);
         maybeOpenReleaseNotes();
+        maybeOpenPendingOrder();
       }catch(e){
         await logout();
         const failure = new Error("Panel nije uspeo da učita proizvode i porudžbine. Ulogujte se ponovo.");
@@ -2352,6 +2397,7 @@
           }
           setStatus("online");
           maybeOpenReleaseNotes();
+          maybeOpenPendingOrder();
         } else {
           await loadMe();
           closeSettingsModal();
@@ -2952,6 +2998,191 @@
       });
     }
 
+    // ---- single order page (opened from the order link in emails, or from the history list) ----
+    const orderDetailModal = $("orderDetailModal");
+    let currentOrderDetail = null;
+    (function readOrderLink(){
+      try{
+        const ref = new URLSearchParams(window.location.search).get("porudzbina");
+        if (ref && /^\d{1,12}-[a-f0-9]{20}$/.test(ref)) {
+          state.pendingOrderRef = ref;
+          const hint = $("orderLinkHint");
+          hint.textContent = `Prijavite se svojim tokenom da biste otvorili porudžbinu #${ref.split("-")[0]}.`;
+          hint.hidden = false;
+        }
+      }catch(e){}
+    })();
+    function clearOrderLinkFromUrl(){
+      try{
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("porudzbina")) {
+          url.searchParams.delete("porudzbina");
+          window.history.replaceState(null, "", url.pathname + (url.search || "") + url.hash);
+        }
+      }catch(e){}
+    }
+    function maybeOpenPendingOrder(){
+      const ref = state.pendingOrderRef;
+      if (!ref) return;
+      state.pendingOrderRef = "";
+      $("orderLinkHint").hidden = true;
+      openOrderDetail({ ref });
+    }
+    function odRow(parent, label, value){
+      if (value === undefined || value === null || value === "") return;
+      const row = document.createElement("div");
+      row.className = "od-row";
+      appendText(row, "span", label);
+      appendText(row, "b", value);
+      parent.appendChild(row);
+    }
+    function odSection(title, actionLabel, onAction){
+      const section = document.createElement("section");
+      section.className = "od-section";
+      const head = document.createElement("div");
+      head.className = "od-section-head";
+      appendText(head, "h3", title);
+      if (actionLabel) {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.type = "button";
+        btn.textContent = actionLabel;
+        btn.addEventListener("click", onAction);
+        head.appendChild(btn);
+      }
+      section.appendChild(head);
+      return section;
+    }
+    function splitDeliveryNote(notes){
+      const value = String(notes || "").trim();
+      const marker = "Login mail (automatska isporuka):";
+      const index = value.lastIndexOf(marker);
+      return index < 0 ? { note:value, login:"" } : { note:value.slice(0, index).trim(), login:value.slice(index + marker.length).trim() };
+    }
+    function renderOrderDetail(data){
+      const body = $("orderDetailBody");
+      body.textContent = "";
+      const order = data.order;
+      const record = data.record;
+      currentOrderDetail = data;
+      const head = document.createElement("div");
+      head.className = "od-head";
+      appendText(head, "h2", order.product_name || order.product_id || `Porudžbina #${order.id}`);
+      const tags = document.createElement("div");
+      tags.className = "od-tags";
+      if (order.account_type) tags.appendChild(slotChip(order.account_type));
+      if (order.canceled) appendText(tags, "span", "Poništena", "od-tag canceled");
+      else appendText(tags, "span", order.reseller_paid ? "Plaćeno" : "Neplaćeno", "od-tag " + (order.reseller_paid ? "paid" : "unpaid"));
+      head.appendChild(tags);
+      body.appendChild(head);
+
+      const delivery = splitDeliveryNote(order.reseller_notes);
+      const info = odSection("Porudžbina");
+      const rows = document.createElement("div");
+      rows.className = "od-rows";
+      odRow(rows, "Broj porudžbine", `#${order.id}`);
+      odRow(rows, "Datum", dateTime(order.created_at));
+      odRow(rows, "Cena", `${price(order.price_rsd)} RSD`);
+      odRow(rows, "Kredencijali poslati na", order.delivery_email);
+      odRow(rows, "Login mail naloga", delivery.login);
+      if (order.reseller_paid && order.reseller_paid_at) odRow(rows, "Označeno plaćeno", dateTime(order.reseller_paid_at));
+      if (order.canceled) {
+        odRow(rows, "Poništena", order.canceled_at ? dateTime(order.canceled_at) : "da");
+        odRow(rows, "Razlog poništenja", order.cancellation_reason);
+      }
+      info.appendChild(rows);
+      body.appendChild(info);
+
+      const openBuyer = () => openRecordModal({ record, orderId:order.id, label:orderLabel(order), onSaved:() => openOrderDetail({ id:order.id }) });
+      const buyer = odSection("Kupac", record ? "Izmeni" : "Upiši kupca", openBuyer);
+      if (record) {
+        const buyerRows = document.createElement("div");
+        buyerRows.className = "od-rows";
+        odRow(buyerRows, "Email naloga", record.account_email);
+        odRow(buyerRows, "Ime", record.buyer_name);
+        odRow(buyerRows, "Telefon", record.buyer_phone);
+        odRow(buyerRows, "Kontakt", record.buyer_contact);
+        odRow(buyerRows, "Napomena", record.note);
+        buyer.appendChild(buyerRows);
+      } else {
+        appendText(buyer, "p", "Podaci kupca još nisu upisani. Vidljivi su samo Vama.", "od-empty");
+      }
+      body.appendChild(buyer);
+
+      const notes = odSection("Napomene");
+      const notesBox = document.createElement("div");
+      notesBox.className = "od-notes";
+      const area = document.createElement("textarea");
+      area.maxLength = 2000;
+      area.placeholder = "Vaše napomene o ovoj porudžbini...";
+      area.value = delivery.note;
+      const actions = document.createElement("div");
+      actions.className = "od-notes-actions";
+      const status = document.createElement("span");
+      status.className = "meta";
+      const save = document.createElement("button");
+      save.className = "btn";
+      save.type = "button";
+      save.textContent = "Sačuvaj napomenu";
+      save.addEventListener("click", async () => {
+        save.disabled = true;
+        status.textContent = "";
+        try{
+          // Keep the automatic delivery line (if any) at the end, exactly as the server wrote it.
+          const full = [area.value.trim(), delivery.login ? `Login mail (automatska isporuka): ${delivery.login}` : ""].filter(Boolean).join("\n");
+          await api("/api/order_notes.php", { method:"POST", body:JSON.stringify({ order_id:order.id, notes:full }) });
+          order.reseller_notes = full;
+          const listed = state.orders.find((item) => String(item.id) === String(order.id));
+          if (listed) { listed.reseller_notes = full; preserveScroll(() => { loadOrders(true); }); }
+          status.textContent = "Sačuvano.";
+        }catch(e){
+          status.textContent = e.message;
+        }finally{
+          save.disabled = false;
+        }
+      });
+      actions.append(status, save);
+      notesBox.append(area, actions);
+      notes.appendChild(notesBox);
+      body.appendChild(notes);
+    }
+    async function openOrderDetail({ ref, id }){
+      $("orderDetailBody").textContent = "";
+      appendText($("orderDetailBody"), "p", "Učitavanje porudžbine...", "muted");
+      orderDetailModal.classList.add("open");
+      orderDetailModal.scrollTop = 0;
+      try{
+        const query = ref ? `ref=${encodeURIComponent(ref)}` : `id=${encodeURIComponent(id)}`;
+        const data = await api(`/api/order_detail.php?${query}`);
+        renderOrderDetail(data);
+      }catch(e){
+        currentOrderDetail = null;
+        $("orderDetailBody").textContent = "";
+        appendText($("orderDetailBody"), "h2", "Porudžbina nije dostupna");
+        appendText($("orderDetailBody"), "p", e.message, "muted");
+      }
+    }
+    function closeOrderDetail(){
+      orderDetailModal.classList.remove("open");
+      currentOrderDetail = null;
+      clearOrderLinkFromUrl();
+    }
+    $("orderDetailBack").addEventListener("click", closeOrderDetail);
+    $("orderDetailCopy").addEventListener("click", async () => {
+      const link = currentOrderDetail && currentOrderDetail.order && currentOrderDetail.order.link;
+      if (!link) return;
+      try{
+        await navigator.clipboard.writeText(link);
+        $("orderDetailCopy").textContent = "Kopirano";
+      }catch(e){
+        await showAlert(link);
+      }
+      window.setTimeout(() => { $("orderDetailCopy").textContent = "Kopiraj link"; }, 1600);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && orderDetailModal.classList.contains("open") && !$("recordModal").classList.contains("open") && !$("appDialog").classList.contains("open")) closeOrderDetail();
+    });
+
     // ---- private customer records: buyer data per order + free-standing "Nova evidencija" ----
     const recordModal = $("recordModal");
     const recordForm = $("recordForm");
@@ -3039,8 +3270,10 @@
       try{
         const result = await api("/api/customer_records.php", { method:"POST", body:JSON.stringify(payload) });
         btn.disabled = false;
+        const onSaved = recordContext && recordContext.onSaved;
         closeRecordModal();
         applyRecordChange(result.record, result.deleted_id);
+        if (onSaved) onSaved();
       }catch(e){
         show(recordMsg, "bad", e.message);
       }finally{
@@ -3057,8 +3290,10 @@
       try{
         await api("/api/customer_records.php", { method:"POST", body:JSON.stringify({ action:"delete", id:record.id }) });
         $("recordSaveBtn").disabled = false;
+        const onSaved = recordContext && recordContext.onSaved;
         closeRecordModal();
         applyRecordChange(null, record.id);
+        if (onSaved) onSaved();
       }catch(e){
         show(recordMsg, "bad", e.message);
       }
@@ -3171,7 +3406,13 @@
         head.className = "history-item-head";
         const main = document.createElement("div");
         main.className = "history-item-main";
-        appendText(main, "strong", name);
+        const titleBtn = document.createElement("button");
+        titleBtn.type = "button";
+        titleBtn.className = "history-item-title";
+        titleBtn.title = "Otvori porudžbinu";
+        appendText(titleBtn, "strong", name);
+        titleBtn.addEventListener("click", () => openOrderDetail({ id:order.id }));
+        main.appendChild(titleBtn);
         const metaLine = document.createElement("div");
         metaLine.className = "history-order-meta";
         if (accountType) metaLine.appendChild(slotChip(accountType));
@@ -3192,6 +3433,12 @@
           paymentBtn.textContent = paid ? "Poništi plaćeno" : "Označi plaćeno";
         };
         renderPayment(Number(order.reseller_paid) === 1, order.reseller_paid_at || "");
+        if (order.canceled_at || /^cancel/i.test(String(order.order_status || ""))) {
+          paymentStatus.className = "history-paid-badge is-canceled";
+          paymentStatus.textContent = "Poništena";
+          paymentStatus.title = "Porudžbinu je poništio PlayWorld tim.";
+          paymentBtn.style.display = "none";
+        }
         priceStatus.append(paymentStatus);
         head.append(main, priceStatus);
         div.appendChild(head);

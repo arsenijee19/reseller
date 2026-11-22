@@ -865,6 +865,24 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   return $row ?: null;
 }
 
+// ---- long-lived order links (emails -> single order page) -------------------------------------------------
+// The link carries the order id plus a keyed signature bound to the owning reseller, so links can't be
+// guessed or enumerated. It never logs anybody in: the page still requires the reseller's own session/token.
+function order_link_signature(int $orderId, int $resellerId): string {
+  return substr(hash_hmac('sha256', 'pw-order-link|' . $orderId . '|' . $resellerId, security_encryption_key()), 0, 20);
+}
+
+function order_detail_url(int $orderId, int $resellerId): string {
+  return app_public_url() . '/?porudzbina=' . $orderId . '-' . order_link_signature($orderId, $resellerId);
+}
+
+/** Parses "123-abcdef..." and checks it belongs to $resellerId; returns the order id or 0. */
+function order_link_order_id(string $ref, int $resellerId): int {
+  if (!preg_match('/^(\d{1,12})-([a-f0-9]{20})$/', trim($ref), $m)) return 0;
+  $orderId = (int)$m[1];
+  return hash_equals(order_link_signature($orderId, $resellerId), $m[2]) ? $orderId : 0;
+}
+
 // ---- private customer records ("Podaci kupca", "Nova evidencija") ----------------------------------------
 // Buyer/account data a reseller keeps for himself, per portal order or as a free-standing record. Only the
 // owning reseller can read it (no admin view, no emails) and it is stored encrypted at rest.
@@ -1011,7 +1029,7 @@ function reseller_preferences(PDO $pdo, int $resellerId): array {
   ];
 }
 
-function reseller_order_copy_email(string $productName, string $accountType, int $price, int $balanceAfter, string $resellerName, int $orderId): array {
+function reseller_order_copy_email(string $productName, string $accountType, int $price, int $balanceAfter, string $resellerName, int $orderId, string $orderUrl = ''): array {
   $message = "Nova porudžbina na Vašem PlayWorld reseller nalogu.\n\n";
   $message .= 'Porudžbina #' . $orderId . "\n";
   $message .= 'Proizvod: ' . $productName . "\n";
@@ -1025,6 +1043,10 @@ function reseller_order_copy_email(string $productName, string $accountType, int
     $when = gmdate('d.m.Y. H:i') . ' UTC';
   }
   $message .= 'Vreme: ' . $when . "\n\n";
+  if ($orderUrl !== '') {
+    $message .= "Sve informacije o ovoj porudžbini (napomene, podaci kupca, status):\n" . $orderUrl . "\n";
+    $message .= "Link otvara porudžbinu posle prijave Vašim tokenom.\n\n";
+  }
   $message .= "Ovo obaveštenje ste uključili u Podešavanjima naloga (\"Obavesti me o svakoj porudžbini\").\n";
   $message .= "Isključite ga tamo kada Vam više nije potrebno: " . app_public_url() . "\n";
   return ['subject' => 'Nova porudžbina: ' . $productName, 'message' => $message];

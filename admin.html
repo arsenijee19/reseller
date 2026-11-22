@@ -316,6 +316,12 @@
     .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
     .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
     .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
+    .check-row{display:flex;align-items:center;gap:10px;margin:14px 0 4px;font-weight:600;cursor:pointer}
+    .check-row input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--brand)}
+    .txn-edit-note{margin:8px 0 0;font-size:12px}
+    #orderCancelBalance{margin:4px 0 12px;font-size:13px}
+    .txn-description{display:inline-flex;align-items:center;gap:6px;max-width:320px}
+    .txn-description span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .status-badge.pending{background:rgba(234,88,12,.12);color:#c2410c}
     .status-badge.confirmed{background:rgba(19,138,67,.12);color:var(--good)}
     .status-badge.rejected{background:rgba(189,43,43,.12);color:var(--danger)}
@@ -1004,6 +1010,35 @@
         <button class="btn good" id="paymentApproveBtn" type="button">Odobri i dodaj saldo</button>
       </div>
       <div class="msg bad" id="paymentReviewMsg"></div>
+    </div>
+  </div>
+  <div class="admin-modal-backdrop" id="orderCancelModal" role="dialog" aria-modal="true" aria-labelledby="orderCancelTitle">
+    <div class="admin-modal">
+      <h2 id="orderCancelTitle">Poništi porudžbinu</h2>
+      <p class="muted" id="orderCancelMeta"></p>
+      <label class="check-row" for="orderCancelRefund"><input id="orderCancelRefund" type="checkbox" checked /><span>Vrati novac reselleru</span></label>
+      <p class="muted" id="orderCancelBalance"></p>
+      <label for="orderCancelReason">Razlog (opciono, vidi ga i reseller)</label>
+      <textarea id="orderCancelReason" rows="2" maxlength="500" placeholder="npr. Nalog nije bilo moguće isporučiti"></textarea>
+      <div class="actions">
+        <button class="btn" id="orderCancelCloseBtn" type="button">Odustani</button>
+        <button class="btn danger" id="orderCancelConfirmBtn" type="button">Poništi porudžbinu</button>
+      </div>
+      <div class="msg bad" id="orderCancelMsg"></div>
+    </div>
+  </div>
+  <div class="admin-modal-backdrop" id="txnEditModal" role="dialog" aria-modal="true" aria-labelledby="txnEditTitle">
+    <div class="admin-modal">
+      <h2 id="txnEditTitle">Opis transakcije</h2>
+      <p class="muted" id="txnEditMeta"></p>
+      <label for="txnEditDescription">Opis</label>
+      <input id="txnEditDescription" type="text" maxlength="255" autocomplete="off" />
+      <p class="muted txn-edit-note">Menja se samo opis. Iznos, tip i saldo ostaju isti.</p>
+      <div class="actions">
+        <button class="btn" id="txnEditCloseBtn" type="button">Odustani</button>
+        <button class="btn primary" id="txnEditSaveBtn" type="button">Sačuvaj opis</button>
+      </div>
+      <div class="msg bad" id="txnEditMsg"></div>
     </div>
   </div>
   <div id="adminToast" class="toast" role="status" aria-live="polite"></div>
@@ -2028,31 +2063,7 @@
           const cancel = document.createElement("button");
           cancel.className = "btn danger";
           cancel.textContent = "Poništi";
-          cancel.addEventListener("click", async () => {
-            const reseller = (state.data.resellers || []).find((item) => Number(item.id) === Number(o.reseller_id));
-            const currentBalance = reseller ? Number(reseller.balance_rsd) : NaN;
-            const refund = Number(o.price_rsd);
-            const afterBalance = Number.isFinite(currentBalance) && Number.isFinite(refund) ? currentBalance + refund : null;
-            const balanceText = afterBalance === null
-              ? "Balance će biti vraćen za iznos porudžbine."
-              : `Balance: ${money(currentBalance)} RSD → ${money(afterBalance)} RSD.`;
-            const productText = `${o.product_name || o.product_id}${o.account_type ? ` (${o.account_type})` : ""}`;
-            const confirmed = confirm(`Poništiti porudžbinu #${o.id} — ${productText} — ${money(refund)} RSD?\n${balanceText}\n\nPorudžbina se neće brisati iz evidencije, već će biti označena kao poništena.`);
-            if (!confirmed) return;
-            try {
-              cancel.disabled = true;
-              cancel.textContent = "Poništavam...";
-              await ensureAdminStepUp();
-              const result = await api("cancel_order", { method:"POST", body:JSON.stringify({ id:o.id, filters:currentFilters() }) });
-              showToast("ok", `Porudžbina #${o.id} je poništena. ${money(refund)} RSD vraćeno reselleru.`);
-              state.data = result;
-              renderWithUiState(() => render());
-            } catch (e) {
-              showToast("bad", e.message);
-              cancel.disabled = false;
-              cancel.textContent = "Poništi";
-            }
-          });
+          cancel.addEventListener("click", () => openOrderCancel(o));
           actionBox.appendChild(cancel);
         }
         row.insertCell().appendChild(actionBox);
@@ -2337,7 +2348,7 @@
       table.textContent = "";
       const columns = ["id", "reseller_name", "reseller_email", "type", "amount_rsd", "description", "related_order_id", "created_at"];
       const head = table.createTHead().insertRow();
-      columns.forEach((name) => text(head.insertCell(), "strong", name));
+      [...columns, "Akcija"].forEach((name) => text(head.insertCell(), "strong", name));
       const body = table.createTBody();
       (state.data.transactions || []).forEach((transaction) => {
         const row = body.insertRow();
@@ -2346,14 +2357,146 @@
           const cell = row.insertCell();
           text(cell, "span", value, name === "amount_rsd" ? (Number(transaction[name]) >= 0 ? "transaction-positive" : "transaction-negative") : "");
         });
+        const actionBox = document.createElement("div");
+        actionBox.className = "table-actions";
+        const edit = document.createElement("button");
+        edit.className = "btn";
+        edit.type = "button";
+        edit.textContent = "Izmeni opis";
+        edit.addEventListener("click", () => openTxnEdit(transaction));
+        actionBox.appendChild(edit);
+        if (String(transaction.type) === "ORDER" && transaction.related_order_id) {
+          const order = (state.data.orders || []).find((item) => String(item.id) === String(transaction.related_order_id));
+          const canceled = order && (order.canceled_at || /^cancel/i.test(String(order.status || "")));
+          if (canceled) {
+            text(actionBox, "span", "Poništena", "status-badge canceled");
+          } else {
+            const cancel = document.createElement("button");
+            cancel.className = "btn danger";
+            cancel.type = "button";
+            cancel.textContent = "Poništi porudžbinu";
+            cancel.addEventListener("click", () => openOrderCancel(order || {
+              id:transaction.related_order_id,
+              reseller_id:transaction.reseller_id,
+              price_rsd:Math.abs(Number(transaction.amount_rsd) || 0),
+              product_name:String(transaction.description || "").replace(/^Order:\s*/i, "")
+            }));
+            actionBox.appendChild(cancel);
+          }
+        }
+        row.insertCell().appendChild(actionBox);
       });
       if (!(state.data.transactions || []).length) {
         const row = body.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = columns.length;
+        cell.colSpan = columns.length + 1;
         text(cell, "span", "Nema zabeleženih transakcija.", "muted");
       }
     }
+
+    // ---- cancel an order (from Porudžbine or Transakcije) ----
+    let cancelingOrder = null;
+    function updateOrderCancelBalance(){
+      const o = cancelingOrder;
+      const line = $("orderCancelBalance");
+      if (!o) return;
+      const reseller = (state.data.resellers || []).find((item) => Number(item.id) === Number(o.reseller_id));
+      const current = reseller ? Number(reseller.balance_rsd) : NaN;
+      const refund = Number(o.price_rsd) || 0;
+      line.textContent = !$("orderCancelRefund").checked
+        ? "Saldo se ne menja; porudžbina se samo označava kao poništena."
+        : (Number.isFinite(current) ? `Saldo: ${money(current)} RSD → ${money(current + refund)} RSD (+${money(refund)} RSD)` : `Reselleru se vraća ${money(refund)} RSD.`);
+    }
+    function openOrderCancel(o){
+      cancelingOrder = o;
+      const reseller = (state.data.resellers || []).find((item) => Number(item.id) === Number(o.reseller_id));
+      const who = reseller ? (reseller.display_name || reseller.email) : (o.reseller_email || "");
+      const product = `${o.product_name || o.product_id || "Porudžbina"}${o.account_type ? ` (${o.account_type})` : ""}`;
+      $("orderCancelTitle").textContent = `Poništi porudžbinu #${o.id}`;
+      $("orderCancelMeta").textContent = [product, `${money(o.price_rsd)} RSD`, who].filter(Boolean).join(" · ");
+      $("orderCancelRefund").checked = true;
+      $("orderCancelReason").value = "";
+      $("orderCancelMsg").style.display = "none";
+      updateOrderCancelBalance();
+      $("orderCancelModal").classList.add("open");
+    }
+    function closeOrderCancel(){ $("orderCancelModal").classList.remove("open"); cancelingOrder = null; }
+    async function confirmOrderCancel(){
+      const o = cancelingOrder;
+      if (!o) return;
+      const btn = $("orderCancelConfirmBtn");
+      const refund = $("orderCancelRefund").checked;
+      btn.disabled = true;
+      btn.textContent = "Poništavam...";
+      $("orderCancelMsg").style.display = "none";
+      try{
+        const body = { id:o.id, refund, reason:$("orderCancelReason").value.trim(), filters:currentFilters() };
+        let result;
+        try{
+          result = await api("cancel_order", { method:"POST", body:JSON.stringify(body) });
+        }catch(e){
+          if (e.status !== 428) throw e;
+          await ensureAdminStepUp();
+          result = await api("cancel_order", { method:"POST", body:JSON.stringify(body) });
+        }
+        state.data = result;
+        closeOrderCancel();
+        renderWithUiState(() => render());
+        const back = result.cancellation && result.cancellation.refund_rsd;
+        showToast("ok", back ? `Porudžbina #${o.id} je poništena. ${money(back)} RSD vraćeno reselleru.` : `Porudžbina #${o.id} je poništena bez povraćaja.`);
+      }catch(e){
+        $("orderCancelMsg").textContent = e.message;
+        $("orderCancelMsg").style.display = "block";
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Poništi porudžbinu";
+      }
+    }
+    $("orderCancelRefund").addEventListener("change", updateOrderCancelBalance);
+    $("orderCancelConfirmBtn").addEventListener("click", confirmOrderCancel);
+    $("orderCancelCloseBtn").addEventListener("click", closeOrderCancel);
+    $("orderCancelModal").addEventListener("click", (event) => { if (event.target === $("orderCancelModal")) closeOrderCancel(); });
+
+    // ---- edit a transaction's description (e.g. a deposit) ----
+    let editingTxn = null;
+    function openTxnEdit(t){
+      editingTxn = t;
+      $("txnEditTitle").textContent = `Opis transakcije #${t.id}`;
+      $("txnEditMeta").textContent = [transactionTypeLabel(t.type), `${money(t.amount_rsd)} RSD`, t.reseller_name || t.reseller_email, t.created_at].filter(Boolean).join(" · ");
+      $("txnEditDescription").value = t.description || "";
+      $("txnEditMsg").style.display = "none";
+      $("txnEditModal").classList.add("open");
+      focusIfSafe($("txnEditDescription"));
+    }
+    function closeTxnEdit(){ $("txnEditModal").classList.remove("open"); editingTxn = null; }
+    async function saveTxnEdit(){
+      const t = editingTxn;
+      if (!t) return;
+      const description = $("txnEditDescription").value.trim();
+      if (!description) { $("txnEditMsg").textContent = "Unesite opis."; $("txnEditMsg").style.display = "block"; return; }
+      const btn = $("txnEditSaveBtn");
+      btn.disabled = true;
+      try{
+        state.data = await api("update_transaction_description", { method:"POST", body:JSON.stringify({ id:t.id, description, filters:currentFilters() }) });
+        closeTxnEdit();
+        renderWithUiState(() => render());
+        showToast("ok", `Opis transakcije #${t.id} je sačuvan.`);
+      }catch(e){
+        $("txnEditMsg").textContent = e.message;
+        $("txnEditMsg").style.display = "block";
+      }finally{
+        btn.disabled = false;
+      }
+    }
+    $("txnEditSaveBtn").addEventListener("click", saveTxnEdit);
+    $("txnEditCloseBtn").addEventListener("click", closeTxnEdit);
+    $("txnEditDescription").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); saveTxnEdit(); } });
+    $("txnEditModal").addEventListener("click", (event) => { if (event.target === $("txnEditModal")) closeTxnEdit(); });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if ($("orderCancelModal").classList.contains("open")) closeOrderCancel();
+      if ($("txnEditModal").classList.contains("open")) closeTxnEdit();
+    });
 
     function transactionTypeLabel(type){
       const labels = {

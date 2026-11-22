@@ -1638,12 +1638,37 @@ try {
     json_response(dashboard_payload($pdo, $input['filters'] ?? []));
   }
 
+  if ($action === 'update_transaction_description') {
+    $admin = require_admin();
+    $id = (int)($input['id'] ?? 0);
+    $description = trim((string)($input['description'] ?? ''));
+    $length = function_exists('mb_strlen') ? mb_strlen($description, 'UTF-8') : strlen($description);
+    if ($id <= 0) json_response(['ok' => false, 'error' => 'Nedostaje transakcija.'], 400);
+    if ($description === '' || $length > 255) json_response(['ok' => false, 'error' => 'Unesite opis do 255 karaktera.'], 400);
+    $stmt = $pdo->prepare('SELECT id, reseller_id, description FROM wallet_transactions WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$transaction) json_response(['ok' => false, 'error' => 'Transakcija nije pronađena.'], 404);
+    // Only the text changes; amount, type and balances stay exactly as booked.
+    $pdo->prepare('UPDATE wallet_transactions SET description = ? WHERE id = ?')->execute([$description, $id]);
+    audit_event($pdo, 'admin', (int)$admin['id'], 'transaction_description_updated', 'success', [
+      'transaction_id' => $id,
+      'reseller_id' => (int)$transaction['reseller_id'],
+      'old_description' => (string)($transaction['description'] ?? ''),
+      'new_description' => $description,
+    ]);
+    json_response(dashboard_payload($pdo, $input['filters'] ?? []));
+  }
+
   if ($action === 'cancel_order') {
     require_recent_admin_step_up();
     $id = (int)($input['id'] ?? 0);
     $reason = trim((string)($input['reason'] ?? ''));
+    // Default (and the old behaviour): give the reseller the money back. refund=false only marks it canceled.
+    $refundRequested = !array_key_exists('refund', $input) || !empty($input['refund']);
     if ($id <= 0) json_response(['ok' => false, 'error' => 'Nedostaje porudžbina.'], 400);
     if (strlen($reason) > 500) json_response(['ok' => false, 'error' => 'Razlog je predugačak.'], 400);
+    ensure_order_cancellation_columns($pdo);
 
     $adminId = (int)($_SESSION['admin_id'] ?? 0);
     ensure_security_tables($pdo);
@@ -1661,45 +1686,60 @@ try {
       || in_array(strtolower((string)($order['status'] ?? '')), ['canceled', 'cancelled'], true);
     if ($isCanceled) {
       $pdo->rollBack();
-      json_response(['ok' => false, 'error' => 'Ova porudžbina je već poništena i novac je već vraćen.'], 409);
+      json_response(['ok' => false, 'error' => 'Ova porudžbina je već poništena.'], 409);
     }
 
-    if (!has_column($pdo, 'wallet_transactions', 'related_order_id')) {
-      throw new RuntimeException('Nije moguće bezbedno poništiti porudžbinu: wallet veza sa porudžbinom ne postoji.');
+    $refund = 0;
+    $newBalance = null;
+    $refundSource = 'none';
+    if ($refundRequested) {
+      $hasOrderLink = has_column($pdo, 'wallet_transactions', 'related_order_id');
+      $reversalType = order_reversal_transaction_type($pdo);
+      $charge = false;
+      if ($hasOrderLink) {
+        $reversalStmt = $pdo->prepare('SELECT id FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = ? LIMIT 1 FOR UPDATE');
+        $reversalStmt->execute([(int)$order['reseller_id'], $id, $reversalType]);
+        if ($reversalStmt->fetchColumn()) {
+          $pdo->rollBack();
+          json_response(['ok' => false, 'error' => 'Ova porudžbina je već finansijski poništena.'], 409);
+        }
+        $chargeStmt = $pdo->prepare("SELECT id, amount_rsd FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = 'ORDER' ORDER BY id ASC LIMIT 1 FOR UPDATE");
+        $chargeStmt->execute([(int)$order['reseller_id'], $id]);
+        $charge = $chargeStmt->fetch(PDO::FETCH_ASSOC);
+      }
+      $chargedAmount = $charge ? (int)$charge['amount_rsd'] : 0;
+      if ($charge && $chargedAmount < 0) {
+        // Refund exactly what was charged for this order.
+        $refund = abs($chargedAmount);
+        $refundSource = 'linked_charge';
+      } else {
+        // Older orders have no wallet link: refund the order price. The canceled_at check above (under
+        // FOR UPDATE) still guarantees an order can only ever be refunded once.
+        $refund = (int)$order['price_rsd'];
+        $refundSource = 'order_price';
+      }
+      if ($refund > 0) {
+        $description = 'Order reversal #' . $id . ($reason !== '' ? ': ' . $reason : '');
+        $wallet = apply_wallet_transaction($pdo, (int)$order['reseller_id'], $refund, $reversalType, $description, [
+          'source' => 'panel',
+          'admin_id' => $adminId,
+          'related_order_id' => $id,
+        ]);
+        $newBalance = (int)$wallet['balance_after_rsd'];
+      }
     }
 
-    $chargeStmt = $pdo->prepare("SELECT id, amount_rsd FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = 'ORDER' ORDER BY id ASC LIMIT 1 FOR UPDATE");
-    $chargeStmt->execute([(int)$order['reseller_id'], $id]);
-    $charge = $chargeStmt->fetch(PDO::FETCH_ASSOC);
-    $chargedAmount = (int)($charge['amount_rsd'] ?? 0);
-    $orderPrice = (int)$order['price_rsd'];
-    if (!$charge || $chargedAmount >= 0 || abs($chargedAmount) !== $orderPrice) {
-      throw new RuntimeException('Nije moguće bezbedno poništiti porudžbinu: originalno zaduženje nije jednoznačno.');
-    }
-
-    $reversalType = order_reversal_transaction_type($pdo);
-    $reversalStmt = $pdo->prepare('SELECT id FROM wallet_transactions WHERE reseller_id = ? AND related_order_id = ? AND type = ? LIMIT 1 FOR UPDATE');
-    $reversalStmt->execute([(int)$order['reseller_id'], $id, $reversalType]);
-    if ($reversalStmt->fetchColumn()) {
-      $pdo->rollBack();
-      json_response(['ok' => false, 'error' => 'Ova porudžbina je već finansijski poništena.'], 409);
-    }
-
-    $refund = abs($chargedAmount);
-    $description = 'Order reversal #' . $id . ($reason !== '' ? ': ' . $reason : '');
-    $wallet = apply_wallet_transaction($pdo, (int)$order['reseller_id'], $refund, $reversalType, $description, [
-      'source' => 'panel',
-      'admin_id' => $adminId,
-      'related_order_id' => $id,
-    ]);
-    $newBalance = (int)$wallet['balance_after_rsd'];
-
-    $orderUpdate = $pdo->prepare('UPDATE orders SET status = ?, canceled_at = NOW(), canceled_by_admin_id = ?, cancellation_reason = ?, updated_at = NOW() WHERE id = ?');
-    $orderUpdate->execute(['canceled', $adminId, $reason !== '' ? $reason : null, $id]);
+    $orderSets = ['canceled_at = NOW()', 'canceled_by_admin_id = ?', 'cancellation_reason = ?'];
+    $orderParams = [$adminId, $reason !== '' ? $reason : null];
+    if (has_column($pdo, 'orders', 'status')) { array_unshift($orderSets, 'status = ?'); array_unshift($orderParams, 'canceled'); }
+    if (has_column($pdo, 'orders', 'updated_at')) $orderSets[] = 'updated_at = NOW()';
+    $orderParams[] = $id;
+    $pdo->prepare('UPDATE orders SET ' . implode(', ', $orderSets) . ' WHERE id = ?')->execute($orderParams);
     audit_event($pdo, 'admin', $adminId, 'order_canceled', 'success', [
       'order_id' => $id,
       'reseller_id' => (int)$order['reseller_id'],
       'refund_rsd' => $refund,
+      'refund_source' => $refundSource,
       'reason_provided' => $reason !== '',
     ]);
     $pdo->commit();

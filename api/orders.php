@@ -16,6 +16,8 @@ try {
   $notesSelect = has_column($pdo, 'orders', 'reseller_notes') ? 'o.reseller_notes,' : "'' AS reseller_notes,";
   $paidSelect = has_column($pdo, 'orders', 'reseller_paid') ? 'o.reseller_paid,' : '0 AS reseller_paid,';
   $paidAtSelect = has_column($pdo, 'orders', 'reseller_paid_at') ? 'o.reseller_paid_at,' : 'NULL AS reseller_paid_at,';
+  $canceledSelect = has_column($pdo, 'orders', 'canceled_at') ? 'o.canceled_at,' : 'NULL AS canceled_at,';
+  $statusSelect = has_column($pdo, 'orders', 'status') ? 'o.status AS order_status,' : "'' AS order_status,";
   $allOrders = h_string($_GET['all'] ?? '') === '1';
 
   $sql = "
@@ -27,6 +29,8 @@ try {
       {$notesSelect}
       {$paidSelect}
       {$paidAtSelect}
+      {$canceledSelect}
+      {$statusSelect}
       pp.product_name,
       pp.account_type
     FROM orders o

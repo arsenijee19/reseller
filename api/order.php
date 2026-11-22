@@ -174,6 +174,7 @@ try {
   $successResponse = json_encode([
     "ok"=>true,
     "order_id"=>$orderDbId,
+    "order_url"=>order_detail_url($orderDbId, $reseller_id),
     "request_id"=>$request_id,
     "charged_rsd"=>$price,
     "balance_rsd"=>$newBal,
@@ -239,7 +240,7 @@ try {
     if ($preferences['order_notify_enabled']) {
       $copyTo = $preferences['order_notify_email'] !== '' ? $preferences['order_notify_email'] : $customer_email;
       if (valid_email($copyTo)) {
-        $copy = reseller_order_copy_email((string)$p['product_name'], (string)$p['account_type'], $price, $newBal, $reseller_name, $orderDbId);
+        $copy = reseller_order_copy_email((string)$p['product_name'], (string)$p['account_type'], $price, $newBal, $reseller_name, $orderDbId, order_detail_url($orderDbId, $reseller_id));
         $copyResult = send_text_notification_email([$copyTo], $copy['subject'], $copy['message']);
         record_order_delivery_event($pdo, $orderDbId, 'reseller_copy', $copyResult['ok'] ? 'sent' : 'failed', [
           'recipients' => [$copyTo],
@@ -267,6 +268,8 @@ try {
     "discount_percent" => $discountPercent,
     "currency" => (string)$p["currency"],
     "customer_email" => $customer_email,
+    // Long-lived link to this order's page in the portal (opens after the reseller signs in with the token).
+    "order_url" => order_detail_url($orderDbId, $reseller_id),
     "ts" => gmdate("c")
   ];
 
