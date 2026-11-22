@@ -1973,7 +1973,9 @@
           const period = document.createElement("select");
           period.className = "product-period";
           period.setAttribute("aria-label", `Period pretplate za ${product.account_type || product.product_id}`);
-          [["", "—"], ["1", "1 mesec"], ["3", "3 meseca"], ["6", "6 meseci"], ["12", "12 meseci"], ["24", "24 meseca"]].forEach(([value, label]) => option(period, value, label));
+          const detected = (`${product.product_name || ""} ${product.account_type || ""} ${product.product_id || ""}`.match(/(?:^|[^\d])(1|3|6|12|24)[\s_-]*(?:months?|mesec(?:a|i)?|mes|mj|mo|m)(?![a-zščćžđ])/i) || [])[1];
+          const autoLabel = detected ? `Auto: ${detected} ${detected === "1" ? "mesec" : (detected === "3" || detected === "24" ? "meseca" : "meseci")}` : "—";
+          [["", autoLabel], ["1", "1 mesec"], ["3", "3 meseca"], ["6", "6 meseci"], ["12", "12 meseci"], ["24", "24 meseca"]].forEach(([value, label]) => option(period, value, label));
           period.value = product.subscription_months ? String(product.subscription_months) : "";
           period.addEventListener("change", async () => {
             period.disabled = true;
