@@ -248,6 +248,22 @@
     .credit-banner .btn{justify-self:start;margin-top:6px;min-height:34px;padding:6px 14px;font-size:13px}
     .credit-banner[hidden]{display:none}
     #orderBtn.is-blocked{opacity:.55}
+    .game-art{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;overflow:hidden;border-radius:10px;background:linear-gradient(145deg,rgba(118,118,128,.10),rgba(118,118,128,.20));color:var(--muted);font-weight:800;line-height:1;box-shadow:inset 0 0 0 1px rgba(118,118,128,.16)}
+    .game-art img{width:100%;height:100%;object-fit:cover;display:block}
+    .game-art.sm{width:40px;height:40px;border-radius:9px;font-size:15px}
+    .game-art.md{width:46px;height:46px;border-radius:10px;font-size:17px}
+    .game-art.lg{width:96px;height:96px;border-radius:18px;font-size:34px;box-shadow:0 10px 30px rgba(15,23,42,.14),inset 0 0 0 1px rgba(118,118,128,.16)}
+    .game-art[hidden]{display:none}
+    .product-picker-trigger{justify-content:flex-start}
+    .product-picker-trigger .product-picker-value{flex:1;min-width:0}
+    .product-option{justify-content:flex-start}
+    .product-option .product-option-main{flex:1}
+    .price-group-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .history-item-head .history-item-main{flex:1}
+    .history-item-head{justify-content:flex-start}
+    .od-head{display:flex;align-items:center;gap:16px}
+    .od-head-copy{min-width:0}
+    @media(max-width:640px){.game-art.lg{width:76px;height:76px;border-radius:15px}}
     .order-link-hint{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(49,93,244,.25);border-radius:10px;background:rgba(49,93,244,.07);color:var(--text);font-size:13px;line-height:1.45}
     .order-detail-backdrop{z-index:40;align-items:flex-start;overflow:auto}
     .order-detail{width:min(620px,100%);margin:clamp(0px,4vh,40px) auto;padding:18px 20px 22px}
@@ -1051,6 +1067,7 @@
                   <div class="product-picker" id="productPicker">
                     <input id="product" type="hidden" />
                     <button class="product-picker-trigger" id="productPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="game-art sm" id="productPickerArt" hidden></span>
                       <span class="product-picker-value" id="productPickerValue"><strong>Izaberite proizvod</strong><span>Pretražite i izaberite igru</span></span>
                       <span class="product-picker-chevron" aria-hidden="true"></span>
                     </button>
@@ -2586,6 +2603,36 @@
       productPickerTrigger.setAttribute("aria-expanded", "false");
     }
 
+    // Game cover (uploaded by the admin). Without one: a calm monogram tile, so the layout never jumps.
+    function gameArt(imageUrl, title, size){
+      const box = document.createElement("span");
+      box.className = "game-art" + (size ? " " + size : "");
+      box.setAttribute("aria-hidden", "true");
+      if (imageUrl && /^\/uploads\/games\/[a-f0-9]{24}\.(webp|jpg|png)$/.test(imageUrl)) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.addEventListener("error", () => { img.remove(); box.textContent = String(title || "?").trim().charAt(0).toUpperCase(); });
+        box.appendChild(img);
+      } else {
+        box.textContent = String(title || "?").trim().charAt(0).toUpperCase() || "?";
+      }
+      return box;
+    }
+    function productImage(productId){
+      return (state.prices.get(String(productId)) || {}).image || "";
+    }
+    function setPickerArt(product){
+      const holder = $("productPickerArt");
+      holder.replaceChildren();
+      const art = gameArt(productImage(product.id), productLabel(product), "sm");
+      holder.hidden = false;
+      holder.className = art.className;
+      holder.replaceChildren(...art.childNodes);
+    }
+
     function chooseProduct(productId){
       const product = state.products.find((item) => String(item.id) === String(productId));
       if (!product) return;
@@ -2593,6 +2640,7 @@
       productSelect.value = String(product.id);
       const priced = state.prices.get(String(product.id)) || {};
       productPickerValue.textContent = "";
+      setPickerArt(product);
       appendText(productPickerValue, "strong", productLabel(product));
       const valueLine = document.createElement("span");
       valueLine.className = "product-picker-sub";
@@ -2699,7 +2747,7 @@
             main.className = "product-option-main";
             appendText(main, "strong", productLabel(product));
             main.appendChild(slotChip(productType(product)));
-            option.appendChild(main);
+            option.append(gameArt(productImage(product.id), productLabel(product), "sm"), main);
             if (priced.price !== undefined) appendText(option, "span", `${price(priced.price)} ${priced.currency || "RSD"}`, "product-option-price");
             option.addEventListener("click", () => chooseProduct(product.id));
             group.appendChild(option);
@@ -2719,6 +2767,7 @@
         const selected = state.products.find((product) => String(product.id) === String(current));
         if (selected) {
           productPickerValue.textContent = "";
+          setPickerArt(selected);
           appendText(productPickerValue, "strong", productLabel(selected));
           const priced = state.prices.get(String(selected.id)) || {};
           const valueLine = document.createElement("span");
@@ -2793,6 +2842,8 @@
         card.className = "price-group";
         const heading = document.createElement("div");
         heading.className = "price-group-head";
+        const groupImage = (group.products.find((product) => product.image) || {}).image || "";
+        heading.appendChild(gameArt(groupImage, group.title, "md"));
         appendText(heading, "strong", group.title);
         const platforms = new Set();
         group.products.forEach((product) => {
@@ -3107,13 +3158,17 @@
       currentOrderDetail = data;
       const head = document.createElement("div");
       head.className = "od-head";
-      appendText(head, "h2", order.product_name || order.product_id || `Porudžbina #${order.id}`);
+      head.appendChild(gameArt(order.image, order.product_name || order.product_id, "lg"));
+      const headCopy = document.createElement("div");
+      headCopy.className = "od-head-copy";
+      head.appendChild(headCopy);
+      appendText(headCopy, "h2", order.product_name || order.product_id || `Porudžbina #${order.id}`);
       const tags = document.createElement("div");
       tags.className = "od-tags";
       if (order.account_type) tags.appendChild(slotChip(order.account_type));
       if (order.canceled) appendText(tags, "span", "Poništena", "od-tag canceled");
       else appendText(tags, "span", order.reseller_paid ? "Plaćeno" : "Neplaćeno", "od-tag " + (order.reseller_paid ? "paid" : "unpaid"));
-      head.appendChild(tags);
+      headCopy.appendChild(tags);
       body.appendChild(head);
 
       const delivery = splitDeliveryNote(order.reseller_notes);
@@ -3444,6 +3499,7 @@
         const name = withoutAccountType.replace(/[\s\-–(]+$/, "").replace(/\s*\(?\s*PS[45](?:\s*[\/+&]\s*PS[45])?\s*\)?\s*$/i, "").replace(/[\s\-–(]+$/, "") || rawName;
         const head = document.createElement("div");
         head.className = "history-item-head";
+        head.appendChild(gameArt(order.image || productImage(order.product_id), name, "md"));
         const main = document.createElement("div");
         main.className = "history-item-main";
         const titleBtn = document.createElement("button");

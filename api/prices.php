@@ -20,8 +20,9 @@ try {
   $discountPercent = normalized_discount_percent($profile['discount_percent'] ?? 0);
 
   $whereActive = has_column($pdo, 'product_prices', 'status') ? "WHERE status = 'active'" : "";
+  $imageSelect = ensure_product_image_column($pdo) ? 'image_file' : 'NULL AS image_file';
   $stmt = $pdo->query("
-    SELECT product_id, product_name, account_type, price, currency
+    SELECT product_id, product_name, account_type, price, currency, {$imageSelect}
     FROM product_prices
     {$whereActive}
     ORDER BY product_name, account_type
@@ -32,6 +33,8 @@ try {
     $row['base_price'] = $basePrice;
     $row['price'] = discounted_price($basePrice, $discountPercent);
     $row['discount_percent'] = $discountPercent;
+    $row['image'] = product_image_url($row['image_file'] ?? null);
+    unset($row['image_file']);
     return $row;
   }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 

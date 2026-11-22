@@ -3,3 +3,4 @@ api/error_log
 *.log
 .DS_Store
 __pycache__/
+uploads/

@@ -316,6 +316,17 @@
     .order-canceled td:first-child{box-shadow:inset 3px 0 var(--danger)}
     .status-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}
     .status-badge.canceled{background:rgba(189,43,43,.12);color:var(--danger)}
+    .game-thumb-btn{flex:0 0 auto;padding:0;border:0;background:none;cursor:pointer;border-radius:12px}
+    .game-thumb-btn:hover .game-thumb{outline:2px solid var(--brand);outline-offset:2px}
+    .game-thumb{display:grid;place-items:center;width:48px;height:48px;border-radius:12px;overflow:hidden;background:rgba(118,118,128,.14);color:var(--muted);font-size:18px;font-weight:800;border:1px solid var(--line)}
+    .game-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    #gameImageRemoveBtn[hidden]{display:none}
+    .product-group-head{align-items:center}
+    .product-group-head .product-group-title{flex:1}
+    .game-image-preview{display:grid;place-items:center;margin:12px 0;min-height:160px;border:1px solid var(--line);border-radius:14px;background:var(--soft);overflow:hidden}
+    .game-image-preview img{width:160px;height:160px;object-fit:cover;border-radius:12px;display:block}
+    .game-image-note{margin:6px 0 0;font-size:12px}
+    #gameImageRemoveBtn{margin-right:auto}
     .debt-panel{margin-top:18px}
     .debt-settings{display:grid;gap:6px;margin-bottom:14px}
     .debt-settings .actions{justify-content:flex-start;margin-top:6px}
@@ -1078,6 +1089,22 @@
       <div class="msg bad" id="txnEditMsg"></div>
     </div>
   </div>
+  <div class="admin-modal-backdrop" id="gameImageModal" role="dialog" aria-modal="true" aria-labelledby="gameImageTitle">
+    <div class="admin-modal">
+      <h2 id="gameImageTitle">Slika igre</h2>
+      <p class="muted" id="gameImageMeta"></p>
+      <div class="game-image-preview" id="gameImagePreview"></div>
+      <label for="gameImageFile">Nova slika (JPG, PNG ili WEBP, najbolje kvadratna)</label>
+      <input id="gameImageFile" type="file" accept="image/jpeg,image/png,image/webp" />
+      <p class="muted game-image-note">Slika se automatski iseče na kvadrat i smanji na 512×512. Važi za sve varijante ove igre.</p>
+      <div class="actions">
+        <button class="btn danger" id="gameImageRemoveBtn" type="button">Ukloni sliku</button>
+        <button class="btn" id="gameImageCloseBtn" type="button">Zatvori</button>
+        <button class="btn primary" id="gameImageSaveBtn" type="button">Sačuvaj sliku</button>
+      </div>
+      <div class="msg bad" id="gameImageMsg"></div>
+    </div>
+  </div>
   <div id="adminToast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -1805,7 +1832,7 @@
     }
 
     function productColumns(){
-      return (state.data.schema.products || []).filter((c) => !(c.EXTRA || "").includes("auto_increment"));
+      return (state.data.schema.products || []).filter((c) => !(c.EXTRA || "").includes("auto_increment") && c.COLUMN_NAME !== "image_file");
     }
 
     function renderNewProduct(){
@@ -1899,6 +1926,12 @@
         text(title, "span", `· ${group.products.length} ${group.products.length === 1 ? "varijanta" : "varijante"}`, "muted");
         const addVariant = document.createElement("button"); addVariant.className = "btn"; addVariant.type = "button"; addVariant.textContent = "+ Varijanta";
         addVariant.addEventListener("click", () => openProductCreate(group.title));
+        const groupImage = (group.products.find((product) => product.image_file) || {}).image_file || "";
+        const imageBtn = document.createElement("button"); imageBtn.type = "button"; imageBtn.className = "game-thumb-btn";
+        imageBtn.title = groupImage ? "Promeni sliku igre" : "Dodaj sliku igre";
+        imageBtn.appendChild(gameThumb(groupImage, group.title));
+        imageBtn.addEventListener("click", () => openGameImage(group));
+        head.prepend(imageBtn);
         head.append(title, addVariant); card.appendChild(head);
 
         const wrap = document.createElement("div"); wrap.className = "table-wrap";
@@ -2437,6 +2470,82 @@
         text(cell, "span", "Nema zabeleženih transakcija.", "muted");
       }
     }
+
+    // ---- game images (one per game, applied to all its variants) ----
+    function gameThumb(file, title){
+      const box = document.createElement("span");
+      box.className = "game-thumb";
+      if (/^[a-f0-9]{24}\.(webp|jpg|png)$/.test(String(file || ""))) {
+        const img = document.createElement("img");
+        img.src = "/uploads/games/" + file;
+        img.alt = "";
+        img.loading = "lazy";
+        box.appendChild(img);
+      } else {
+        box.textContent = String(title || "?").trim().charAt(0).toUpperCase() || "?";
+      }
+      return box;
+    }
+    let editingGameImage = null;
+    function renderGameImagePreview(file, title){
+      const preview = $("gameImagePreview");
+      preview.textContent = "";
+      if (file) {
+        const img = document.createElement("img");
+        img.src = typeof file === "string" ? "/uploads/games/" + file : URL.createObjectURL(file);
+        img.alt = "";
+        preview.appendChild(img);
+      } else {
+        text(preview, "span", "Ova igra još nema sliku.", "muted");
+      }
+    }
+    function openGameImage(group){
+      const current = (group.products.find((product) => product.image_file) || {}).image_file || "";
+      editingGameImage = { title:group.title, ids:group.products.map((product) => String(product.product_id)), current };
+      $("gameImageTitle").textContent = `Slika: ${group.title}`;
+      $("gameImageMeta").textContent = `Važi za ${group.products.length} ${group.products.length === 1 ? "varijantu" : "varijante"}: ` + group.products.map((product) => product.account_type || product.product_id).join(", ");
+      $("gameImageFile").value = "";
+      $("gameImageRemoveBtn").hidden = !current;
+      $("gameImageMsg").style.display = "none";
+      renderGameImagePreview(current, group.title);
+      $("gameImageModal").classList.add("open");
+    }
+    function closeGameImage(){ $("gameImageModal").classList.remove("open"); editingGameImage = null; }
+    async function sendGameImage(action){
+      const g = editingGameImage;
+      if (!g) return;
+      const form = new FormData();
+      form.append("action", action);
+      g.ids.forEach((id) => form.append("product_ids[]", id));
+      if (action === "upload") {
+        const file = $("gameImageFile").files[0];
+        if (!file) { $("gameImageMsg").textContent = "Izaberite sliku."; $("gameImageMsg").style.display = "block"; return; }
+        form.append("image", file);
+      }
+      const btn = $(action === "upload" ? "gameImageSaveBtn" : "gameImageRemoveBtn");
+      btn.disabled = true;
+      try{
+        const res = await fetch("/api/admin_product_image.php", { method:"POST", body:form, credentials:"same-origin", headers:{ "X-CSRF-Token":state.csrf } });
+        const json = await res.json().catch(() => ({}));
+        if (!json.ok) throw new Error(json.error || `Slika nije sačuvana (${res.status}).`);
+        if (json.csrf_token) state.csrf = json.csrf_token;
+        const file = String(json.image_url || "").split("/").pop();
+        (state.data.products || []).forEach((product) => { if (g.ids.includes(String(product.product_id))) product.image_file = file || null; });
+        closeGameImage();
+        renderWithUiState(() => render());
+        showToast("ok", action === "upload" ? `Slika za „${g.title}” je sačuvana.` : `Slika za „${g.title}” je uklonjena.`);
+      }catch(e){
+        $("gameImageMsg").textContent = e.message;
+        $("gameImageMsg").style.display = "block";
+      }finally{
+        btn.disabled = false;
+      }
+    }
+    $("gameImageFile").addEventListener("change", () => { const f = $("gameImageFile").files[0]; if (f) renderGameImagePreview(f); });
+    $("gameImageSaveBtn").addEventListener("click", () => sendGameImage("upload"));
+    $("gameImageRemoveBtn").addEventListener("click", () => { if (window.confirm("Ukloniti sliku ove igre?")) sendGameImage("remove"); });
+    $("gameImageCloseBtn").addEventListener("click", closeGameImage);
+    $("gameImageModal").addEventListener("click", (event) => { if (event.target === $("gameImageModal")) closeGameImage(); });
 
     // ---- debts: weekly reminder settings + who is in minus ----
     function renderDebts(){

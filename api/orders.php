@@ -31,6 +31,7 @@ try {
       {$paidAtSelect}
       {$canceledSelect}
       {$statusSelect}
+      " . (ensure_product_image_column($pdo) ? 'pp.image_file,' : 'NULL AS image_file,') . "
       pp.product_name,
       pp.account_type
     FROM orders o
@@ -42,7 +43,11 @@ try {
   $stmt = $pdo->prepare($sql);
   $stmt->execute([$resellerId]);
 
-  $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $orders = array_map(static function (array $order): array {
+    $order['image'] = product_image_url($order['image_file'] ?? null);
+    unset($order['image_file']);
+    return $order;
+  }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
   echo json_encode(["ok"=>true, "orders"=>$orders]);
 } catch (Throwable $e) {

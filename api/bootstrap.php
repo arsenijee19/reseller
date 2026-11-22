@@ -869,6 +869,96 @@ function reseller_profile(PDO $pdo, int $resellerId): ?array {
   return $row ?: null;
 }
 
+// ---- game cover images (uploaded by the admin, served as static files) -----------------------------------
+const PRODUCT_IMAGE_MAX_BYTES = 8388608; // 8 MB upload; stored file is a small 512x512 image
+
+function ensure_product_image_column(PDO $pdo): bool {
+  static $ready = null;
+  if ($ready !== null) return $ready;
+  try {
+    if (!has_column($pdo, 'product_prices', 'image_file')) {
+      $pdo->exec('ALTER TABLE product_prices ADD COLUMN image_file VARCHAR(80) NULL');
+      table_columns($pdo, 'product_prices', true);
+    }
+    return $ready = has_column($pdo, 'product_prices', 'image_file');
+  } catch (Throwable $e) {
+    return $ready = false;
+  }
+}
+
+/** Public folder inside the site (next to index.html), so images are plain static files. */
+function product_images_dir(): string {
+  $dir = dirname(__DIR__) . '/uploads/games';
+  if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+    throw new RuntimeException('Folder za slike igara nije moguće napraviti.');
+  }
+  $guard = dirname($dir) . '/.htaccess';
+  if (!is_file($guard)) {
+    // Only images are ever served from /uploads; nothing there may run as code.
+    @file_put_contents($guard, "Options -Indexes\n<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n  Require all denied\n</FilesMatch>\n<IfModule mod_headers.c>\n  Header set Cache-Control \"public, max-age=2592000\"\n  Header set X-Content-Type-Options \"nosniff\"\n</IfModule>\n");
+  }
+  return $dir;
+}
+
+function product_image_url(?string $file): string {
+  $file = (string)$file;
+  return preg_match('/^[a-f0-9]{24}\.(webp|jpg|png)$/', $file) ? '/uploads/games/' . $file : '';
+}
+
+/**
+ * Re-encodes an uploaded picture into a centered 512x512 square (WEBP when available). Re-encoding
+ * drops anything that is not pixel data, so the stored file is always a clean image. Returns the file name.
+ */
+function store_product_image(string $tmpPath): string {
+  $info = @getimagesize($tmpPath);
+  $types = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'];
+  if (!$info || !isset($types[$info[2]])) throw new InvalidArgumentException('Slika mora biti JPG, PNG ili WEBP.');
+  if ($info[0] < 64 || $info[1] < 64 || $info[0] > 8000 || $info[1] > 8000) throw new InvalidArgumentException('Slika mora biti bar 64×64 i najviše 8000×8000 piksela.');
+  $dir = product_images_dir();
+  $name = bin2hex(random_bytes(12));
+
+  if (!function_exists('imagecreatefromstring')) {
+    // No GD on the server: keep the verified original.
+    $file = $name . '.' . ($types[$info[2]] === 'webp' ? 'webp' : $types[$info[2]]);
+    if (!copy($tmpPath, $dir . '/' . $file)) throw new RuntimeException('Slika nije sačuvana.');
+    @chmod($dir . '/' . $file, 0644);
+    return $file;
+  }
+
+  $src = @imagecreatefromstring((string)file_get_contents($tmpPath));
+  if (!$src) throw new InvalidArgumentException('Slika nije ispravna.');
+  $w = imagesx($src); $h = imagesy($src);
+  $side = min($w, $h);
+  $size = min(512, $side);
+  $dst = imagecreatetruecolor($size, $size);
+  imagealphablending($dst, false);
+  imagesavealpha($dst, true);
+  imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+  imagecopyresampled($dst, $src, 0, 0, (int)(($w - $side) / 2), (int)(($h - $side) / 2), $size, $size, $side, $side);
+  imagedestroy($src);
+  if (function_exists('imagewebp')) {
+    $file = $name . '.webp';
+    $ok = imagewebp($dst, $dir . '/' . $file, 82);
+  } else {
+    $file = $name . '.jpg';
+    $ok = imagejpeg($dst, $dir . '/' . $file, 86);
+  }
+  imagedestroy($dst);
+  if (!$ok) throw new RuntimeException('Slika nije sačuvana.');
+  @chmod($dir . '/' . $file, 0644);
+  return $file;
+}
+
+/** Deletes image files no product points to any more. */
+function prune_product_images(PDO $pdo, array $files): void {
+  foreach (array_unique(array_filter($files)) as $file) {
+    if (product_image_url($file) === '') continue;
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM product_prices WHERE image_file = ?');
+    $stmt->execute([$file]);
+    if ((int)$stmt->fetchColumn() === 0) @unlink(dirname(__DIR__) . '/uploads/games/' . $file);
+  }
+}
+
 // ---- allowed minus (credit limit) per reseller ------------------------------------------------------------
 // credit_limit_rsd: how far below zero the balance may go (NULL = no limit, 0 = prepaid only).
 // credit_locked_at: set when the limit is reached (an order would go past it, or lands exactly on it);
